@@ -1,4 +1,4 @@
 window.DAYBOOK_CONFIG = {
-  cloudUrl: "https://daybook-sync.YOUR-SUBDOMAIN.workers.dev",
+  cloudUrl: "https://daybook-sync.storedh2024.workers.dev",
   appToken: ""
 };
