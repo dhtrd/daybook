@@ -8,12 +8,16 @@ const CACHE = "dsr-cache-v" + APP_VERSION;
 const SHELL = [
   "./",
   "./index.html",
+  "./config.js",
   "./manifest.webmanifest",
   "./icon.svg",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-180.png"
 ];
+
+/* المضيفات الخارجية المسموح تخزينها مؤقتاً (خطوط + مكتبة الإكسل فقط) */
+const CACHEABLE_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com", "cdnjs.cloudflare.com"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
@@ -41,11 +45,8 @@ function isHTML(req) {
 
 self.addEventListener("fetch", (e) => {
   const req = e.request;
-  if (req.method !== "GET") return;                    // POST (Dropbox…) يمرّ للشبكة مباشرة
+  if (req.method !== "GET") return;                    // POST (Worker/Dropbox…) يمرّ للشبكة مباشرة
   const url = new URL(req.url);
-
-  // لا نتدخّل في نداءات Dropbox أو أي واجهة برمجية
-  if (/dropboxapi\.com$/.test(url.hostname)) return;
 
   const sameOrigin = url.origin === self.location.origin;
 
@@ -63,7 +64,7 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // ملفات محلية ثابتة (أيقونات/manifest): الكاش أولاً مع تحديث بالخلفية
+  // ملفات محلية ثابتة (أيقونات/manifest/config): الكاش أولاً مع تحديث بالخلفية
   if (sameOrigin) {
     e.respondWith(
       caches.match(req).then((cached) => {
@@ -80,7 +81,8 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // موارد خارجية (خطوط Google / مكتبة SheetJS من CDN): stale-while-revalidate
+  // خارجي: نخزّن مؤقتاً الخطوط ومكتبة الإكسل فقط. أي شيء آخر (Worker/Dropbox) يمرّ للشبكة دون تدخّل أو تخزين.
+  if (CACHEABLE_HOSTS.indexOf(url.hostname) === -1) return;
   e.respondWith(
     caches.match(req).then((cached) => {
       const net = fetch(req).then((res) => {
