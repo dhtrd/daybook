@@ -1,39 +1,7 @@
-// فحص ما قبل النشر — يمنع وصول نسخة مكسورة إلى الموقع
-import {readFileSync,writeFileSync} from 'fs';
-import {execSync} from 'child_process';
-let fails=0;
-const fail=m=>{console.error("✗ "+m);fails++};
-const ok=m=>console.log("✓ "+m);
-
-// 1) صياغة سكربتات index.html
-const html=readFileSync('index.html','utf8');
-const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).filter(t=>t.trim());
-writeFileSync('/tmp/_app.js',scripts.join('\n'));
-try{execSync('node --check /tmp/_app.js',{stdio:'pipe'});ok('index.html: صياغة JavaScript سليمة')}
-catch(e){fail('index.html: خطأ صياغة\n'+e.stderr)}
-
-// 2) صياغة sw.js
-try{execSync('node --check sw.js',{stdio:'pipe'});ok('sw.js: صياغة سليمة')}
-catch(e){fail('sw.js: خطأ صياغة\n'+e.stderr)}
-
-// 3) تطابق الإصدارات الثلاثة
-const v1=(html.match(/APP_VERSION="([^"]+)"/)||[])[1];
-const sw=readFileSync('sw.js','utf8');
-const v2=(sw.match(/APP_VERSION\s*=\s*"([^"]+)"/)||[])[1];
-const v3=JSON.parse(readFileSync('version.json','utf8')).version;
-if(v1&&v1===v2&&v2===v3)ok('الإصدارات متطابقة: '+v1);
-else fail(`الإصدارات غير متطابقة: index=${v1} sw=${v2} version.json=${v3}`);
-
-// 4) تدقيق معالجات App: كل App.x() المستدعى نصياً يجب أن يكون معرّفاً
-const js=scripts.join('\n');
-const called=new Set([...js.matchAll(/App\.([a-zA-Z0-9_]+)\s*\(/g)].map(m=>m[1]));
-const body=(js.match(/window\.App=\{([\s\S]*?)\n\};/)||[])[1]||'';
-const defined=new Set([...body.matchAll(/([a-zA-Z0-9_]+)\s*:\s*(?:async\s+)?function/g)].map(m=>m[1]));
-const dyn=new Set(['dashFrom','dashTo','rfFrom','rfTo','setDateTo','itFrom','itTo','bScope','cmp','itType','rMonth','rfBrToggle','yr','yrHide','yrShow']);
-const missing=[...called].filter(x=>!defined.has(x));
-if(missing.length)fail('معالجات مستدعاة غير معرّفة: '+missing.join(', '));
-else ok('تدقيق المعالجات: لا استدعاءات مكسورة ('+called.size+' معالجاً)');
-const unused=[...defined].filter(x=>!called.has(x)&&!dyn.has(x)&&x!=='onOk');
-if(unused.length)console.log('ℹ معالجات غير مستدعاة نصياً (قد تكون ديناميكية): '+unused.join(', '));
-
-process.exit(fails?1:0);
+<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="نظام تقارير اليومية">
+  <rect width="48" height="48" rx="13" fill="#173A31"/>
+  <rect x="12" y="35.4" width="24" height="2.4" rx="1.2" fill="#3A5C50"/>
+  <path d="M13 30.5 L21 24 L27 27.2 L35 17.5" fill="none" stroke="#AF8228" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="35" cy="17.5" r="3.2" fill="#D9B45C" stroke="#173A31" stroke-width="1.3"/>
+  <circle cx="13" cy="30.5" r="2" fill="#AF8228"/>
+</svg>
