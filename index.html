@@ -430,7 +430,7 @@ async function cloudSave(payload,baseRev){var h=cloudHeaders(true);if(baseRev)h[
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.3.2";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.3.3";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
 /* دوال الترحيل: MIGRATIONS[v-1] ترقّي البيانات من النسخة v إلى v+1.
    تُطبَّق تلقائياً عند فتح التطبيق أو سحب بيانات أقدم، دون مساس بأي بيانات موجودة. */
@@ -916,7 +916,7 @@ function itemsCalc(){var r=itRange(),type=S.it.type||"both",list=[],te=0,ti=0;
 function itemsTableHTML(cc,forPrint){
   var rows=cc.list.map(function(x){var tag=x.k==="exp"?"<span style='color:var(--neg);font-weight:700'>مصروف</span>":"<span style='color:var(--pos);font-weight:700'>إيراد</span>";
     if(forPrint)tag=x.k==="exp"?"مصروف":"إيراد";
-    return "<tr"+(forPrint?"":" class='clk' onclick=\"App.openDay('"+x.d+"')\"")+"><td>"+prettyDate(x.d)+"</td><td>"+tag+"</td><td>"+esc(x.details||"—")+"</td><td class='num' style='font-weight:700'>"+fmt(x.amount)+"</td></tr>"}).join("");
+    return "<tr"+(forPrint?"":" class='clk' onclick=\"App.openDay('"+x.d+"')\"")+"><td>"+prettyDate(x.d)+"</td><td>"+tag+"</td><td>"+esc(x.details||"—")+"</td><td class='num' style='font-weight:700'>"+(forPrint?pf(x.amount):fmt(x.amount))+"</td></tr>"}).join("");
   var tot="";
   if(cc.type!=="inc")tot+="<tr class='total'><td colspan='3'>اجمالي المصروفات</td><td class='num'>"+fmt(cc.te)+"</td></tr>";
   if(cc.type!=="exp")tot+="<tr class='total'><td colspan='3'>اجمالي الإيرادات</td><td class='num'>"+fmt(cc.ti)+"</td></tr>";
@@ -935,6 +935,7 @@ function repItems(){
 }
 
 /* ===== طباعة تقرير عام (بترويسة المنشأة) — تطبع المعروض بعد الفلترة فقط ===== */
+function pf(v){var n=num(v);return n?fmt(n):""}   /* تنسيق طباعة: القيم الصفرية لا تُطبع */
 function printReport(title,sub,inner,widthHint){
   var cfg=S.config;var logoEl=cfg.companyLogo?"<img class='plogo' src='"+cfg.companyLogo+"'>":"<div class='plogo-ph'>"+LOGO_SVG+"</div>";
   var html="<div class='p-wrap'><div class='p-head'><div class='brandcol'>"+logoEl+"<div><h2>"+esc(cfg.businessName)+"</h2><div class='sd'>"+title+(sub?" — "+sub:"")+"</div></div></div><div class='meta'>طُبع: "+nowStamp()+"</div></div>"+inner+"</div>";
@@ -946,16 +947,16 @@ function printItems(){var cc=itemsCalc();
   printReport("تقرير المصروفات والإيرادات",prettyDate(cc.r.from)+" ← "+prettyDate(cc.r.to)+" · "+typeLbl+" · "+cc.list.length+" بند",itemsTableHTML(cc,true),4);}
 function printCustom(){var cc=customCalc();if(!cc.days.length){toast("لا بيانات في هذه الفترة","err");return}
   var head="<th>#</th><th>التاريخ</th><th>المبيعات</th>"+cc.methods.map(function(m){return "<th>"+esc(m.label)+"</th>"}).join("")+"<th>النقد</th>"+(cc.all?"<th>المصروفات</th><th>الإيرادات</th><th>باقي الرصيد</th>":"");
-  var rows=cc.per.map(function(p){var extra=cc.all?("<td class='num'>"+fmt(p.exp)+"</td><td class='num'>"+fmt(p.inc)+"</td><td class='num'>"+fmt(p.car)+"</td>"):"";
-    return "<tr><td class='num'>"+dayNo(p.d)+"</td><td>"+prettyDate(p.d)+"</td><td class='num'>"+fmt(p.sales)+"</td>"+cc.methods.map(function(m){return "<td class='num'>"+fmt(p.bm[m.id])+"</td>"}).join("")+"<td class='num'>"+fmt(p.cash)+"</td>"+extra+"</tr>"}).join("");
-  var tot="<tr class='total'><td colspan='2'>الإجمالي</td><td class='num'>"+fmt(cc.T.sales)+"</td>"+cc.methods.map(function(m){return "<td class='num'>"+fmt(cc.TM[m.id])+"</td>"}).join("")+"<td class='num'>"+fmt(cc.T.cash)+"</td>"+(cc.all?"<td class='num'>"+fmt(cc.T.exp)+"</td><td class='num'>"+fmt(cc.T.inc)+"</td><td></td>":"")+"</tr>";
+  var rows=cc.per.map(function(p){var extra=cc.all?("<td class='num'>"+pf(p.exp)+"</td><td class='num'>"+pf(p.inc)+"</td><td class='num'>"+pf(p.car)+"</td>"):"";
+    return "<tr><td class='num'>"+dayNo(p.d)+"</td><td>"+prettyDate(p.d)+"</td><td class='num'>"+pf(p.sales)+"</td>"+cc.methods.map(function(m){return "<td class='num'>"+pf(p.bm[m.id])+"</td>"}).join("")+"<td class='num'>"+pf(p.cash)+"</td>"+extra+"</tr>"}).join("");
+  var tot="<tr class='total'><td colspan='2'>الإجمالي</td><td class='num'>"+pf(cc.T.sales)+"</td>"+cc.methods.map(function(m){return "<td class='num'>"+pf(cc.TM[m.id])+"</td>"}).join("")+"<td class='num'>"+pf(cc.T.cash)+"</td>"+(cc.all?"<td class='num'>"+pf(cc.T.exp)+"</td><td class='num'>"+pf(cc.T.inc)+"</td><td></td>":"")+"</tr>";
   var sub=prettyDate(cc.r.from)+" ← "+prettyDate(cc.r.to)+" · "+esc(cc.label)+" · "+cc.days.length+" يوم";
   printReport("تقرير مخصّص",sub,"<table class='p-tbl'><thead><tr>"+head+"</tr></thead><tbody>"+rows+tot+"</tbody></table>",cc.methods.length+(cc.all?2:0));}
 function printMonth(){var mk=S._rMonth||monthList().pop();var days=Object.keys(S.data).filter(function(d){return ymOf(d)===mk}).sort(),bal=balances();if(!days.length){toast("لا بيانات في هذا الشهر","err");return}
   var t={sales:0,cash:0,exp:0,inc:0};
   var rows=days.map(function(d){var c=computeDay(S.data[d],S.config);t.sales+=c.sales;t.cash+=c.cash;t.exp+=c.totalExpenses;t.inc+=c.totalIncome;
-    return "<tr><td class='num'>"+dayNo(d)+"</td><td>"+prettyDate(d)+"</td><td class='num'>"+fmt(c.sales)+"</td><td class='num'>"+fmt(c.cash)+"</td><td class='num'>"+fmt(c.bankDeposit)+"</td><td class='num'>"+fmt(c.totalExpenses)+"</td><td class='num'>"+fmt(c.totalIncome)+"</td><td class='num'>"+fmt(c.cashTotal)+"</td><td class='num'>"+fmt(bal[d].carried)+"</td></tr>"}).join("");
-  var tot="<tr class='total'><td colspan='2'>الإجمالي</td><td class='num'>"+fmt(t.sales)+"</td><td class='num'>"+fmt(t.cash)+"</td><td></td><td class='num'>"+fmt(t.exp)+"</td><td class='num'>"+fmt(t.inc)+"</td><td></td><td></td></tr>";
+    return "<tr><td class='num'>"+dayNo(d)+"</td><td>"+prettyDate(d)+"</td><td class='num'>"+pf(c.sales)+"</td><td class='num'>"+pf(c.cash)+"</td><td class='num'>"+pf(c.bankDeposit)+"</td><td class='num'>"+pf(c.totalExpenses)+"</td><td class='num'>"+pf(c.totalIncome)+"</td><td class='num'>"+pf(c.cashTotal)+"</td><td class='num'>"+pf(bal[d].carried)+"</td></tr>"}).join("");
+  var tot="<tr class='total'><td colspan='2'>الإجمالي</td><td class='num'>"+pf(t.sales)+"</td><td class='num'>"+pf(t.cash)+"</td><td></td><td class='num'>"+pf(t.exp)+"</td><td class='num'>"+pf(t.inc)+"</td><td></td><td></td></tr>";
   printReport("التقرير الشهري",prettyMonth(mk)+" · "+days.length+" يوم","<table class='p-tbl'><thead><tr><th>#</th><th>التاريخ</th><th>المبيعات</th><th>النقد</th><th>الإيداع</th><th>المصروفات</th><th>الإيرادات</th><th>الإجمالي النقدي</th><th>باقي الرصيد</th></tr></thead><tbody>"+rows+tot+"</tbody></table>",6);}
 
 function render(){
@@ -1435,18 +1436,20 @@ async function printDay(iso){await commitDay();var date=iso||S.curDate;var d=S.d
   var th="<th>الفرع</th><th>المبيعات</th>"+cfg.methods.map(function(m){return "<th>"+esc(m.label)+"</th>"}).join("")+"<th>النقد</th><th>ملاحظات</th>";
   var pv=function(key){var col=(d.tmarks&&d.tmarks[key])||"";return col?" vc c-"+col:""};
   var pvr=function(r,key){var col=(d.verify&&d.verify[r.id+"|"+key])||"";return col?" vc c-"+col:""};
-  var body=(d.rows||[]).map(function(r){var non=cfg.methods.reduce(function(a,m){return a+num((r.pays||{})[m.id])},0);return "<tr><td>"+esc(r.branch||"—")+"</td><td class='num"+pvr(r,"sales")+"'>"+fmt(r.sales)+"</td>"+cfg.methods.map(function(m){return "<td class='num"+pvr(r,"pay:"+m.id)+"'>"+fmt((r.pays||{})[m.id]||0)+"</td>"}).join("")+"<td class='num"+pvr(r,"cash")+"'>"+fmt(num(r.sales)-non)+"</td><td>"+esc(r.notes||"")+"</td></tr>"}).join("");
-  var totRow="<tr class='total'><td>الاجماليات</td><td class='num"+pv("sales")+"'>"+fmt(c.sales)+"</td>"+cfg.methods.map(function(m){return "<td class='num"+pv(m.id)+"'>"+fmt(c.byM[m.id])+"</td>"}).join("")+"<td class='num"+pv("cash")+"'>"+fmt(c.cash)+"</td><td></td></tr>";
-  var exp=(d.expenses||[]).map(function(e){return "<tr><td class='num'>"+fmt(e.amount)+"</td><td>"+esc(e.details||"")+"</td></tr>"}).join("")||"<tr><td colspan='2' style='color:#888'>—</td></tr>";
-  var inc=(d.incomes||[]).map(function(e){return "<tr><td class='num'>"+fmt(e.amount)+"</td><td>"+esc(e.details||"")+"</td></tr>"}).join("")||"<tr><td colspan='2' style='color:#888'>—</td></tr>";
+  var body=(d.rows||[]).map(function(r){var non=cfg.methods.reduce(function(a,m){return a+num((r.pays||{})[m.id])},0);return "<tr><td>"+esc(r.branch||"—")+"</td><td class='num"+pvr(r,"sales")+"'>"+pf(r.sales)+"</td>"+cfg.methods.map(function(m){return "<td class='num"+pvr(r,"pay:"+m.id)+"'>"+pf((r.pays||{})[m.id])+"</td>"}).join("")+"<td class='num"+pvr(r,"cash")+"'>"+pf(num(r.sales)-non)+"</td><td>"+esc(r.notes||"")+"</td></tr>"}).join("");
+  var totRow="<tr class='total'><td>الاجماليات</td><td class='num"+pv("sales")+"'>"+pf(c.sales)+"</td>"+cfg.methods.map(function(m){return "<td class='num"+pv(m.id)+"'>"+pf(c.byM[m.id])+"</td>"}).join("")+"<td class='num"+pv("cash")+"'>"+pf(c.cash)+"</td><td></td></tr>";
+  var exp=(d.expenses||[]).map(function(e){return "<tr><td class='num'>"+pf(e.amount)+"</td><td>"+esc(e.details||"")+"</td></tr>"}).join("");
+  var inc=(d.incomes||[]).map(function(e){return "<tr><td class='num'>"+pf(e.amount)+"</td><td>"+esc(e.details||"")+"</td></tr>"}).join("");
   var logoEl=cfg.companyLogo?"<img class='plogo' src='"+cfg.companyLogo+"'>":"<div class='plogo-ph'>"+LOGO_SVG+"</div>";
   var html="<div class='p-wrap'><div class='p-head'><div class='brandcol'>"+logoEl+"<div><h2>"+esc(cfg.businessName)+"</h2><div class='sd'>تقرير اليومية رقم "+dayNo(date)+" — "+prettyDate(d.date)+(d.dateTo?" ← "+prettyDate(d.dateTo):"")+"</div></div></div><div class='meta'>طُبع: "+d.printedAt+"<br>أُنشئ: "+(d.createdAt||"—")+"<br>آخر تعديل: "+(d.updatedAt||"—")+"</div></div>"+
     "<table class='p-tbl'><thead><tr>"+th+"</tr></thead><tbody>"+body+totRow+"</tbody></table>"+
     /* ترتيب الطباعة يطابق ترتيب الشاشة تماماً: الجدول ← [الرصيد النقدي | الإجمالي النقدي] ← [المصروفات | الإيرادات] */
-    "<div class='p-two'><div><div class='p-title'>الرصيد النقدي (يُرحّل)</div><table class='p-tbl p-sum'><tbody><tr><td>رصيد سابق</td><td class='num'>"+fmt(prev)+"</td></tr><tr><td>نقد المبيعات</td><td class='num'>"+fmt(c.cash)+"</td></tr><tr><td>− الإيداع البنكي</td><td class='num'>"+fmt(c.bankDeposit)+"</td></tr><tr class='total'><td>باقي الرصيد</td><td class='num"+pv("carried")+"'>"+fmt(carried)+"</td></tr></tbody></table></div>"+
-    "<div><div class='p-title'>الإجمالي النقدي (بعد المصروفات والإيرادات)</div><table class='p-tbl p-sum'><tbody><tr><td>نقد المبيعات</td><td class='num'>"+fmt(c.cash)+"</td></tr><tr><td>− المصروفات</td><td class='num'>"+fmt(c.totalExpenses)+"</td></tr><tr><td>= صافي النقد</td><td class='num'>"+fmt(c.netCash)+"</td></tr><tr><td>+ الإيرادات</td><td class='num'>"+fmt(c.totalIncome)+"</td></tr><tr class='total'><td>الإجمالي النقدي</td><td class='num'>"+fmt(c.cashTotal)+"</td></tr></tbody></table></div></div>"+
-    "<div class='p-two'><div><div class='p-title'>المصروفات</div><table class='p-tbl'><thead><tr><th>المبلغ</th><th>التفاصيل</th></tr></thead><tbody>"+exp+"<tr class='total'><td class='num'>"+fmt(c.totalExpenses)+"</td><td>الإجمالي</td></tr></tbody></table></div>"+
-    "<div><div class='p-title'>الإيرادات</div><table class='p-tbl'><thead><tr><th>المبلغ</th><th>التفاصيل</th></tr></thead><tbody>"+inc+"<tr class='total'><td class='num'>"+fmt(c.totalIncome)+"</td><td>الإجمالي</td></tr></tbody></table></div></div>"+
+    "<div class='p-two'><div><div class='p-title'>الرصيد النقدي (يُرحّل)</div><table class='p-tbl p-sum'><tbody><tr><td>رصيد سابق</td><td class='num'>"+pf(prev)+"</td></tr><tr><td>نقد المبيعات</td><td class='num'>"+pf(c.cash)+"</td></tr><tr><td>− الإيداع البنكي</td><td class='num'>"+pf(c.bankDeposit)+"</td></tr><tr class='total'><td>باقي الرصيد</td><td class='num"+pv("carried")+"'>"+pf(carried)+"</td></tr></tbody></table></div>"+
+    "<div><div class='p-title'>الإجمالي النقدي (بعد المصروفات والإيرادات)</div><table class='p-tbl p-sum'><tbody><tr><td>نقد المبيعات</td><td class='num'>"+pf(c.cash)+"</td></tr><tr><td>− المصروفات</td><td class='num'>"+pf(c.totalExpenses)+"</td></tr><tr><td>= صافي النقد</td><td class='num'>"+pf(c.netCash)+"</td></tr><tr><td>+ الإيرادات</td><td class='num'>"+pf(c.totalIncome)+"</td></tr><tr class='total'><td>الإجمالي النقدي</td><td class='num'>"+pf(c.cashTotal)+"</td></tr></tbody></table></div></div>"+
+    ((d.expenses||[]).length||(d.incomes||[]).length?("<div class='p-two'>"+
+      ((d.expenses||[]).length?"<div><div class='p-title'>المصروفات</div><table class='p-tbl'><thead><tr><th>المبلغ</th><th>التفاصيل</th></tr></thead><tbody>"+exp+"<tr class='total'><td class='num'>"+pf(c.totalExpenses)+"</td><td>الإجمالي</td></tr></tbody></table></div>":"")+
+      ((d.incomes||[]).length?"<div><div class='p-title'>الإيرادات</div><table class='p-tbl'><thead><tr><th>المبلغ</th><th>التفاصيل</th></tr></thead><tbody>"+inc+"<tr class='total'><td class='num'>"+pf(c.totalIncome)+"</td><td>الإجمالي</td></tr></tbody></table></div>":"")+
+    "</div>"):"")+
     "<div class='p-audit'>أُنشئ: "+(d.createdAt||"—")+" &nbsp;|&nbsp; آخر تعديل: "+(d.updatedAt||"—")+" &nbsp;|&nbsp; طُبع: "+(d.printedAt||"—")+"</div></div>";
   var root=document.getElementById("printroot");root.innerHTML=html;updateSyncPill();
   fitPrint(root,cfg.methods.length);
