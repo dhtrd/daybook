@@ -1,7 +1,7 @@
 /* ===== Service Worker — نظام تقارير اليومية =====
    عند إصدار تحديث جديد: غيّر الرقم في APP_VERSION فقط (هنا وفي index.html/version.json).
    الكاش يتجدّد تلقائياً، ولا يمسّ بيانات المستخدم إطلاقاً (البيانات في IndexedDB/localStorage). */
-const APP_VERSION = "1.4.2";
+const APP_VERSION = "1.4.3";
 const CACHE = "dsr-cache-v" + APP_VERSION;
 
 /* ملفات الواجهة الأساسية (App Shell) — مسارات نسبية لتعمل على أي نطاق أو مجلد فرعي */

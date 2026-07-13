@@ -488,7 +488,7 @@ async function cloudSave(payload,baseRev){var h=cloudHeaders(true);if(baseRev)h[
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.4.2";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.4.3";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
 /* دوال الترحيل: MIGRATIONS[v-1] ترقّي البيانات من النسخة v إلى v+1.
    تُطبَّق تلقائياً عند فتح التطبيق أو سحب بيانات أقدم، دون مساس بأي بيانات موجودة. */
@@ -688,6 +688,20 @@ function scheduleDbx(){if(S._noPush)return;
   var g=dbxCfg();if(!g||!g.enabled||!g.refreshToken)return;if(S.dbxTimer)clearTimeout(S.dbxTimer);S.dbxTimer=setTimeout(dbxPush,2600);}
 function scheduleRetry(){if(S._retryTimer)clearTimeout(S._retryTimer);S._retryTimer=setTimeout(function(){if(cloudOn()&&(S.config.cloudDirty||(S.config.pendingOps||[]).length))cloudPush();},12000);}
 /* غلاف بقفل أحادي (single-flight) يمنع تداخل عمليات المزامنة */
+/* فرض بيانات هذا الجهاز كاملة على السحابة (يُستخدم بعد الاستعادة أو للإنقاذ) */
+async function sovereignSync(){if(!cloudOn())return true;setSync("busy");
+  ensureQueue();S.config.pendingOps=[];S.config.baseSnap=null;S.config.cloudDirty=false;S.sync.conflict=false;
+  for(var t=0;t<2;t++){
+    try{
+      var res=await cloudLoad();S.config.baseRev=(res&&res.rev)||"";
+      var payload=gatherPayload();
+      var newRev=await cloudSave(payload,S.config.baseRev||"");
+      S.config.baseRev=newRev;S.config.pendingOps=[];setBaseSnap();
+      await DB.set("dsr_config",S.config);
+      setSync("on");S.sync.last=nowStamp();hideConflictBanner();return true;
+    }catch(e){if(!(e&&e.conflict))break;}
+  }
+  setSync("err");return false;}
 async function cloudPush(){if(!cloudOn())return;if(S._io){S._ioWant=true;return;}S._io=true;
   try{await cloudPushCore();}finally{S._io=false;if(S._ioWant){S._ioWant=false;setTimeout(function(){if(cloudOn()&&S.config.cloudDirty)cloudPush()},50);}}}
 async function cloudPushCore(){setSync("busy");
@@ -1533,6 +1547,11 @@ function viewData(){
     "<p class='note' style='margin-bottom:10px'>تُحفظ نسخة كاملة مؤرخة تلقائياً مرة كل يوم عند أول فتح للتطبيق. المزامنة ليست بديلاً عن النسخ: الحذف الخاطئ يتزامن لكل الأجهزة، أما النسخة فتبقى.</p>"+
     "<div style='display:flex;gap:10px;align-items:center;flex-wrap:wrap'><button class='btn' onclick='App.backupNow()'>نسخة احتياطية الآن</button><span id='bkLine' class='note'>"+(bkAt?"آخر نسخة: "+esc(bkAt):"لم تُنشأ نسخة بعد")+"</span></div>"+
     "<p class='note' style='margin-top:10px'>الاستعادة: نزّل ملف النسخة من مجلد backups في دروبوكس ثم استخدم زر «استعادة نسخة» أدناه.</p>"):"";
+  var rescueCard=cloudOn()?h("div",{class:"card"},cardHead("أدوات إنقاذ المزامنة","لحالات الخلل فقط — كلاهما يطلب تأكيداً")+
+    "<div style='display:flex;gap:8px;flex-wrap:wrap'>"+
+    "<button class='btn ghost' onclick='App.freshPull()'>مزامنة نظيفة من السحابة</button>"+
+    "<button class='btn ghost' style='color:var(--neg)' onclick='App.forcePush()'>فرض المحلي على السحابة</button></div>"+
+    "<p class='note' style='margin-top:10px'><b>نظيفة من السحابة:</b> يتجاهل هذا الجهاز تعديلاته غير المرفوعة ويعتمد السحابة كما هي (لجهاز عالق بتعديلات/حذوفات قديمة). <b>فرض المحلي:</b> يستبدل السحابة كاملةً ببيانات هذا الجهاز (بعد استعادة نسخة مثلاً).</p>"):"";
   var sync=cloudOn()?
     h("div",{class:"card"},cardHead(IC.cloud+" المزامنة السحابية","تلقائية")+
       "<div class='warn ok'><b>متصل بالسحابة ✓</b> — عبر خادم آمن (Cloudflare Worker) إلى Dropbox. كل جهاز يفتح الرابط يرى أحدث البيانات تلقائياً، دون تسجيل دخول.</div>"+
@@ -1551,7 +1570,7 @@ function viewData(){
   var link=h("div",{class:"card"},"<div style='display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap'><div><b style='color:var(--ink)'>"+IC.folder+" الملفات المستوردة</b><div class='note'>لاستيراد ملفات إكسل وإدارة/حذف الملفات المستوردة سابقاً.</div></div><button class='btn' onclick=\"App.go('files')\">فتح صفحة الملفات "+IC.chevL+"</button></div>");
   var about=h("div",{class:"card"},cardHead(IC.folder+" حول التطبيق والتحديثات","")+
     "<div style='display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap'><div class='note'>الإصدار الحالي: <b style='color:var(--ink)'>"+APP_VERSION+"</b> · نسخة البيانات: <b>"+SCHEMA_VERSION+"</b><br>التحديثات تُطبَّق تلقائياً عند نشر نسخة جديدة، وبياناتك وإعداداتك تبقى محفوظة دائماً.</div><button class='btn ghost' onclick='App.checkUpdate()'>"+IC.up+" بحث عن تحديث</button></div>");
-  return secHead("الإدارة","البيانات والمزامنة")+stats+bkCard+lastEdits+maint+link+about+sync+exp+(CLOUD?"":"<p class='note' style='text-align:center'>لرفع النظام على الإنترنت: أنشئ مستودع GitHub وارفع كل الملفات وفعّل GitHub Pages. راجع ملف README.</p>");
+  return secHead("الإدارة","البيانات والمزامنة")+stats+bkCard+rescueCard+lastEdits+maint+link+about+sync+exp+(CLOUD?"":"<p class='note' style='text-align:center'>لرفع النظام على الإنترنت: أنشئ مستودع GitHub وارفع كل الملفات وفعّل GitHub Pages. راجع ملف README.</p>");
 }
 function viewFiles(){
   var dayCount=Object.keys(S.data).length;
@@ -1907,7 +1926,7 @@ window.App={
     "<b>المسودة والاعتماد والقفل:</b> اليومية الجديدة «مسودة» حتى تضغط «اعتماد». الطباعة تعتمد اليوم وتقفله ضد التعديل السهوي (التلوين يبقى مسموحاً) — «فتح للتعديل» يفكّه.<br>"+
     "<b>قالب اليوم ونسخ الأمس:</b> من الإعدادات احفظ فروعك المعتادة كقالب لكل يوم جديد، أو استخدم زر «نسخ فروع آخر يوم» في يومية فارغة.<br>"+
     "<b>المزامنة والتعارض:</b> تعمل تلقائياً بين أجهزتك. إن عدّل جهازان نفس اليوم لحظياً تظهر رسالة تخيّرك: «اعتمد تعديلي» أو «اعتمد السحابة».<br>"+
-    "<b>النسخ الاحتياطي:</b> نسخة يومية تلقائية إلى Dropbox › DailyReport › backups. للاستعادة: نزّل ملف النسخة ثم «استعادة نسخة» في صفحة البيانات.<br>"+
+    "<b>النسخ الاحتياطي والاستعادة:</b> نسخة يومية تلقائية إلى Dropbox › DailyReport › backups. للاستعادة: نزّل ملف النسخة ثم «استعادة نسخة» — <b>الاستعادة تفرض محتواها على السحابة</b> فلا تُغلَب بمزامنة لاحقة. ولحالات الخلل: «أدوات إنقاذ المزامنة» في صفحة البيانات.<br>"+
     "<b>التقارير:</b> «طرق الدفع» للمطابقة الشهرية مع البنك، و«طباعة الأيام (يومية/صفحة)» تطبع الشهر كله دفعة واحدة.</div>"})},
   yrHide:function(y){S.config.hiddenYears=S.config.hiddenYears||[];if(S.config.hiddenYears.indexOf(String(y))<0)S.config.hiddenYears.push(String(y));saveConfig();render();toast("أُخفيت سنة "+y+" من القوائم (البيانات محفوظة)")},
   yrShow:function(y){S.config.hiddenYears=(S.config.hiddenYears||[]).filter(function(x){return x!==String(y)});saveConfig();render();toast("أُظهرت سنة "+y)},
@@ -1932,6 +1951,16 @@ window.App={
     saveConfig();render();toast("حُفظ قالب اليوم ("+rows.length+" فرعاً)")},
   tplClear:function(){S.config.dayTemplate=[];saveConfig();render();toast("أُلغي قالب اليوم")},
   backupNow:function(){backupNow(false)},
+  freshPull:function(){openConfirm({title:"مزامنة نظيفة من السحابة؟",danger:true,
+    body:"سيتجاهل هذا الجهاز <b>كل تعديلاته غير المرفوعة</b> ويعتمد نسخة السحابة كما هي.<br>استخدمه إن كان هذا الجهاز يحمل تعديلات أو حذوفات قديمة عالقة تفسد المزامنة.",
+    confirm:"اعتمد السحابة",onOk:async function(){
+      ensureQueue();S.config.pendingOps=[];S.config.baseSnap=null;S.config.baseRev="";S.config.cloudDirty=false;S.sync.conflict=false;
+      await DB.set("dsr_config",S.config);
+      await cloudPull(true);S.day=null;render();toast("اعتُمدت نسخة السحابة على هذا الجهاز ✓")}})},
+  forcePush:function(){openConfirm({title:"فرض بيانات هذا الجهاز على السحابة؟",danger:true,
+    body:"سيستبدل محتوى السحابة <b>بالكامل</b> ببيانات هذا الجهاز الحالية، وستأخذها بقية الأجهزة عند مزامنتها.<br>يُستخدم بعد استعادة نسخة، أو لإنقاذ السحابة من حالة خاطئة.",
+    confirm:"فرض على السحابة",onOk:async function(){var ok=await sovereignSync();render();
+      toast(ok?"فُرضت بيانات هذا الجهاز على السحابة ✓":"تعذّر الفرض — تحقق من الاتصال ثم أعد المحاولة","err")}})},
   devName:function(v){try{localStorage.setItem("dsr_dev_name",String(v||"").trim())}catch(e){}toast("حُفظ اسم الجهاز محلياً")},
   resetCols:function(){_colW={};saveColW();refreshTable();toast("أُعيدت الأعمدة للوضع التلقائي")},
   clearMarks:function(){var d=S.day;if(!d)return;var n=Object.keys(d.verify||{}).length+Object.keys(d.tmarks||{}).length;if(!n){toast("لا توجد ألوان تحقق في هذا اليوم");return}
@@ -2102,7 +2131,14 @@ window.App={
     openConfirm({title:"حذف نهائي؟",body:"سيُحذف «<b>"+esc(e.label||"عنصر")+"</b>» نهائياً ولا يمكن استرجاعه.",danger:true,confirm:"حذف نهائي",onOk:function(){S.config.trash=(S.config.trash||[]).filter(function(x){return x.id!==id});persistEverything();render();toast("تم الحذف النهائي")}})},
   emptyTrash:function(){if(!(S.config.trash||[]).length)return;openConfirm({title:"تفريغ السلة؟",body:"سيتم حذف كل عناصر السلة نهائياً ولا يمكن استرجاعها.",danger:true,confirm:"تفريغ",onOk:function(){S.config.trash=[];persistEverything();render();toast("تم تفريغ السلة")}})},
   backup:function(){dl(new Blob([JSON.stringify(gatherPayload(),null,2)],{type:"application/json"}),"نسخة_احتياطية_"+todayISO()+".json");toast("تم حفظ النسخة")},
-  restore:async function(input){var f=input.files&&input.files[0];if(!f)return;try{var obj=JSON.parse(await f.text());if(!obj.data)throw new Error("ملف غير صالح");openConfirm({title:"استبدال كل البيانات؟",body:"سيتم استبدال جميع البيانات الحالية بمحتوى الملف. لا يمكن التراجع.",danger:true,confirm:"استبدال",onOk:async function(){var localDbx=S.config.dropbox;var cfg=obj.config||S.config;cfg.dropbox=localDbx;var mig=runMigrations(cfg,obj.data||{},(obj.schema||1));S.config=mig.config;S.data=mig.data;invalidateBal();await persistEverything();await DB.set("dsr_meta",{schema:SCHEMA_VERSION,appVersion:APP_VERSION,updatedAt:nowStamp()});S.day=null;render();toast("تمت الاستعادة")}})}catch(e){toast("تعذّرت الاستعادة: "+e.message,"err")}input.value=""},
+  restore:async function(input){var f=input.files&&input.files[0];if(!f)return;try{var obj=JSON.parse(await f.text());if(!obj.data)throw new Error("ملف غير صالح");openConfirm({title:"استبدال كل البيانات؟",body:"سيتم استبدال جميع البيانات الحالية بمحتوى الملف. لا يمكن التراجع.",danger:true,confirm:"استبدال",onOk:async function(){var localDbx=S.config.dropbox;var cfg=obj.config||S.config;cfg.dropbox=localDbx;var mig=runMigrations(cfg,obj.data||{},(obj.schema||1));S.config=mig.config;S.data=mig.data;
+        ensureQueue();S.config.pendingOps=[];S.config.baseSnap=null;S.config.baseRev="";S.config.cloudDirty=false;S.sync.conflict=false;
+        invalidateBal();S._noPush=true;await persistEverything();S._noPush=false;
+        await DB.set("dsr_meta",{schema:SCHEMA_VERSION,appVersion:APP_VERSION,updatedAt:nowStamp()});
+        var okS=true;if(cloudOn())okS=await sovereignSync();
+        S.day=null;render();
+        if(okS)toast(cloudOn()?"تمت الاستعادة وفُرضت على السحابة ✓":"تمت الاستعادة");
+        else toast("تمت الاستعادة محلياً فقط — تعذّر فرضها على السحابة. استخدم «فرض المحلي على السحابة» من صفحة البيانات.","err")}})}catch(e){toast("تعذّرت الاستعادة: "+e.message,"err")}input.value=""},
   applyUpdate:function(){var b=document.getElementById("updBar");if(b)b.remove();if(_updReg&&_updReg.waiting){_updReg.waiting.postMessage({type:"SKIP_WAITING"})}else{location.reload()}},
   checkUpdate:function(){toast("جارٍ البحث عن تحديث…");try{if("serviceWorker" in navigator)navigator.serviceWorker.getRegistration().then(function(reg){if(reg)reg.update()})}catch(e){}
     fetch("./version.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){if(j&&j.version&&j.version!==APP_VERSION){toast("يتوفّر إصدار "+j.version+" — سيظهر زر التحديث");}else{toast("أنت على أحدث إصدار ("+APP_VERSION+")")}}).catch(function(){toast("تعذّر التحقق من التحديث","err")})},
