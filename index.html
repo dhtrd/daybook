@@ -488,7 +488,7 @@ async function cloudSave(payload,baseRev){var h=cloudHeaders(true);if(baseRev)h[
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.4.1";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.4.2";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
 /* دوال الترحيل: MIGRATIONS[v-1] ترقّي البيانات من النسخة v إلى v+1.
    تُطبَّق تلقائياً عند فتح التطبيق أو سحب بيانات أقدم، دون مساس بأي بيانات موجودة. */
@@ -1525,8 +1525,7 @@ function viewData(){
     "<button class='iconbtn' title='تصدير إكسل' onclick='App.yrExportX(\""+y+"\")'>"+IC.dl+"</button>"+
     "<button class='iconbtn' title='تصدير JSON' style='font-size:10px;font-weight:900' onclick='App.yrExportJ(\""+y+"\")'>{&nbsp;}</button>"+
     "<button class='btn ghost' style='padding:5px 10px;font-size:11px' onclick='App."+(hid?"yrShow":"yrHide")+"(\""+y+"\")'>"+(hid?"إظهار":"إخفاء من القوائم")+"</button></div>"}).join("");
-  var maint=h("div",{class:"card"},cardHead("صيانة وأرشفة السنوات","فحص دوري لسلامة الدفتر + إدارة السنوات المنتهية")+
-    "<div style='margin-bottom:12px'><button class='btn' onclick='App.integrity()'>فحص سلامة البيانات</button></div>"+
+  var maint=h("div",{class:"card"},cardHead("أرشفة السنوات","تصدير وإخفاء السنوات المنتهية")+
     "<div class='grid' style='grid-template-columns:repeat(auto-fill,minmax(300px,1fr))'>"+yrRows+"</div>"+
     "<p class='note' style='margin-top:10px'>«الإخفاء» يزيل السنة من القوائم والتقارير فقط — تبقى محفوظة ومتزامنة وداخل سلسلة «باقي الرصيد»، ويمكن إظهارها متى شئت. صدّر السنة (إكسل + JSON) قبل إخفائها كأرشيف خارجي.</p>");
   var bkAt="";try{bkAt=localStorage.getItem("dsr_bk_at")||""}catch(e){}
@@ -1910,26 +1909,6 @@ window.App={
     "<b>المزامنة والتعارض:</b> تعمل تلقائياً بين أجهزتك. إن عدّل جهازان نفس اليوم لحظياً تظهر رسالة تخيّرك: «اعتمد تعديلي» أو «اعتمد السحابة».<br>"+
     "<b>النسخ الاحتياطي:</b> نسخة يومية تلقائية إلى Dropbox › DailyReport › backups. للاستعادة: نزّل ملف النسخة ثم «استعادة نسخة» في صفحة البيانات.<br>"+
     "<b>التقارير:</b> «طرق الدفع» للمطابقة الشهرية مع البنك، و«طباعة الأيام (يومية/صفحة)» تطبع الشهر كله دفعة واحدة.</div>"})},
-  integrity:function(){
-    var days=Object.keys(S.data).sort();if(!days.length){toast("لا بيانات للفحص","err");return}
-    var mism=[],gaps=[],orph=[],bad=[];var names={};branchList().forEach(function(b){names[b.name]=1});
-    var run=num(S.config.openingBalance),prevD=null;
-    days.forEach(function(dd){var d=S.data[dd];var c=computeDay(d,S.config);
-      if(d.carryIn!=null&&Math.abs(num(d.carryIn)-run)>0.009)mism.push({d:dd,saved:num(d.carryIn),exp:run});
-      var prev=(d.carryIn!=null)?num(d.carryIn):run;
-      run=prev+c.cash-c.bankDeposit;
-      if(prevD){var g=Math.round((new Date(dd)-new Date(prevD))/86400000);if(g>7)gaps.push({a:prevD,b:dd,g:g})}
-      prevD=dd;
-      (d.rows||[]).forEach(function(r){if(r.branch&&!names[r.branch]&&orph.indexOf(r.branch)<0)orph.push(r.branch)});
-      (d.expenses||[]).concat(d.incomes||[]).forEach(function(e){var v=e.amount;var t=String(v==null?"":v).trim();if(t!==""&&!/^-?\d+(\.\d+)?$/.test(t))bad.push({d:dd,v:t})});
-    });
-    function li(t){return "<li style='margin:3px 0'>"+t+"</li>"}
-    var out="<div style='text-align:right;line-height:1.8;font-size:13px'>";
-    out+="<b>«رصيد سابق» مثبّت يخالف المحسوب:</b> "+(mism.length?("<ul style='margin:6px 18px'>"+mism.slice(0,8).map(function(x){return li(prettyDate(x.d)+": مثبّت "+fmt(x.saved)+" · المحسوب "+fmt(x.exp))}).join("")+(mism.length>8?li("… و"+(mism.length-8)+" أخرى"):"")+"</ul>"):"لا يوجد ✓")+"<br>";
-    out+="<b>فجوات تواريخ أطول من 7 أيام:</b> "+(gaps.length?("<ul style='margin:6px 18px'>"+gaps.slice(0,8).map(function(x){return li(prettyDate(x.a)+" ← "+prettyDate(x.b)+" ("+x.g+" يوماً)")}).join("")+"</ul>"):"لا يوجد ✓")+"<br>";
-    out+="<b>أسماء فروع غير موجودة في قائمة الفروع:</b> "+(orph.length?esc(orph.slice(0,10).join("، "))+(orph.length>10?" …":""):"لا يوجد ✓")+"<br>";
-    out+="<b>مبالغ غير مفهومة في البنود:</b> "+(bad.length?("<ul style='margin:6px 18px'>"+bad.slice(0,8).map(function(x){return li(prettyDate(x.d)+": «"+esc(x.v)+"»")}).join("")+"</ul>"):"لا يوجد ✓")+"</div>";
-    openConfirm({title:"فحص سلامة البيانات",body:out,confirm:"حسناً",onOk:function(){}})},
   yrHide:function(y){S.config.hiddenYears=S.config.hiddenYears||[];if(S.config.hiddenYears.indexOf(String(y))<0)S.config.hiddenYears.push(String(y));saveConfig();render();toast("أُخفيت سنة "+y+" من القوائم (البيانات محفوظة)")},
   yrShow:function(y){S.config.hiddenYears=(S.config.hiddenYears||[]).filter(function(x){return x!==String(y)});saveConfig();render();toast("أُظهرت سنة "+y)},
   yrExportX:function(y){if(!window.XLSX){toast("مكتبة إكسل غير محمّلة","err");return}
