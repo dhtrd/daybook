@@ -30,13 +30,19 @@
 </head>
 <body>
 <div class="wrap">
+  <div id="fileWarn" style="display:none" class="st err">
+    <b>متصفحك يمنع الاتصال من ملف محلي (file://).</b><br>
+    الحل (دقيقة واحدة): ارفع هذا الملف <b>rescue.html</b> إلى مستودع GitHub بجانب index.html، ثم افتحه من:<br>
+    <span dir="ltr" style="user-select:all;font-weight:700">https://dhtrd.github.io/daybook/rescue.html</span><br>
+    وأعد الخطوات الثلاث من هناك — ستعمل مباشرة.
+  </div>
   <h1>أداة إنقاذ البيانات</h1>
   <div class="sub">تفرض ملف نسخة احتياطية على السحابة مباشرة — بلا تطبيق، بلا مزامنة متسابقة. <b>قبل البدء: أغلق تطبيق اليومية على كل الأجهزة.</b></div>
 
   <div class="card">
     <h2><span class="step">1</span> رابط الخادم</h2>
     <input type="text" id="api" value="https://daybook-sync.storedh2024.workers.dev">
-    <div style="margin-top:10px"><button class="ghost" onclick="R.cloudInfo()">افحص حالة السحابة الآن</button></div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" onclick="R.cloudInfo()">افحص حالة السحابة الآن</button><button class="ghost" id="watchBtn" onclick="R.watch()">🔴 مراقبة حية (كل 15 ثانية)</button></div>
     <div id="cloudSt"></div>
   </div>
 
@@ -114,6 +120,11 @@
     throw new Error("تسابق مستمر — جهاز آخر يكتب الآن. أغلق التطبيق على كل الأجهزة وأعد المحاولة.");
   }
 
+  try{if(location.protocol==="file:")document.getElementById("fileWarn").style.display="block"}catch(e){}
+  function humanErr(e){var m=(e&&e.message)||String(e);
+    if(/Failed to fetch|NetworkError|Load failed/i.test(m))
+      return (location.protocol==="file:")?"المتصفح يمنع الاتصال من ملف محلي — ارفع الصفحة للموقع وافتحها منه (انظر التنبيه أعلى الصفحة).":"تعذّر الوصول للخادم — تحقق من الاتصال بالإنترنت ومن صحة الرابط.";
+    return m}
   window.R={
     cloudInfo:async function(){
       box("cloudSt","warn","جارٍ الفحص…");log("فحص السحابة…");
@@ -125,7 +136,7 @@
           "أيام السحابة الآن: <b>"+i.total+"</b> · سنة 2026: <b>"+y26+"</b> يوماً · آخر يوم: "+i.last+
           (y26?"" : "<br><b>السحابة بلا 2026 — هذا ما سنصلحه.</b>"));
         log("السحابة: "+i.total+" يوماً، 2026="+y26+"، rev="+g.rev);
-      }catch(e){box("cloudSt","err","تعذّر الوصول: "+e.message);log("خطأ: "+e.message)}
+      }catch(e){box("cloudSt","err","تعذّر الوصول: "+humanErr(e));log("خطأ: "+e.message)}
     },
     inspectFile:async function(input){
       payload=null;$("pushBtn").disabled=true;$("fileTbl").innerHTML="";
@@ -166,11 +177,30 @@
           $("pushBtn").disabled=false;
         }
       }catch(e){
-        box("pushSt","err","فشل: "+e.message);log("فشل: "+e.message);$("pushBtn").disabled=false;
+        box("pushSt","err","فشل: "+humanErr(e));log("فشل: "+e.message);$("pushBtn").disabled=false;
       }
     }
   };
   /* للاختبار الآلي */
+  var _watch=null,_last=null;
+  window.R.watch=function(){
+    var b=document.getElementById("watchBtn");
+    if(_watch){clearInterval(_watch);_watch=null;_last=null;b.textContent="🔴 مراقبة حية (كل 15 ثانية)";log("أُوقفت المراقبة.");return}
+    b.textContent="⏹ إيقاف المراقبة";log("بدأت المراقبة الحية — أبقِ هذه الصفحة مفتوحة وراقب السجل…");
+    var tickW=async function(){
+      try{var g=await getCloud();var i=inspect(g.payload||{data:{}});var y26=i.years["2026"]||0;
+        var t=new Date().toTimeString().slice(0,8);
+        if(_last!=null&&(i.total<_last.total||y26<_last.y26)){
+          log("⚠ "+t+" — كُتِب فوق السحابة الآن! ("+_last.total+"→"+i.total+" يوماً، 2026: "+_last.y26+"→"+y26+") — جهاز ما زال مفتوحاً يدفع الحذف. أغلقه ثم أعد الفرض.");
+          box("cloudSt","err","⚠ رُصدت كتابة مدمّرة أثناء المراقبة — راجع السجل. أغلق كل الأجهزة (اسحب المتصفح من مهام الجوالات أيضاً) وأعد الفرض.");
+        }else{
+          log(t+" — "+i.total+" يوماً (2026: "+y26+")"+(y26?" ✓":" — بلا 2026"));
+        }
+        _last={total:i.total,y26:y26};
+      }catch(e){log("مراقبة: تعذّر الفحص — "+humanErr(e))}
+    };
+    tickW();_watch=setInterval(tickW,15000);
+  };
   window.__resq={inspect:inspect,normalize:normalize,pushCore:pushCore};
 })();
 </script>
