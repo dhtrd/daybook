@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>أداة إنقاذ البيانات — تقرير اليومية</title>
+<style>
+  body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;background:#f4f1e8;color:#22302a;margin:0;padding:24px;line-height:1.8}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:#6b7a72;font-size:13px;margin-bottom:20px}
+  .card{background:#fff;border:1px solid #e2ddcf;border-radius:14px;padding:18px 20px;margin-bottom:14px;box-shadow:0 2px 10px rgba(30,40,30,.05)}
+  .step{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#173a31;color:#fff;font-weight:800;font-size:13px;margin-inline-end:8px}
+  h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center}
+  input[type=text]{width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #d8d2c0;border-radius:10px;font-size:13px;direction:ltr;text-align:left}
+  button{font-family:inherit;font-size:14px;font-weight:700;padding:10px 18px;border-radius:10px;border:1.5px solid #173a31;background:#173a31;color:#fff;cursor:pointer}
+  button.ghost{background:#fff;color:#173a31}
+  button.danger{background:#a8321a;border-color:#a8321a}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .st{border-radius:10px;padding:10px 14px;font-size:13.5px;margin-top:10px;white-space:pre-wrap}
+  .ok{background:#e7f3ec;border:1px solid #bfe0cd;color:#14573f}
+  .warn{background:#fdf6df;border:1px solid #ecd9a0;color:#7a5b12}
+  .err{background:#fbe9e3;border:1px solid #eec4b5;color:#8c2f18}
+  .muted{color:#6b7a72;font-size:12.5px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  td,th{padding:5px 8px;border-bottom:1px solid #efe9da;text-align:right}
+  td.num{font-variant-numeric:tabular-nums}
+  #log{font-size:12.5px;background:#173a31;color:#cfe6d8;border-radius:10px;padding:10px 14px;min-height:20px;direction:rtl}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>أداة إنقاذ البيانات</h1>
+  <div class="sub">تفرض ملف نسخة احتياطية على السحابة مباشرة — بلا تطبيق، بلا مزامنة متسابقة. <b>قبل البدء: أغلق تطبيق اليومية على كل الأجهزة.</b></div>
+
+  <div class="card">
+    <h2><span class="step">1</span> رابط الخادم</h2>
+    <input type="text" id="api" value="https://daybook-sync.storedh2024.workers.dev">
+    <div style="margin-top:10px"><button class="ghost" onclick="R.cloudInfo()">افحص حالة السحابة الآن</button></div>
+    <div id="cloudSt"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step">2</span> اختر ملف النسخة وافحصه</h2>
+    <div class="muted">جرّب ملفات <b>DailyReport/backups</b> من الأحدث إلى الأقدم، أو <b>data.json</b> مسترجَعاً من Version history في دروبوكس — حتى يظهر الفحص أخضر بوجود 2026.</div>
+    <div style="margin-top:10px"><input type="file" id="file" accept=".json" onchange="R.inspectFile(this)"></div>
+    <div id="fileSt"></div>
+    <div id="fileTbl"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step">3</span> الفرض على السحابة</h2>
+    <div class="muted">يرفع محتوى الملف كاملاً ويستبدل السحابة، مع إعادة محاولة تلقائية إن تسابق جهاز آخر، ثم يتحقق بنفسه من النتيجة.</div>
+    <div style="margin-top:10px"><button class="danger" id="pushBtn" disabled onclick="R.push()">ارفع وافرض على السحابة</button></div>
+    <div id="pushSt"></div>
+  </div>
+
+  <div class="card">
+    <h2>سجل العملية</h2>
+    <div id="log">—</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var payload=null;           // الحمولة الجاهزة للدفع بعد التطبيع
+  function $(id){return document.getElementById(id)}
+  function api(){return ($("api").value||"").trim().replace(/\/+$/,"")}
+  function log(m){var l=$("log");l.textContent=(l.textContent==="—"?"":l.textContent+"\n")+m}
+  function box(id,cls,html){$(id).innerHTML="<div class='st "+cls+"'>"+html+"</div>"}
+
+  /* فحص كائن الحمولة: عدّ الأيام لكل سنة وأشهر 2026 */
+  function inspect(obj){
+    var data=(obj&&obj.data)||{};var days=Object.keys(data).sort();
+    var years={},m26={};
+    days.forEach(function(d){var y=d.slice(0,4);years[y]=(years[y]||0)+1;if(y==="2026")m26[d.slice(0,7)]=(m26[d.slice(0,7)]||0)+1});
+    return {total:days.length,years:years,m26:m26,last:days[days.length-1]||"—",
+            branches:((obj.config||{}).branches||[]).length};
+  }
+  /* تطبيع أي صيغة نسخة إلى حمولة الخادم القياسية + تنظيف حقول المزامنة والأسرار */
+  function normalize(obj){
+    var cfg=JSON.parse(JSON.stringify(obj.config||{}));
+    delete cfg.pendingOps;delete cfg.baseSnap;delete cfg.syncRev;
+    cfg.baseRev="";cfg.cloudDirty=false;
+    cfg.dropbox={appKey:(cfg.dropbox&&cfg.dropbox.appKey)||"",refreshToken:"",enabled:!!(cfg.dropbox&&cfg.dropbox.enabled)};
+    return {app:"dsr",version:3,schema:obj.schema||5,appVersion:obj.appVersion||"rescue",
+            rev:0,exportedAt:new Date().toISOString(),config:cfg,data:obj.data||{}};
+  }
+  async function getCloud(){
+    var r=await fetch(api()+"/data",{cache:"no-store"});
+    var rev=r.headers.get("X-Data-Rev")||"";
+    if(r.status===204||r.status===404)return {payload:null,rev:rev};
+    if(!r.ok)throw new Error("GET "+r.status);
+    var t=await r.text();return {payload:t?JSON.parse(t):null,rev:rev};
+  }
+  async function postCloud(p,baseRev){
+    var h={"Content-Type":"application/json"};if(baseRev)h["X-Base-Rev"]=baseRev;
+    var r=await fetch(api()+"/data",{method:"POST",headers:h,body:JSON.stringify(p)});
+    if(r.status===409){var j={};try{j=await r.json()}catch(e){};var e2=new Error("conflict");e2.conflict=true;e2.serverRev=j.serverRev||"";throw e2}
+    if(!r.ok)throw new Error("POST "+r.status);
+    var jj={};try{jj=await r.json()}catch(e){};return jj.rev||"";
+  }
+  /* الدفع بقفل تفاؤلي + إعادة محاولة عند التسابق (قابل للاختبار عبر حقن getFn/postFn) */
+  async function pushCore(p,getFn,postFn,tries){
+    tries=tries||3;
+    var g=await getFn();var rev=g.rev||"";
+    for(var i=0;i<tries;i++){
+      try{return await postFn(p,rev)}
+      catch(e){
+        if(e&&e.conflict){rev=e.serverRev||(await getFn()).rev||"";continue}
+        throw e;
+      }
+    }
+    throw new Error("تسابق مستمر — جهاز آخر يكتب الآن. أغلق التطبيق على كل الأجهزة وأعد المحاولة.");
+  }
+
+  window.R={
+    cloudInfo:async function(){
+      box("cloudSt","warn","جارٍ الفحص…");log("فحص السحابة…");
+      try{var g=await getCloud();
+        if(!g.payload){box("cloudSt","warn","السحابة فارغة (لا ملف بعد). rev="+(g.rev||"—"));return}
+        var i=inspect(g.payload);
+        var y26=i.years["2026"]||0;
+        box("cloudSt",y26?"ok":"err",
+          "أيام السحابة الآن: <b>"+i.total+"</b> · سنة 2026: <b>"+y26+"</b> يوماً · آخر يوم: "+i.last+
+          (y26?"" : "<br><b>السحابة بلا 2026 — هذا ما سنصلحه.</b>"));
+        log("السحابة: "+i.total+" يوماً، 2026="+y26+"، rev="+g.rev);
+      }catch(e){box("cloudSt","err","تعذّر الوصول: "+e.message);log("خطأ: "+e.message)}
+    },
+    inspectFile:async function(input){
+      payload=null;$("pushBtn").disabled=true;$("fileTbl").innerHTML="";
+      var f=input.files&&input.files[0];if(!f)return;
+      try{
+        var obj=JSON.parse(await f.text());
+        if(!obj.data||typeof obj.data!=="object")throw new Error("الملف لا يحتوي حقل data");
+        var i=inspect(obj);var y26=i.years["2026"]||0;
+        var rows=Object.keys(i.years).sort().map(function(y){return "<tr><td>"+y+"</td><td class='num'>"+i.years[y]+" يوماً</td></tr>"}).join("");
+        var m=Object.keys(i.m26).sort().map(function(k){return k+" ("+i.m26[k]+")"}).join("، ");
+        $("fileTbl").innerHTML="<table><thead><tr><th>السنة</th><th>الأيام</th></tr></thead><tbody>"+rows+"</tbody></table>"+
+          (m?"<div class='muted' style='margin-top:6px'>أشهر 2026: "+m+"</div>":"");
+        if(y26>0){
+          payload=normalize(obj);$("pushBtn").disabled=false;
+          box("fileSt","ok","✓ الملف صالح: <b>"+i.total+"</b> يوماً إجمالاً، منها <b>"+y26+"</b> في 2026 · فروع: "+i.branches+" · آخر يوم: "+i.last+"<br>يمكنك الفرض الآن (الخطوة 3).");
+          log("الملف «"+f.name+"»: "+i.total+" يوماً، 2026="+y26+" ✓");
+        }else{
+          box("fileSt","err","✗ هذا الملف <b>لا يحتوي أي يوم من 2026</b> — اختر نسخة أخرى (الأحدث فالأقدم) حتى يظهر هذا الفحص أخضر.");
+          log("الملف «"+f.name+"»: بلا 2026 — مرفوض.");
+        }
+      }catch(e){box("fileSt","err","ملف غير صالح: "+e.message);log("خطأ قراءة الملف: "+e.message)}
+    },
+    push:async function(){
+      if(!payload)return;
+      $("pushBtn").disabled=true;
+      box("pushSt","warn","جارٍ الرفع…");log("بدء الفرض على السحابة…");
+      try{
+        var rev=await pushCore(payload,getCloud,postCloud,3);
+        log("رُفع بنجاح. rev الجديد="+rev+" — تحقق ذاتي…");
+        var g=await getCloud();var i=inspect(g.payload||{});
+        var y26=i.years["2026"]||0;
+        if(y26>0){
+          box("pushSt","ok","<b>نجح ✓</b> السحابة الآن: "+i.total+" يوماً، منها <b>"+y26+"</b> في 2026.<br>الخطوة التالية: افتح التطبيق على جهازك الرئيسي — سيسحب هذه البيانات تلقائياً.");
+          log("تحقق ذاتي ✓ 2026="+y26+" في السحابة.");
+        }else{
+          box("pushSt","err","رُفع لكن التحقق لم يجد 2026 — جهاز آخر كتب فوق البيانات فوراً. أغلق التطبيق على <b>كل</b> الأجهزة (خصوصاً أي جهاز مكتب مفتوح) وأعد المحاولة.");
+          log("تحذير: الكتابة أُزيحت بعد الرفع — كاتب متسابق نشط.");
+          $("pushBtn").disabled=false;
+        }
+      }catch(e){
+        box("pushSt","err","فشل: "+e.message);log("فشل: "+e.message);$("pushBtn").disabled=false;
+      }
+    }
+  };
+  /* للاختبار الآلي */
+  window.__resq={inspect:inspect,normalize:normalize,pushCore:pushCore};
+})();
+</script>
+</body>
+</html>
