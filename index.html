@@ -478,13 +478,13 @@ var CLOUD_TOKEN=_CFG.appToken||"";
 function cloudOn(){return !!CLOUD_API&&!/YOUR-SUBDOMAIN/.test(CLOUD_API);}
 function cloudHeaders(json){var h={};if(json)h["Content-Type"]="application/json";if(CLOUD_TOKEN)h["Authorization"]="Bearer "+CLOUD_TOKEN;return h;}
 async function cloudLoad(){var r=await fetch(CLOUD_API+"/data",{method:"GET",headers:cloudHeaders(false),cache:"no-store"});
-  if(r.status===204)return {payload:null,rev:(r.headers.get("X-Data-Rev")||"")};
-  if(r.status===404)return {payload:null,rev:""};
+  if(r.status===204)return {payload:null,rev:(r.headers.get("X-Data-Rev")||""),epoch:0};
+  if(r.status===404)return {payload:null,rev:"",epoch:0};
   if(!r.ok)throw new Error("cloud GET "+r.status);
-  var rev=r.headers.get("X-Data-Rev")||"";var txt=await r.text();return {payload:txt?JSON.parse(txt):null,rev:rev};}
-async function cloudSave(payload,baseRev){var h=cloudHeaders(true);if(baseRev)h["X-Base-Rev"]=baseRev;
+  var rev=r.headers.get("X-Data-Rev")||"";var txt=await r.text();var pl=txt?JSON.parse(txt):null;return {payload:pl,rev:rev,epoch:num(pl&&pl.epoch)||0};}
+async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(baseRev)h["X-Base-Rev"]=baseRev;if(sovereign)h["X-Sovereign"]="1";
   var r=await fetch(CLOUD_API+"/data",{method:"POST",headers:h,body:JSON.stringify(payload)});
-  if(r.status===409){var j={};try{j=await r.json()}catch(e){}var err=new Error("conflict");err.conflict=true;err.serverRev=j.serverRev||"";throw err;}
+  if(r.status===409){var j={};try{j=await r.json()}catch(e){}var err=new Error("conflict");err.conflict=true;err.serverRev=j.serverRev||"";err.stale=!!j.stale;err.guard=!!j.guard;err.serverEpoch=num(j.serverEpoch)||0;err.srvMsg=j.message||"";throw err;}
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
@@ -611,7 +611,7 @@ async function commitDay(){if(!S.day)return;var d=S.day;
 
 /* ===== مزامنة Dropbox (الاستضافة على GitHub، والبيانات على دروبوكس) ===== */
 var DBX={access:null,exp:0};
-function dbxCfg(){return S.config.dropbox}
+function dbxCfg(){if(!S.config)return {appKey:"",refreshToken:"",enabled:false};return S.config.dropbox}
 function redirectUri(){return location.origin+location.pathname}
 function b64url(buf){var a=btoa(String.fromCharCode.apply(null,new Uint8Array(buf)));return a.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
 async function sha256url(s){var b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return b64url(b)}
@@ -641,8 +641,8 @@ async function dbxUpload(path,content){var t=await dbxToken();
 async function dbxDownload(path){var t=await dbxToken();
   var r=await fetch("https://content.dropboxapi.com/2/files/download",{method:"POST",headers:{Authorization:"Bearer "+t,"Dropbox-API-Arg":JSON.stringify({path:path})}});
   if(r.status===409)return null;if(!r.ok)throw new Error("download "+r.status);return r.text();}
-function gatherPayload(){var g=dbxCfg();var cfg=JSON.parse(JSON.stringify(S.config));cfg.dropbox={appKey:g.appKey,refreshToken:"",enabled:g.enabled};cfg.cloudDirty=false;cfg.baseRev="";delete cfg.pendingOps;delete cfg.baseSnap;delete cfg.syncRev;
-  return{app:"dsr",version:3,schema:SCHEMA_VERSION,appVersion:APP_VERSION,rev:num(S.config.syncRev)||0,exportedAt:nowStamp(),config:cfg,data:S.data};}
+function gatherPayload(){var g=dbxCfg();var cfg=JSON.parse(JSON.stringify(S.config));cfg.dropbox={appKey:g.appKey,refreshToken:"",enabled:g.enabled};cfg.cloudDirty=false;cfg.baseRev="";delete cfg.pendingOps;delete cfg.baseSnap;delete cfg.syncRev;delete cfg.epoch;
+  return{app:"dsr",version:3,schema:SCHEMA_VERSION,appVersion:APP_VERSION,epoch:num(S.config.epoch)||0,rev:num(S.config.syncRev)||0,exportedAt:nowStamp(),config:cfg,data:S.data};}
 var CONFLICT_MSG="تتوفّر بيانات أحدث في السحابة. رجاءً حدّث ثم أعد المحاولة.";
 /* =====================================================================
    طابور العمليات المعلّقة (Pending Operation Queue)
@@ -655,7 +655,7 @@ var CONFLICT_MSG="تتوفّر بيانات أحدث في السحابة. رجا
 function ensureQueue(){if(!Array.isArray(S.config.pendingOps))S.config.pendingOps=[];if(!S.config.baseSnap)S.config.baseSnap=null;}
 function snapForMerge(){return{data:JSON.parse(JSON.stringify(S.data)),config:cfgRecords(S.config)};}
 /* السجلّات القابلة للدمج من الإعدادات (نتجاهل حقول المزامنة/الأوث المحلية) */
-function cfgRecords(cfg){var c=JSON.parse(JSON.stringify(cfg));["dropbox","syncRev","cloudDirty","baseRev","baseSnap","pendingOps"].forEach(function(k){delete c[k]});return c;}
+function cfgRecords(cfg){var c=JSON.parse(JSON.stringify(cfg));["dropbox","syncRev","cloudDirty","baseRev","baseSnap","pendingOps","epoch"].forEach(function(k){delete c[k]});return c;}
 function queueOp(kind,id,value){ensureQueue();
   /* دمج العمليات المتتابعة على نفس السجل في عملية واحدة (آخر حالة) */
   S.config.pendingOps=S.config.pendingOps.filter(function(o){return !(o.kind===kind&&o.id===id)});
@@ -694,8 +694,9 @@ async function sovereignSync(){if(!cloudOn())return true;setSync("busy");
   for(var t=0;t<2;t++){
     try{
       var res=await cloudLoad();S.config.baseRev=(res&&res.rev)||"";
+      S.config.epoch=((res&&num(res.epoch))||0)+1;
       var payload=gatherPayload();
-      var newRev=await cloudSave(payload,S.config.baseRev||"");
+      var newRev=await cloudSave(payload,S.config.baseRev||"",true);
       S.config.baseRev=newRev;S.config.pendingOps=[];setBaseSnap();
       await DB.set("dsr_config",S.config);
       setSync("on");S.sync.last=nowStamp();hideConflictBanner();return true;
@@ -709,7 +710,12 @@ async function cloudPushCore(){setSync("busy");
     S.config.baseRev=newRev;S.config.cloudDirty=false;S.sync.conflict=false;
     S.config.pendingOps=[];setBaseSnap();               /* رُفع بنجاح → أفرغ الطابور وثبّت الأساس */
     await DB.set("dsr_config",S.config);setSync("on");S.sync.last=nowStamp();hideConflictBanner();}
-  catch(e){if(e&&e.conflict){await resolveConflict()}else{setSync("err");scheduleRetry();/* يبقى الطابور لإعادة المحاولة */}}}
+  catch(e){if(e&&e.conflict){
+      if(e.stale){await cloudPullCore(true);return;}
+      if(e.guard){toast(e.srvMsg||"حُجب حفظ مدمّر من الخادم — اعتُمدت نسخة السحابة","err");
+        var res=await cloudLoad();await adoptCloud(res);setSync("on");S.sync.last=nowStamp();render();return;}
+      await resolveConflict()
+    }else{setSync("err");scheduleRetry();/* يبقى الطابور لإعادة المحاولة */}}}
 /* عند 409: نزّل الأحدث، أعد تطبيق الطابور تلقائياً، وارفع — أو اسأل فقط عند تعارض نفس السجل */
 async function resolveConflict(){
   setSync("busy");
@@ -728,7 +734,13 @@ async function resolveConflict(){
     Object.keys(rep.merged.config).forEach(function(k){mergedCfg[k]=rep.merged.config[k]});
     mergedCfg.dropbox=localDbx;S.config=mergedCfg;S.data=rep.merged.data;
     S.config.baseRev=remoteRev;
-    var payload=gatherPayload();var newRev=await cloudSave(payload,remoteRev);
+    var payload=gatherPayload();var newRev;
+    try{newRev=await cloudSave(payload,remoteRev);}
+    catch(e2){
+      if(e2&&e2.conflict&&e2.stale){await cloudPullCore(true);return;}
+      if(e2&&e2.conflict&&e2.guard){toast(e2.srvMsg||"حُجب حفظ مدمّر — اعتُمدت السحابة","err");
+        var res2=await cloudLoad();await adoptCloud(res2);setSync("on");S.sync.last=nowStamp();render();return;}
+      throw e2;}
     S.config.baseRev=newRev;S.config.cloudDirty=false;S.sync.conflict=false;S.config.pendingOps=[];setBaseSnap();
     S._noPush=true;invalidateBal();await persistEverything();S._noPush=false;
     setSync("on");S.sync.last=nowStamp();hideConflictBanner();
@@ -739,8 +751,20 @@ async function resolveConflict(){
 }
 async function cloudPull(silent){if(!cloudOn())return;if(S._io){if(!silent)toast("المزامنة جارية…");return;}S._io=true;
   try{await cloudPullCore(silent);}finally{S._io=false;}}
+/* اعتماد سيادي: يعتمد السحابة كاملةً ويُسقط الطابور المحلي (يطهّر الجهاز) */
+async function adoptCloud(res){var p=res&&res.payload;ensureQueue();
+  S.config.pendingOps=[];S.sync.conflict=false;
+  if(p&&p.data){var localDbx=S.config.dropbox;var cfg=p.config||S.config;
+    var mig=runMigrations(cfg,p.data,(p.schema||1));S.config=mig.config;S.config.dropbox=localDbx;S.data=mig.data;}
+  S.config.epoch=(res&&num(res.epoch))||0;S.config.baseRev=(res&&res.rev)||"";S.config.cloudDirty=false;
+  invalidateBal();setBaseSnap();
+  S._noPush=true;await persistEverything();S._noPush=false;
+  S.day=null;}
 async function cloudPullCore(silent){setSync("busy");
   try{var res=await cloudLoad();var remoteRev=res.rev||"",obj=res.payload,base=S.config.baseRev||"";
+    var srvE=num(res.epoch)||0,myE=num(S.config.epoch)||0;
+    if(srvE>myE){await adoptCloud(res);setSync("on");S.sync.last=nowStamp();hideConflictBanner();
+      toast("اعتُمدت النسخة المُستعادة مركزياً ✓");render();return;}
     if(obj&&obj.data){
       if(remoteRev&&base&&remoteRev===base){                 /* السحابة لم تتغيّر منذ نسختنا */
         if(S.config.cloudDirty){await cloudPushCore();}       /* تعديلاتنا آمنة → ارفعها (رفع ذرّي) */
@@ -929,7 +953,7 @@ function auditBadge(d){var a=dayAudit(d);if(!a)return "";
   return a==="g"?"<span class='abdg g' title='تحقق مكتمل'>✓</span>":"<span class='abdg r' title='توجد علامات خطأ'>✕</span>";}
 function draftBadge(d){return d.status==="draft"?"<span class='dbdg'>مسودة</span>":""}
 function eGuard(){if(S.day&&S.day.locked){toast("اليومية مقفلة بعد الطباعة — اضغط «فتح للتعديل» أولاً","err");return true}return false}
-function syncState(){var g=dbxCfg();var active=cloudOn()||g.enabled;var label=cloudOn()?"سحابياً":"(دروبوكس)";
+function syncState(){if(!S.config)return {cls:"",dot:"",text:"…"};var g=dbxCfg();var active=cloudOn()||g.enabled;var label=cloudOn()?"سحابياً":"(دروبوكس)";
   var pend=(S.config&&S.config.pendingOps?S.config.pendingOps.length:0);
   if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)
     return {cls:"s-busy",dot:"busy",text:"غير متصل"+(pend?" · بانتظار الرفع: "+pend:"")};
@@ -1191,7 +1215,7 @@ function viewDashboard(){
 
 /* ===== الإدخال اليومي ===== */
 function loadDay(date){S.curDate=date;S.calMonth=ymOf(date);var d=S.data[date];S.day=d?JSON.parse(JSON.stringify(d)):blankDay(date);S.day.date=date;
-  if(!d&&!(S.day.rows||[]).length&&(S.config.dayTemplate||[]).length){
+  if(!d&&!(S.day.rows||[]).length&&(S.config&&S.config.dayTemplate||[]).length){
     S.day.rows=(S.config.dayTemplate||[]).map(function(b){return {id:uuid(),branchId:b.id||"",branch:b.name||"",sales:"",pays:{},notes:""}});
   }
   S.dirty=false;histReset();}

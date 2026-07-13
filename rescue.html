@@ -100,24 +100,22 @@
     var t=await r.text();return {payload:t?JSON.parse(t):null,rev:rev};
   }
   async function postCloud(p,baseRev){
-    var h={"Content-Type":"application/json"};if(baseRev)h["X-Base-Rev"]=baseRev;
+    var h={"Content-Type":"application/json","X-Sovereign":"1"};if(baseRev)h["X-Base-Rev"]=baseRev;
     var r=await fetch(api()+"/data",{method:"POST",headers:h,body:JSON.stringify(p)});
     if(r.status===409){var j={};try{j=await r.json()}catch(e){};var e2=new Error("conflict");e2.conflict=true;e2.serverRev=j.serverRev||"";throw e2}
     if(!r.ok)throw new Error("POST "+r.status);
     var jj={};try{jj=await r.json()}catch(e){};return jj.rev||"";
   }
-  /* الدفع بقفل تفاؤلي + إعادة محاولة عند التسابق (قابل للاختبار عبر حقن getFn/postFn) */
-  async function pushCore(p,getFn,postFn,tries){
-    tries=tries||3;
-    var g=await getFn();var rev=g.rev||"";
+  /* دفع سيادي: مع كل محاولة يقرأ عهد السحابة ويرفعه +1 (يتجاوز أي كاتب متسابق) */
+  async function sovereignPush(p,getFn,postFn,tries){
+    tries=tries||3;var lastErr=null;
     for(var i=0;i<tries;i++){
-      try{return await postFn(p,rev)}
-      catch(e){
-        if(e&&e.conflict){rev=e.serverRev||(await getFn()).rev||"";continue}
-        throw e;
-      }
+      var g=await getFn();
+      p.epoch=((g.payload&&Number(g.payload.epoch))||0)+1;
+      try{return await postFn(p,g.rev||"")}
+      catch(e){lastErr=e;if(!(e&&e.conflict))throw e}
     }
-    throw new Error("تسابق مستمر — جهاز آخر يكتب الآن. أغلق التطبيق على كل الأجهزة وأعد المحاولة.");
+    throw new Error("تسابق مستمر — أعد المحاولة بعد لحظات."+(lastErr&&lastErr.message?" ("+lastErr.message+")":""));
   }
 
   try{if(location.protocol==="file:")document.getElementById("fileWarn").style.display="block"}catch(e){}
@@ -164,8 +162,8 @@
       $("pushBtn").disabled=true;
       box("pushSt","warn","جارٍ الرفع…");log("بدء الفرض على السحابة…");
       try{
-        var rev=await pushCore(payload,getCloud,postCloud,3);
-        log("رُفع بنجاح. rev الجديد="+rev+" — تحقق ذاتي…");
+        var rev=await sovereignPush(payload,getCloud,postCloud,3);
+        log("رُفع بنجاح (فرض سيادي، عهد "+payload.epoch+"). rev="+rev+" — تحقق ذاتي…");
         var g=await getCloud();var i=inspect(g.payload||{});
         var y26=i.years["2026"]||0;
         if(y26>0){
@@ -201,7 +199,7 @@
     };
     tickW();_watch=setInterval(tickW,15000);
   };
-  window.__resq={inspect:inspect,normalize:normalize,pushCore:pushCore};
+  window.__resq={inspect:inspect,normalize:normalize,sovereignPush:sovereignPush};
 })();
 </script>
 </body>
