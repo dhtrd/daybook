@@ -29,7 +29,7 @@ const js=scripts.join('\n');
 const called=new Set([...js.matchAll(/App\.([a-zA-Z0-9_]+)\s*\(/g)].map(m=>m[1]));
 const body=(js.match(/window\.App=\{([\s\S]*?)\n\};/)||[])[1]||'';
 const defined=new Set([...body.matchAll(/([a-zA-Z0-9_]+)\s*:\s*(?:async\s+)?function/g)].map(m=>m[1]));
-const dyn=new Set(['dashFrom','dashTo','rfFrom','rfTo','setDateTo','itFrom','itTo','bScope','cmp','itType','rMonth','rfBrToggle','yr','yrHide','yrShow']);
+const dyn=new Set(['dashFrom','dashTo','rfFrom','rfTo','setDateTo','itFrom','itTo','bScope','cmp','itType','rMonth','rfBrToggle','yr','yrHide','yrShow','moveDayTo']);
 const missing=[...called].filter(x=>!defined.has(x));
 if(missing.length)fail('معالجات مستدعاة غير معرّفة: '+missing.join(', '));
 else ok('تدقيق المعالجات: لا استدعاءات مكسورة ('+called.size+' معالجاً)');

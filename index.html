@@ -488,7 +488,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.4.3";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.4.4";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
 /* دوال الترحيل: MIGRATIONS[v-1] ترقّي البيانات من النسخة v إلى v+1.
    تُطبَّق تلقائياً عند فتح التطبيق أو سحب بيانات أقدم، دون مساس بأي بيانات موجودة. */
@@ -1247,6 +1247,7 @@ function dateNav(){
       "<button class='iconbtn' title='التقويم' onclick='App.toggleCal()'>"+IC.cal+"</button>")+
     "<div class='dn-quick'>"+
       "<button class='btn ghost' style='padding:7px 13px' onclick='App.navToday()'>اليوم</button>"+
+      "<label class='chip' style='margin:0;gap:6px' title='نقل هذه اليومية بكل بياناتها إلى تاريخ آخر'>تغيير التاريخ: "+dateBtn("moveDayTo",d.date)+"</label>"+
       "<label class='chip' style='margin:0'><input type='checkbox' style='width:auto' "+(d.dateTo?"checked":"")+" onchange='App.toggleTwoDay(this.checked)'> يومين</label>"+
       (d.dateTo?dateBtn("setDateTo",d.dateTo):"")+
       "<span style='flex:1'></span>"+(S.dirty?"<span class='badge' style='color:var(--brass)'>يُحفظ تلقائياً…</span>":(hasData?"<span class='badge'>محفوظ</span>":""))+"</div>"+
@@ -1961,6 +1962,25 @@ window.App={
   yrExportJ:function(y){var out={exportedAt:nowStamp(),year:String(y),schema:5,openingBalance:S.config.openingBalance,data:{}};
     Object.keys(S.data).forEach(function(d){if(d.slice(0,4)===String(y))out.data[d]=S.data[d]});
     dl(new Blob([JSON.stringify(out,null,1)],{type:"application/json"}),"بيانات_"+y+".json");toast("صُدّرت سنة "+y+" (JSON)")},
+  moveDayTo:function(v){
+    if(!v||v===S.curDate)return;
+    if(eGuard())return;
+    if(S.data[v]){toast("يوجد يومية محفوظة في "+prettyDate(v)+" — اختر تاريخاً فارغاً أو انقل تلك اليومية أولاً","err");return}
+    var old=S.curDate,hadData=!!S.data[old];
+    openConfirm({title:"تغيير تاريخ اليومية؟",
+      body:"ستُنقل اليومية"+(hadData?" <b>بكل بياناتها</b>":"")+" من <b>"+prettyDate(old)+"</b> إلى <b>"+prettyDate(v)+"</b>"+(hadData?"، وسيُعاد احتساب سلسلة «باقي الرصيد» تلقائياً وتتزامن لكل الأجهزة.":"."),
+      confirm:"نقل إلى التاريخ الجديد",onOk:function(){(async function(){
+        S.day.date=v;if(S.day.dateTo&&S.day.dateTo<=v)S.day.dateTo="";
+        S.day.updatedAt=nowStamp();S.day.updatedBy=devLabel();S.day.updatedTs=Date.now();
+        if(hadData){
+          delete S.data[old];S.data[v]=JSON.parse(JSON.stringify(S.day));
+          (S.config.imports||[]).forEach(function(r){r.dates=(r.dates||[]).filter(function(x){return S.data[x]})});
+        }
+        S.curDate=v;S.calMonth=ymOf(v);histReset();
+        invalidateBal();await persistEverything();updateSyncPill();
+        render();toast("نُقلت اليومية إلى "+prettyDate(v)+" ✓");
+      })()}});
+  },
   approveDay:function(){if(!S.day)return;histMark("status");S.day.status="approved";if(S.data[S.day.date])S.data[S.day.date].status="approved";scheduleSave();render();toast("اعتُمدت اليومية ✓")},
   unlockDay:function(){openConfirm({title:"فتح اليومية للتعديل؟",body:"طُبعت هذه اليومية وأُقفلت لحمايتها من التعديل السهوي. فتحها يسمح بالتعديل مجدداً (يبقى تاريخ الطباعة).",confirm:"فتح للتعديل",onOk:function(){S.day.locked=false;if(S.data[S.day.date])S.data[S.day.date].locked=false;scheduleSave();render();toast("فُتحت اليومية للتعديل")}})},
   copyPrevDay:function(){if(eGuard())return;
