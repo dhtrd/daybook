@@ -488,7 +488,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.4.4";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.4.5";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
 /* دوال الترحيل: MIGRATIONS[v-1] ترقّي البيانات من النسخة v إلى v+1.
    تُطبَّق تلقائياً عند فتح التطبيق أو سحب بيانات أقدم، دون مساس بأي بيانات موجودة. */
@@ -1780,6 +1780,75 @@ function setupKeysUndo(){document.addEventListener("keydown",function(e){
   else if(k==="y"||(k==="z"&&e.shiftKey)){if(S.view==="entry"){e.preventDefault();App.redo()}}
 });}
 
+/* ===== PWA: زر «تثبيت التطبيق» داخل التطبيق (عالمي) =====
+   أندرويد/كمبيوتر: يلتقط beforeinstallprompt ويشغّل تثبيت المتصفح مباشرة.
+   آيفون/آيباد (Safari): لا يدعم التثبيت التلقائي — يعرض تعليمات مصوّرة.
+   يختفي الزر عند فتح التطبيق مثبَّتاً (standalone) أو بعد التثبيت. */
+var _bip=null,_installDismissed=false;
+function pwaStandalone(){try{return (window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true||(document.referrer||"").indexOf("android-app://")===0;}catch(e){return false;}}
+function pwaIsIOS(){var ua=navigator.userAgent||"";var ios=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);return !!ios;}
+function pwaStyle(){
+  if(document.getElementById("installFabCss"))return;
+  var st=document.createElement("style");st.id="installFabCss";
+  st.textContent="#installFab{position:fixed;z-index:8500;bottom:calc(16px + env(safe-area-inset-bottom,0px));inset-inline-start:16px;display:flex;align-items:center;gap:8px;background:var(--brass,#AF8228);color:#fff;border-radius:999px;padding:10px 14px;font-family:inherit;font-weight:800;font-size:13px;box-shadow:0 8px 24px rgba(23,58,49,.22);cursor:pointer;border:none;max-width:90vw}"
+    +"#installFab .x{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.22);color:#fff;font-weight:900;font-size:12px;line-height:1;flex:none}"
+    +"#installFab .lbl{white-space:nowrap}"
+    +"@media print{#installFab,#installSheet{display:none!important}}"
+    +"#installSheet{position:fixed;inset:0;background:rgba(20,40,34,.5);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px}"
+    +"#installSheet .box{background:#fff;border-radius:16px;max-width:430px;width:100%;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.3);line-height:1.9;color:var(--text,#22302C)}"
+    +"#installSheet h3{margin:0 0 12px;color:var(--ink,#173A31);font-size:17px}"
+    +"#installSheet ol{margin:0;padding-inline-start:20px}#installSheet li{margin-bottom:8px}"
+    +"#installSheet .close{background:var(--ink,#173A31);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;margin-top:14px}"
+    +"#installSheet .sh{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border:1.5px solid var(--ink,#173A31);border-radius:6px;font-size:13px;vertical-align:middle}";
+  document.head.appendChild(st);
+}
+function hideInstallFab(){var f=document.getElementById("installFab");if(f)f.remove();}
+function showInstallFab(){
+  if(_installDismissed||pwaStandalone())return;
+  if(document.getElementById("installFab"))return;
+  pwaStyle();
+  var b=document.createElement("div");b.id="installFab";b.setAttribute("role","button");b.setAttribute("aria-label","تثبيت التطبيق");
+  var lbl=document.createElement("span");lbl.className="lbl";lbl.textContent="⤓ تثبيت التطبيق";
+  var x=document.createElement("span");x.className="x";x.textContent="✕";x.title="إخفاء";
+  x.onclick=function(ev){ev.stopPropagation();_installDismissed=true;hideInstallFab();};
+  b.onclick=function(){doInstall();};
+  b.appendChild(lbl);b.appendChild(x);
+  document.body.appendChild(b);
+}
+function pwaSheet(html){
+  var old=document.getElementById("installSheet");if(old)old.remove();
+  var o=document.createElement("div");o.id="installSheet";
+  var box=document.createElement("div");box.className="box";box.innerHTML=html;
+  o.appendChild(box);
+  o.onclick=function(ev){if(ev.target===o)o.remove();};
+  var btn=box.querySelector(".close");if(btn)btn.onclick=function(){o.remove();};
+  document.body.appendChild(o);
+}
+function doInstall(){
+  if(_bip){var p=_bip;_bip=null;try{p.prompt();p.userChoice.then(function(r){if(r&&r.outcome==="accepted")hideInstallFab();}).catch(function(){});}catch(e){}return;}
+  if(pwaIsIOS()){
+    pwaSheet("<h3>تثبيت التطبيق على آيفون/آيباد</h3><ol>"
+      +"<li>افتح هذه الصفحة في متصفّح <b>Safari</b> (وليس داخل تطبيق آخر).</li>"
+      +"<li>اضغط زر المشاركة <span class='sh'>⬆︎</span> (في الأسفل على الجوال، أو الأعلى على آيباد).</li>"
+      +"<li>مرّر للأسفل واختر <b>«إضافة إلى الشاشة الرئيسية»</b> (Add to Home Screen).</li>"
+      +"<li>اضغط <b>«إضافة»</b> — ستظهر أيقونة «تقارير اليومية» على شاشتك كتطبيق.</li>"
+      +"</ol><button class='close'>فهمت</button>");
+    return;
+  }
+  pwaSheet("<h3>تثبيت التطبيق</h3><ol>"
+    +"<li><b>على الكمبيوتر (Chrome/Edge):</b> اضغط أيقونة التثبيت <span class='sh'>⤓</span> في نهاية شريط العنوان، أو من قائمة المتصفح <b>⋮</b> اختر «تثبيت التطبيق».</li>"
+    +"<li><b>على أندرويد (Chrome):</b> افتح قائمة المتصفح <b>⋮</b> واختر <b>«تثبيت التطبيق»</b> أو «إضافة إلى الشاشة الرئيسية».</li>"
+    +"</ol><button class='close'>فهمت</button>");
+}
+window.addEventListener("beforeinstallprompt",function(e){try{e.preventDefault();}catch(_){}_bip=e;showInstallFab();});
+window.addEventListener("appinstalled",function(){_bip=null;hideInstallFab();try{toast("تم تثبيت التطبيق ✓");}catch(_){}});
+function setupInstall(){
+  if(pwaStandalone())return;
+  if(pwaIsIOS()){showInstallFab();return;}
+  if(_bip){showInstallFab();return;}
+  setTimeout(function(){if(!_installDismissed&&!pwaStandalone())showInstallFab();},1600);
+}
+
 /* ===== PWA: تسجيل عامل الخدمة + تحديثات سلسة ===== */
 var _updReg=null,_swReloaded=false;
 function registerSW(){
@@ -2235,7 +2304,7 @@ function flush(cb){if(S.saveTimer){clearTimeout(S.saveTimer);S.saveTimer=null;co
   try{var qp=new URLSearchParams(location.search);if(qp.get("code")){try{await dbxExchange(qp.get("code"));toast("تم الربط مع دروبوكس")}catch(e){toast("تعذّر الربط مع دروبوكس","err")}try{history.replaceState({},"",redirectUri())}catch(e){}}}catch(e){}
   if(cloudOn()){try{await cloudPull(true)}catch(e){}}   /* نزّل أحدث نسخة من السحابة قبل العرض */
   loadDay(S.curDate);render();
-  registerSW();setupAutoSync();
+  registerSW();setupAutoSync();setupInstall();
   if(!cloudOn()&&S.config.dropbox&&S.config.dropbox.enabled&&S.config.dropbox.refreshToken){await dbxPull(true);render()}
 })();
 })();
