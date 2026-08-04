@@ -1,7 +1,7 @@
 /* ===== Service Worker — نظام تقارير اليومية =====
    عند إصدار تحديث جديد: غيّر الرقم في APP_VERSION فقط (هنا وفي index.html/version.json).
    الكاش يتجدّد تلقائياً، ولا يمسّ بيانات المستخدم إطلاقاً (البيانات في IndexedDB/localStorage). */
-const APP_VERSION = "1.4.5";
+const APP_VERSION = "1.4.6";
 const CACHE = "dsr-cache-v" + APP_VERSION;
 
 /* ملفات الواجهة الأساسية (App Shell) — مسارات نسبية لتعمل على أي نطاق أو مجلد فرعي */
@@ -17,7 +17,7 @@ const SHELL = [
 ];
 
 /* المضيفات الخارجية المسموح تخزينها مؤقتاً (خطوط + مكتبة الإكسل فقط) */
-const CACHEABLE_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com", "cdnjs.cloudflare.com"];
+const CACHEABLE_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com", "cdnjs.cloudflare.com", "www.gstatic.com"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
