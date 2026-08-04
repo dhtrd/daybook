@@ -4,6 +4,35 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
 <title>نظام تقارير اليومية</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style id="authCSS">
+.authing{overflow:hidden}
+.authgate{position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#173A31,#0d1512);display:flex;align-items:center;justify-content:center;padding:20px;font-family:'Tajawal',sans-serif}
+.authcard{background:#fff;border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.45);padding:30px 26px;width:100%;max-width:382px;text-align:center;animation:authup .35s cubic-bezier(.34,1.4,.64,1)}
+@keyframes authup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.authlogo{width:66px;height:66px;margin:0 auto 12px;border-radius:17px;overflow:hidden}
+.authcard h2{font-size:19px;color:#173A31;font-weight:900;margin:0}
+.authsub{font-size:12px;color:#7c857f;margin:4px 0 20px}
+.authfld{display:block;text-align:right;margin-bottom:13px}
+.authfld>span{display:block;font-size:12px;font-weight:700;color:#7c857f;margin-bottom:6px}
+.authfld input{width:100%;background:#f4f1e8;border:1.5px solid #e3ddce;border-radius:11px;padding:12px 13px;font-size:14px;font-family:inherit;color:#2a352f;outline:none}
+.authfld input:focus{border-color:#0f6b57;background:#fff}
+.pwwrap{position:relative;display:block}
+.pweye{position:absolute;inset-inline-start:8px;top:5px;background:none;border:none;font-size:16px;cursor:pointer;padding:6px;line-height:1}
+.autherr{display:none;background:rgba(224,85,63,.1);color:#e0553f;border-radius:9px;padding:9px 11px;font-size:12.5px;font-weight:700;margin-bottom:12px}
+.autherr.show{display:block}
+.authbtn{width:100%;background:#0f6b57;color:#fff;border:none;border-radius:12px;padding:13px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;transition:.15s}
+.authbtn:hover{background:#0c5546}.authbtn:disabled{opacity:.6;cursor:default}
+.authnote{font-size:11px;color:#9aa39c;margin-top:14px}
+.u-add{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.u-row{display:flex;align-items:center;gap:11px;background:var(--surface,#fff);border:1px solid var(--line,#e3ddce);border-inline-start:4px solid var(--rc,#0f6b57);border-radius:12px;padding:11px 13px;margin-bottom:9px;flex-wrap:wrap}
+.u-av{width:38px;height:38px;border-radius:11px;background:color-mix(in srgb,var(--rc,#0f6b57) 15%,transparent);color:var(--rc,#0f6b57);display:grid;place-items:center;font-weight:800;flex:none;font-size:15px}
+.u-nm{font-weight:800;color:var(--ink,#173A31);font-size:14px}.u-em{font-size:11.5px;color:var(--muted,#7c857f)}
+.u-badge{font-size:10.5px;font-weight:800;padding:3px 10px;border-radius:999px;background:color-mix(in srgb,var(--rc,#0f6b57) 15%,transparent);color:var(--rc,#0f6b57);white-space:nowrap}
+.u-off{opacity:.55}
+@media(prefers-color-scheme:dark){.authcard{background:#15201b}.authcard h2{color:#eaf3ee}.authfld input{background:#1a2620;border-color:#243029;color:#c7d3cd}}
+</style>
 <meta name="description" content="نظام إدارة تقارير المبيعات والنقد اليومية للفروع مع مزامنة سحابية." />
 <meta name="theme-color" content="#173A31" />
 <link rel="manifest" href="./manifest.webmanifest" />
@@ -488,7 +517,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.4.5";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.4.6";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
 /* دوال الترحيل: MIGRATIONS[v-1] ترقّي البيانات من النسخة v إلى v+1.
    تُطبَّق تلقائياً عند فتح التطبيق أو سحب بيانات أقدم، دون مساس بأي بيانات موجودة. */
@@ -531,7 +560,7 @@ var S={config:null,data:{},view:"dashboard",prevView:"dashboard",curDate:todayIS
   dash:{preset:"month",from:"",to:""},rf:{from:"",to:"",brs:[]},it:{type:"both",from:"",to:""},pickRow:null,dp:{ym:"",sel:"",target:"",mode:"days"}};
 
 function defaultConfig(){return{businessName:"تقرير اليومية",openingBalance:0,branches:DEFAULT_BRANCHES.map(function(n){return{id:uuid(),name:n}}),
-  methods:DEFAULT_METHODS.map(function(m){return{id:m.id,label:m.label}}),companyLogo:"",imports:[],trash:[],
+  methods:DEFAULT_METHODS.map(function(m){return{id:m.id,label:m.label}}),companyLogo:"",imports:[],trash:[],users:{},
   dropbox:{appKey:"",refreshToken:"",enabled:false}}}
 function blankDay(date){return{uuid:uuid(),date:date,dateTo:"",rows:[],expenses:[],incomes:[],bankDeposit:0,createdAt:null,updatedAt:null,printedAt:null}}
 
@@ -573,6 +602,7 @@ async function loadAll(){
   var cfg=await DB.get("dsr_config");if(!cfg){cfg=defaultConfig();have=SCHEMA_VERSION;}
   if(!cfg.methods||!cfg.methods.length)cfg.methods=DEFAULT_METHODS.slice();
   if(!cfg.dropbox)cfg.dropbox={appKey:"",refreshToken:"",enabled:false};
+  if(!cfg.users||typeof cfg.users!=="object")cfg.users={};
   if(cfg.companyLogo==null)cfg.companyLogo="";
   if(!Array.isArray(cfg.imports))cfg.imports=[];
   if(!Array.isArray(cfg.trash))cfg.trash=[];
@@ -1146,14 +1176,15 @@ function animateKpis(){try{
 function render(){
   if(KIOSK){kioskRender();return}
   _ddReg.length=0;
-  var NAV=[["dashboard","الرئيسية",IC.dash],["entry","إدخال يومي",IC.entry],["reports","التقارير",IC.report],["files","الملفات",IC.folder],["branches","الإعدادات",IC.branch],["data","البيانات",IC.data]];
+  var IC_USERS="<svg viewBox='0 0 24 24' width='20' height='20' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='9' cy='8' r='3'/><path d='M3.5 20c0-3 2.6-5 5.5-5s5.5 2 5.5 5'/><path d='M16 6a3 3 0 010 6'/><path d='M17.5 15c2 .5 3.5 2 3.5 5'/></svg>";
+  var NAV=[["dashboard","الرئيسية",IC.dash],["entry","إدخال يومي",IC.entry],["reports","التقارير",IC.report],["files","الملفات",IC.folder],["users","المستخدمون",IC_USERS],["branches","الإعدادات",IC.branch],["data","البيانات",IC.data]].filter(function(n){return canSee(n[0])});
   var activeTab=S.view==="day"?"dashboard":S.view;
   var tabs=NAV.map(function(n){return h("button",{class:"tab"+(activeTab===n[0]?" active":""),onclick:"App.go('"+n[0]+"')"},n[2]+"<span>"+n[1]+"</span>")}).join("");
   var backBtn=(_nav.length||S.view==="day")?"<button class='backbtn' title='رجوع (يحفظ تلقائياً)' onclick='App.goBack()'>"+IC.back+"</button>":"";
   var head=h("div",{class:"appbar"},h("div",{class:"appbar-in"},
     h("div",{class:"brand"},backBtn+h("div",{class:"logo"},LOGO_SVG)+
       h("div",{},h("h1",{},esc(S.config.businessName))+h("small",{},"نظام تقارير اليومية"+(CLOUD?"":" · محلي")))+
-      h("button",{class:"backbtn",title:"دليل الاستخدام",onclick:"App.help()",style:"min-width:36px;font-weight:900;font-size:15px"},"؟")+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.go('data')"},'<span class="sync-dot"></span><span>—</span>'))+
+      h("button",{class:"backbtn",title:"دليل الاستخدام",onclick:"App.help()",style:"min-width:36px;font-weight:900;font-size:15px"},"؟")+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))+
     h("div",{class:"tabs"},tabs)));
   var body="";
   if(S.view==="dashboard")body=viewDashboard();
@@ -1163,6 +1194,7 @@ function render(){
   else if(S.view==="branches")body=viewSettings();
   else if(S.view==="data")body=viewData();
   else if(S.view==="files")body=viewFiles();
+  else if(S.view==="users")body=viewUsers();
   document.getElementById("app").innerHTML=head+h("main",{class:(S._lastView!==S.view?"view-in":"")},body);
   updateSyncPill();
   if(S.view==="entry"){var c=document.getElementById("cal");if(c&&S.calOpen)c.classList.add("open");applyColWidths()}
@@ -1983,7 +2015,18 @@ function openPrompt(o){_modalType="prompt";_modalCb={ok:o.onOk||null,cancel:null
 
 /* ===== App ===== */
 window.App={
-  go:function(v){flush(function(){if(v!==S.view)navPush();S.view=v;render()})},
+  go:function(v){if(v!=="day"&&!canSee(v)){toast("لا تملك صلاحية هذه الشاشة","err");return}flush(function(){if(v!==S.view)navPush();S.view=v;render()})},
+  syncPillGo:function(){if(canSee("data"))App.go("data");else if(App.cloudSyncNow)App.cloudSyncNow()},
+  login:function(e){if(e&&e.preventDefault)e.preventDefault();var em=(document.getElementById("authEmail").value||"").trim().toLowerCase();var pw=document.getElementById("authPw").value;var btn=document.getElementById("authBtn");var err=document.getElementById("authErr");if(err)err.classList.remove("show");if(!em||!pw){if(err){err.textContent="أدخل البريد وكلمة المرور";err.classList.add("show")}return false}if(btn){btn.disabled=true;btn.textContent="جارٍ الدخول…"}firebase.auth().signInWithEmailAndPassword(em,pw).catch(function(ex){if(btn){btn.disabled=false;btn.textContent="تسجيل الدخول"}if(err){err.textContent=authErrMsg(ex);err.classList.add("show")}});return false},
+  pwReveal:function(b){var i=b.previousElementSibling;if(i){i.type=(i.type==="password"?"text":"password");b.textContent=(i.type==="password"?"👁":"🙈")}},
+  logout:function(){openConfirm({title:"تسجيل الخروج؟",body:"سيُطلب منك تسجيل الدخول مرة أخرى.",confirm:"خروج",onOk:function(){try{firebase.auth().signOut()}catch(e){location.reload()}}})},
+  usrCreate:function(){var name=(document.getElementById("uName").value||"").trim(),em=(document.getElementById("uEmail").value||"").trim().toLowerCase(),pw=document.getElementById("uPw").value,role=document.getElementById("uRole").value;
+    if(!name||!em||!pw){toast("أكمل الاسم والبريد وكلمة المرور","err");return}if(pw.length<6){toast("كلمة المرور 6 أحرف على الأقل","err");return}if(rosterGet(em)){toast("هذا البريد مضاف مسبقاً","err");return}
+    toast("جارٍ إنشاء الحساب…");var sec=fbSecondary();sec.auth().createUserWithEmailAndPassword(em,pw).then(function(){return sec.auth().signOut()}).then(function(){roster()[em]={name:name,role:role,active:true,createdAt:nowStamp()};saveConfig();render();toast("أُضيف المستخدم ✓")}).catch(function(ex){toast(authErrMsg(ex),"err")})},
+  usrRole:function(em,role){var u=rosterGet(em);if(!u||em===OWNER_EMAIL)return;u.role=role;saveConfig();render();toast("تم تغيير الدور")},
+  usrToggle:function(em){var u=rosterGet(em);if(!u||em===OWNER_EMAIL)return;u.active=(u.active===false);saveConfig();render();toast(u.active?"مُفعّل":"موقوف")},
+  usrReset:function(em){firebase.auth().sendPasswordResetEmail(em).then(function(){toast("📧 أُرسل رابط إعادة التعيين إلى "+em)}).catch(function(ex){toast(authErrMsg(ex),"err")})},
+  usrDel:function(em){if(em===OWNER_EMAIL){toast("لا يمكن حذف المالك","err");return}openConfirm({title:"حذف المستخدم؟",body:"سيُمنع من الدخول للنظام. (يبقى حساب الدخول في Firebase لكن بلا صلاحية.)",danger:true,confirm:"حذف",onOk:function(){delete roster()[em];saveConfig();render();toast("حُذف المستخدم")}})},
   ddToggle:function(btn){var dd=btn.closest(".dd");if(!dd)return;var was=dd.classList.contains("open");
     S._ddOpen=null;
     Array.prototype.forEach.call(document.querySelectorAll(".dd.open"),function(x){x.classList.remove("open")});
@@ -2297,15 +2340,89 @@ window.App={
 };
 function flush(cb){if(S.saveTimer){clearTimeout(S.saveTimer);S.saveTimer=null;commitDay().then(cb)}else cb()}
 
+/* ============ طبقة المستخدمين والأدوار (المرحلة 1 — تُضاف فوق النظام دون المساس بالمزامنة/المحاسبة) ============ */
+var OWNER_EMAIL="a2@dhtrd.com";
+var FB_CONFIG={apiKey:"AIzaSyD6V_6oCxxTO1sdKm-1EnHA-78faR6ZhCY",authDomain:"daybook-dhtrd.firebaseapp.com",projectId:"daybook-dhtrd",storageBucket:"daybook-dhtrd.firebasestorage.app",messagingSenderId:"216293479149",appId:"1:216293479149:web:3fc9d5fc6e4046823f72e4"};
+var ROLES=["المالك","مُدخِل اليوميات","المدير المالي","المدير العام","المدير التنفيذي"];
+var ASSIGN_ROLES=["مُدخِل اليوميات","المدير المالي","المدير العام","المدير التنفيذي"];
+var RCOL={"المالك":"#0f6b57","مُدخِل اليوميات":"#AF8228","المدير المالي":"#2C74D6","المدير العام":"#6D5AE0","المدير التنفيذي":"#1E7A5A"};
+var PERM={"المالك":["dashboard","entry","reports","files","branches","data","users"],"مُدخِل اليوميات":["dashboard","entry","reports","files"],"المدير المالي":["dashboard","reports","files","data"],"المدير العام":["dashboard","reports","files"],"المدير التنفيذي":["dashboard","reports"]};
+function roster(){if(!S.config.users||typeof S.config.users!=="object")S.config.users={};return S.config.users}
+function rosterGet(email){return roster()[(email||"").toLowerCase()]}
+function ensureOwner(){var r=roster();if(!r[OWNER_EMAIL])r[OWNER_EMAIL]={name:"المالك",role:"المالك",active:true,createdAt:nowStamp()};else{r[OWNER_EMAIL].role="المالك";r[OWNER_EMAIL].active=true}}
+function myRole(){return S.currentRole||"مُدخِل اليوميات"}
+function isOwner(){return (S.currentUser||"")===OWNER_EMAIL||myRole()==="المالك"}
+function canSee(view){if(view==="day")view="dashboard";if(!S.currentUser)return true;if(isOwner())return true;var p=PERM[myRole()]||[];return p.indexOf(view)>=0}
+function authErrMsg(ex){var c=(ex&&ex.code)||"";if(/wrong-password|invalid-credential|invalid-login-credentials/.test(c))return "البريد أو كلمة المرور غير صحيحة";if(/user-not-found/.test(c))return "لا يوجد حساب بهذا البريد";if(/too-many-requests/.test(c))return "محاولات كثيرة — انتظر قليلاً ثم أعد المحاولة";if(/network-request-failed/.test(c))return "تعذّر الاتصال بالإنترنت";if(/user-disabled/.test(c))return "هذا الحساب معطّل";if(/email-already-in-use/.test(c))return "هذا البريد مستخدم مسبقاً";if(/weak-password/.test(c))return "كلمة المرور ضعيفة (6 أحرف على الأقل)";if(/invalid-email/.test(c))return "صيغة البريد غير صحيحة";return "تعذّر إتمام العملية"+(c?" ("+c+")":"")}
+
+var FB2=null;
+function fbReady(){return typeof firebase!=="undefined"&&firebase.auth}
+function fbInit(){if(!fbReady())return false;try{if(!(firebase.apps&&firebase.apps.length))firebase.initializeApp(FB_CONFIG);}catch(e){}try{firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}return true;}
+function fbSecondary(){if(FB2)return FB2;try{FB2=firebase.initializeApp(FB_CONFIG,"secondary")}catch(e){FB2=firebase.app("secondary")}return FB2}
+
+function loginHTML(){return "<div id='authGate' class='authgate'><form class='authcard' onsubmit='return App.login(event)'>"+
+  "<div class='authlogo'>"+LOGO_SVG+"</div><h2>نظام تقارير اليومية</h2><p class='authsub'>الضبيبي التجارية · تسجيل الدخول</p>"+
+  "<label class='authfld'><span>البريد الإلكتروني</span><input id='authEmail' type='email' inputmode='email' autocomplete='username' placeholder='name@dhtrd.com' required></label>"+
+  "<label class='authfld'><span>كلمة المرور</span><span class='pwwrap'><input id='authPw' type='password' autocomplete='current-password' placeholder='••••••••' required><button type='button' class='pweye' onclick='App.pwReveal(this)'>👁</button></span></label>"+
+  "<div id='authErr' class='autherr'></div><button type='submit' class='authbtn' id='authBtn'>تسجيل الدخول</button>"+
+  "<div class='authnote'>لإعادة تعيين كلمة المرور تواصل مع المالك.</div></form></div>";}
+function showLogin(msg){var g=document.getElementById("authGate");if(!g){var d=document.createElement("div");d.innerHTML=loginHTML();document.body.appendChild(d.firstChild);}document.documentElement.classList.add("authing");if(msg){var e=document.getElementById("authErr");if(e){e.textContent=msg;e.classList.add("show")}}}
+function hideLogin(){var g=document.getElementById("authGate");if(g)g.remove();document.documentElement.classList.remove("authing");}
+
+var _authStarted=false;
+async function onSignedIn(user){
+  var email=(user.email||"").toLowerCase();
+  if(cloudOn()){try{await cloudPull(true)}catch(e){}}
+  ensureOwner();
+  var entry=rosterGet(email);
+  if(email!==OWNER_EMAIL){
+    if(!entry){showLogin("هذا الحساب غير مُصرّح له بالدخول. تواصل مع المالك.");try{firebase.auth().signOut()}catch(e){}return;}
+    if(entry.active===false){showLogin("حسابك موقوف حالياً. تواصل مع المالك.");try{firebase.auth().signOut()}catch(e){}return;}
+  }
+  S.currentUser=email;
+  S.currentRole=(email===OWNER_EMAIL)?"المالك":((entry&&entry.role)||"مُدخِل اليوميات");
+  try{var me=rosterGet(email);if(me){me.lastLogin=nowStamp();saveConfig()}}catch(e){}
+  hideLogin();
+  if(!canSee(S.view))S.view="dashboard";
+  loadDay(S.curDate);render();
+  if(!_authStarted){_authStarted=true;registerSW();setupAutoSync();setupInstall();
+    if(!cloudOn()&&S.config.dropbox&&S.config.dropbox.enabled&&S.config.dropbox.refreshToken){try{await dbxPull(true);render()}catch(e){}}}
+}
+function startAuth(){
+  if(!fbInit()){showLogin("تعذّر تحميل خدمة الدخول. تحقّق من اتصالك بالإنترنت ثم أعد فتح الصفحة.");return;}
+  firebase.auth().onAuthStateChanged(function(user){if(user){onSignedIn(user);}else{if(_authStarted){location.reload();}else{showLogin();}}});
+}
+
+function viewUsers(){
+  if(!isOwner())return h("div",{class:"card"},"<div class='note'>هذه الشاشة للمالك فقط.</div>");
+  var r=roster();var emails=Object.keys(r);
+  var rows=emails.map(function(em){var u=r[em]||{};var col=RCOL[u.role]||"#0f6b57";var owner=(em===OWNER_EMAIL||u.role==="المالك");
+    var badge="<span class='u-badge' style='--rc:"+col+"'>"+esc(u.role||"—")+"</span>";
+    var actions=owner?"<span class='note' style='margin:0;color:var(--muted,#7c857f)'>👑 حساب المالك — محميّ</span>":
+      "<select onchange=\"App.usrRole('"+em+"',this.value)\" style='background:var(--field,#f4f1e8);border:1px solid var(--line,#e3ddce);border-radius:8px;padding:6px;font-family:inherit;font-size:12px'>"+ASSIGN_ROLES.map(function(rr){return "<option"+(u.role===rr?" selected":"")+">"+rr+"</option>"}).join("")+"</select>"+
+      "<button class='btn ghost' style='padding:6px 10px' onclick=\"App.usrReset('"+em+"')\">🔗 إعادة تعيين</button>"+
+      "<button class='btn ghost' style='padding:6px 10px' onclick=\"App.usrToggle('"+em+"')\">"+(u.active===false?"▶ تفعيل":"⏸ إيقاف")+"</button>"+
+      "<button class='btn ghost' style='padding:6px 10px;color:#e0553f' onclick=\"App.usrDel('"+em+"')\">🗑 حذف</button>";
+    return "<div class='u-row"+(u.active===false?" u-off":"")+"' style='--rc:"+col+"'><div class='u-av'>"+esc((u.name||em||"?").slice(0,1))+"</div>"+
+      "<div style='min-width:0;flex:1'><div class='u-nm'>"+esc(u.name||"—")+"</div><div class='u-em'>"+esc(em)+(u.lastLogin?" · آخر دخول "+esc(u.lastLogin):"")+"</div></div>"+badge+
+      "<div style='display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%;margin-top:4px'>"+actions+"</div></div>";
+  }).join("");
+  var addCard=h("div",{class:"card"},cardHead("إضافة مستخدم","يُنشأ حساب دخول ويُضاف للأدوار — يبقى دخولك أنت كما هو")+
+    "<div class='u-add'>"+
+    "<label class='fld' style='flex:1;min-width:140px'><span>الاسم</span><input id='uName' placeholder='اسم الموظف'></label>"+
+    "<label class='fld' style='flex:1;min-width:170px'><span>البريد</span><input id='uEmail' type='email' placeholder='name@dhtrd.com'></label>"+
+    "<label class='fld' style='min-width:130px'><span>كلمة مرور مؤقتة</span><input id='uPw' placeholder='6 أحرف على الأقل'></label>"+
+    "<label class='fld' style='min-width:150px'><span>الدور</span><select id='uRole'>"+ASSIGN_ROLES.map(function(rr){return "<option>"+rr+"</option>"}).join("")+"</select></label>"+
+    "<button class='btn' onclick='App.usrCreate()'>+ إنشاء الحساب</button></div>");
+  return h("div",{class:"grid"},addCard+h("div",{class:"card"},cardHead("المستخدمون والأدوار",emails.length+" مستخدم · عدد مفتوح")+rows));
+}
+
 /* ===== إقلاع ===== */
 (async function init(){
   installIcons();setupDrag();setupKeys();setupKeys2();setupKeysUndo();setupColResize();setupDD();setupFxBar();scheduleDailyBackup();
   await loadAll();
   try{var qp=new URLSearchParams(location.search);if(qp.get("code")){try{await dbxExchange(qp.get("code"));toast("تم الربط مع دروبوكس")}catch(e){toast("تعذّر الربط مع دروبوكس","err")}try{history.replaceState({},"",redirectUri())}catch(e){}}}catch(e){}
-  if(cloudOn()){try{await cloudPull(true)}catch(e){}}   /* نزّل أحدث نسخة من السحابة قبل العرض */
-  loadDay(S.curDate);render();
-  registerSW();setupAutoSync();setupInstall();
-  if(!cloudOn()&&S.config.dropbox&&S.config.dropbox.enabled&&S.config.dropbox.refreshToken){await dbxPull(true);render()}
+  startAuth();   /* بوابة تسجيل الدخول — لا يُعرض النظام إلا بعد الدخول */
 })();
 })();
 </script>
