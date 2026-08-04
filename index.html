@@ -505,12 +505,18 @@ var CLOUD=(typeof window.storage!=="undefined"&&window.storage&&typeof window.st
 var _CFG=(typeof window!=="undefined"&&window.DAYBOOK_CONFIG)||{};
 var CLOUD_API=(_CFG.cloudUrl||"").replace(/\/+$/,"");
 var CLOUD_TOKEN=_CFG.appToken||"";
-/* وضع المزامنة: "dropbox" = إلغاء Cloudflare والاعتماد على Dropbox المباشر (آمن ضد التعارض عبر rev الملف).
-   للرجوع الفوري لـCloudflare عند الحاجة: غيّر القيمة إلى "cloud". لا يُحذف أي كود Cloudflare — يبقى خاملاً. */
-var SYNC_MODE="dropbox";
-function cloudOn(){return SYNC_MODE!=="dropbox" && !!CLOUD_API && !/YOUR-SUBDOMAIN/.test(CLOUD_API);}
+/* وضع المزامنة (1.4.8):
+   "firestore" = مزامنة سحابية لحظية عبر Firestore (وثيقة لكل يوم + مستمعون آنيّون + قواعد أمان حسب الأدوار + أوفلاين).
+                 Dropbox يبقى للنسخ الاحتياطي فقط. كل أكواد Cloudflare/Dropbox-كمزامنة تبقى سليمة لكن خاملة.
+   "dropbox"   = مزامنة Dropbox المباشرة (الإصدار 1.4.7) — للرجوع الفوري عند الحاجة.
+   "cloud"     = عبر Cloudflare Worker (الأقدم). */
+var SYNC_MODE="firestore";
+function fsMode(){return SYNC_MODE==="firestore";}
+function cloudOn(){return SYNC_MODE==="cloud" && !!CLOUD_API && !/YOUR-SUBDOMAIN/.test(CLOUD_API);}
 function dbxEnabled(){var g=dbxCfg();return !!(g&&g.enabled&&g.refreshToken);}
-function syncOn(){return cloudOn()||dbxEnabled();}
+/* المحرّك القديم (سحب/رفع الحمولة الكاملة + الطابور + الدمج الثلاثي) يُعطَّل تماماً في وضع Firestore.
+   المزامنة اللحظية تتكفّل بها مستمعات onSnapshot. Dropbox يبقى فعّالاً كنسخ احتياطي عبر dbxEnabled(). */
+function syncOn(){return fsMode()?false:(cloudOn()||dbxEnabled());}
 /* طبقة النقل الموحّدة: نفس محرّك المزامنة (الطابور + الدمج الثلاثي + شريط التعارض) يعمل فوق Cloudflare أو Dropbox */
 async function syncLoad(){return cloudOn()?cloudLoad():dbxLoad();}
 async function syncSave(payload,baseRev,sovereign){return cloudOn()?cloudSave(payload,baseRev,sovereign):dbxSave(payload,baseRev,sovereign);}
@@ -526,7 +532,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.4.7";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.4.8";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
 /* دوال الترحيل: MIGRATIONS[v-1] ترقّي البيانات من النسخة v إلى v+1.
    تُطبَّق تلقائياً عند فتح التطبيق أو سحب بيانات أقدم، دون مساس بأي بيانات موجودة. */
@@ -625,7 +631,7 @@ async function loadAll(){
   if(have<SCHEMA_VERSION){var years={};Object.keys(all).forEach(function(d){var yy=yOf(d);(years[yy]=years[yy]||{})[d]=all[d]});for(var yk in years)await DB.set("dsr_y_"+yk,years[yk]);}
   await DB.set("dsr_meta",{schema:SCHEMA_VERSION,appVersion:APP_VERSION,updatedAt:nowStamp()});
 }
-async function saveConfig(){queueConfigOps();await DB.set("dsr_config",S.config);invalidateBal();scheduleDbx()}
+async function saveConfig(){queueConfigOps();S.config.cfgUpdatedTs=Date.now();await DB.set("dsr_config",S.config);invalidateBal();scheduleDbx()}
 /* يلتقط سجلات الإعدادات القابلة للدمج كعمليات (كل مفتاح = سجل مستقل) */
 function queueConfigOps(){ensureQueue();var rec=cfgRecords(S.config);Object.keys(rec).forEach(function(k){queueOp("cfg",k,rec[k])});}
 async function persistDay(date){invalidateBal();var y=yOf(date),yk="dsr_y_"+y,obj={};
@@ -745,6 +751,7 @@ function replayOps(baseObj,ops,force){
 /* المزامنة: عند تفعيل الـ Worker يُستخدم كالمصدر الأساسي مع قفل تفاؤلي، وإلا يعود لمسار Dropbox المباشر (توافقية) */
 function scheduleDbx(){if(S._noPush)return;
   S.config.syncRev=Date.now();S.config.cloudDirty=true;DB.set("dsr_config",S.config);
+  if(fsMode()){fsSchedulePush();return;}   /* وضع Firestore: ادفع الفرق إلى وثائق Firestore بدل الحمولة الكاملة */
   if(!syncOn())return;
   if(S.dbxTimer)clearTimeout(S.dbxTimer);S.dbxTimer=setTimeout(cloudPush,cloudOn()?1200:2600);}
 function scheduleRetry(){if(S._retryTimer)clearTimeout(S._retryTimer);S._retryTimer=setTimeout(function(){if(syncOn()&&(S.config.cloudDirty||(S.config.pendingOps||[]).length))cloudPush();},12000);}
@@ -1014,7 +1021,16 @@ function auditBadge(d){var a=dayAudit(d);if(!a)return "";
   return a==="g"?"<span class='abdg g' title='تحقق مكتمل'>✓</span>":"<span class='abdg r' title='توجد علامات خطأ'>✕</span>";}
 function draftBadge(d){return d.status==="draft"?"<span class='dbdg'>مسودة</span>":""}
 function eGuard(){if(S.day&&S.day.locked){toast("اليومية مقفلة بعد الطباعة — اضغط «فتح للتعديل» أولاً","err");return true}return false}
-function syncState(){if(!S.config)return {cls:"",dot:"",text:"…"};var g=dbxCfg();var active=cloudOn()||g.enabled;var label=cloudOn()?"سحابياً":"(دروبوكس)";
+function syncState(){if(!S.config)return {cls:"",dot:"",text:"…"};
+  if(fsMode()){
+    if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)
+      return {cls:"s-busy",dot:"busy",text:"غير متصل — سيتزامن عند العودة"};
+    if(!FSY.on)return {cls:"",dot:"",text:"بدون مزامنة"};
+    if(S.sync.status==="busy")return {cls:"s-busy",dot:"busy",text:"مزامنة…"};
+    if(S.sync.status==="err")return {cls:"s-err",dot:"err",text:"تعذّرت المزامنة"};
+    return {cls:"s-on",dot:"on",text:S.dirty?"جارٍ الحفظ…":"متزامن لحظياً ✓"};
+  }
+  var g=dbxCfg();var active=cloudOn()||g.enabled;var label=cloudOn()?"سحابياً":"(دروبوكس)";
   var pend=(S.config&&S.config.pendingOps?S.config.pendingOps.length:0);
   if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)
     return {cls:"s-busy",dot:"busy",text:"غير متصل"+(pend?" · بانتظار الرفع: "+pend:"")};
@@ -1649,7 +1665,20 @@ function viewData(){
     "<button class='btn ghost' onclick='App.freshPull()'>مزامنة نظيفة من السحابة</button>"+
     "<button class='btn ghost' style='color:var(--neg)' onclick='App.forcePush()'>فرض المحلي على السحابة</button></div>"+
     "<p class='note' style='margin-top:10px'><b>نظيفة من السحابة:</b> يتجاهل هذا الجهاز تعديلاته غير المرفوعة ويعتمد السحابة كما هي (لجهاز عالق بتعديلات/حذوفات قديمة). <b>فرض المحلي:</b> يستبدل السحابة كاملةً ببيانات هذا الجهاز (بعد استعادة نسخة مثلاً).</p>"):"";
-  var sync=cloudOn()?
+  var sync=fsMode()?
+    (h("div",{class:"card"},cardHead(IC.cloud+" المزامنة السحابية اللحظية","Firestore")+
+      "<div class='warn ok'><b>مزامنة لحظية مفعّلة ✓</b> — كل جهاز يسجّل الدخول يرى أحدث البيانات فوراً وتلقائياً، بلا أي ربط على الأجهزة. يعمل أيضاً دون إنترنت ويتزامن عند عودة الاتصال.</div>"+
+      "<p class='note' style='margin:10px 0'>يُحفظ كل تغيير فوراً في السحابة (وثيقة لكل يوم)، وتظهر تعديلات بقية الأجهزة مباشرةً. الصلاحيات مفروضة على مستوى الخادم حسب دور كل مستخدم.</p>"+
+      "<div style='display:flex;gap:8px;flex-wrap:wrap'><button class='btn' onclick='App.fsResync()'>"+IC.dl+" تحديث الآن</button></div>")+
+     h("div",{class:"card"},cardHead(IC.cloud+" النسخ الاحتياطي على Dropbox","اختياري — للمالك")+
+      "<p class='note' style='margin-bottom:12px'>للنسخ الاحتياطي فقط (منفصل عن المزامنة). يحفظ نسخة كاملة في دروبوكس › <b>DailyReport › backups</b>. الموظفون لا يحتاجون Dropbox إطلاقاً.</p>"+
+      (g.enabled&&g.refreshToken?
+        "<div class='warn ok'><b>مرتبط بدروبوكس ✓</b> — النسخ الاحتياطي اليومي التلقائي مفعّل.</div><div style='display:flex;gap:8px;flex-wrap:wrap;margin-top:12px'><button class='btn' onclick='App.dbxBackup()'>حفظ نسخة الآن</button><button class='btn ghost' style='color:var(--neg)' onclick='App.dbxDisconnect()'>فصل</button></div>"
+        :(isOwner()?
+          "<label class='fld' style='max-width:420px'><span>Dropbox App Key</span><input value='"+esc(g.appKey)+"' placeholder='من console.dropbox.com/apps' oninput='App.dbxKey(this.value)'></label><div style='display:flex;gap:8px;flex-wrap:wrap;margin-top:12px'><button class='btn' onclick='App.dbxConnect()'>"+IC.cloud+" ربط للنسخ الاحتياطي</button></div><div class='warn'>الخطوات: أنشئ تطبيقاً على <b>dropbox.com/developers</b> (Scoped app · App folder)، فعّل files.content.read و files.content.write، أضف رابط موقعك في Redirect URIs، ثم انسخ الـ App Key واضغط ربط.</div>"
+          :"<p class='note'>النسخ الاحتياطي على Dropbox يُدار من حساب المالك.</p>"))))
+    :
+    cloudOn()?
     h("div",{class:"card"},cardHead(IC.cloud+" المزامنة السحابية","تلقائية")+
       "<div class='warn ok'><b>متصل بالسحابة ✓</b> — عبر خادم آمن (Cloudflare Worker) إلى Dropbox. كل جهاز يفتح الرابط يرى أحدث البيانات تلقائياً، دون تسجيل دخول.</div>"+
       "<p class='note' style='margin:10px 0'>يُحفظ كل تغيير فوراً في السحابة، ويُسحب أحدث نسخة عند فتح التطبيق وعند العودة إليه. الأسرار محفوظة داخل الخادم ولا تصل للمتصفح.</p>"+
@@ -2054,7 +2083,7 @@ function openPrompt(o){_modalType="prompt";_modalCb={ok:o.onOk||null,cancel:null
 /* ===== App ===== */
 window.App={
   go:function(v){if(v!=="day"&&!canSee(v)){toast("لا تملك صلاحية هذه الشاشة","err");return}flush(function(){if(v!==S.view)navPush();S.view=v;render()})},
-  syncPillGo:function(){if(canSee("data"))App.go("data");else if(App.cloudSyncNow)App.cloudSyncNow()},
+  syncPillGo:function(){if(canSee("data"))App.go("data");else if(fsMode())fsResync();else if(App.cloudSyncNow)App.cloudSyncNow()},
   login:function(e){if(e&&e.preventDefault)e.preventDefault();var em=(document.getElementById("authEmail").value||"").trim().toLowerCase();var pw=document.getElementById("authPw").value;var btn=document.getElementById("authBtn");var err=document.getElementById("authErr");if(err)err.classList.remove("show");if(!em||!pw){if(err){err.textContent="أدخل البريد وكلمة المرور";err.classList.add("show")}return false}if(btn){btn.disabled=true;btn.textContent="جارٍ الدخول…"}firebase.auth().signInWithEmailAndPassword(em,pw).catch(function(ex){if(btn){btn.disabled=false;btn.textContent="تسجيل الدخول"}if(err){err.textContent=authErrMsg(ex);err.classList.add("show")}});return false},
   pwReveal:function(b){var i=b.previousElementSibling;if(i){i.type=(i.type==="password"?"text":"password");b.textContent=(i.type==="password"?"👁":"🙈")}},
   logout:function(){openConfirm({title:"تسجيل الخروج؟",body:"سيُطلب منك تسجيل الدخول مرة أخرى.",confirm:"خروج",onOk:function(){try{firebase.auth().signOut()}catch(e){location.reload()}}})},
@@ -2373,6 +2402,7 @@ window.App={
       setSync("on");S.sync.last=nowStamp();if(S.day&&S.data[S.day.date])loadDay(S.day.date);render();toast("تم اعتماد تعديلك");
     }catch(e){setSync("err");if(e&&e.conflict){onCloudConflict([])}else toast("تعذّر الاعتماد","err")}
     finally{S._io=false}}})},
+  fsResync:function(){fsResync()},
   dbxConnect:function(){dbxConnect()},dbxPush:function(){dbxPush().then(function(){toast("تم الرفع لدروبوكس")})},dbxPull:function(){dbxPull(false)},dbxBackup:function(){dbxBackup()},
   dbxDisconnect:function(){openConfirm({title:"فصل حساب Dropbox؟",body:"تبقى بياناتك على جهازك. يمكنك إعادة الربط لاحقاً.",confirm:"فصل",onOk:function(){S.config.dropbox={appKey:S.config.dropbox.appKey,refreshToken:"",enabled:false};DBX={access:null,exp:0};DB.set("dsr_config",S.config);updateSyncPill();render()}})}
 };
@@ -2398,11 +2428,164 @@ function fbReady(){return typeof firebase!=="undefined"&&firebase.auth}
 function fbInit(){if(!fbReady())return false;try{if(!(firebase.apps&&firebase.apps.length))firebase.initializeApp(FB_CONFIG);}catch(e){}try{firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}return true;}
 function fbSecondary(){if(FB2)return FB2;try{FB2=firebase.initializeApp(FB_CONFIG,"secondary")}catch(e){FB2=firebase.app("secondary")}return FB2}
 /* ===== Firestore: «الدرج المقفل» لتوزيع مفتاح Dropbox آمناً (قراءة: كل مستخدم مسجّل، كتابة: المالك فقط عبر قواعد الأمان) ===== */
-var FS=null;
+var FS=null,_fsPersist=false;
 function fsReady(){return typeof firebase!=="undefined"&&firebase.firestore;}
-function fsInit(){if(FS)return FS;if(!fsReady())return null;try{FS=firebase.firestore()}catch(e){FS=null}return FS;}
+function fsInit(){if(FS)return FS;if(!fsReady())return null;
+  try{FS=firebase.firestore()}catch(e){FS=null;return null;}
+  /* الحفظ دون اتصال (أوفلاين): يجب تفعيله قبل أي قراءة/كتابة — يجعل التطبيق يعمل بلا إنترنت ويطابق عند العودة،
+     ويقلّل قراءات Firestore عبر استئناف المستمعات من الكاش المحلي. */
+  if(!_fsPersist){_fsPersist=true;try{FS.enablePersistence({synchronizeTabs:true}).catch(function(){});}catch(e){}}
+  return FS;}
 async function fsGetDropbox(){var db=fsInit();if(!db)return null;try{var d=await db.collection("appConfig").doc("dropbox").get();return (d&&d.exists)?d.data():null;}catch(e){return null;}}
 async function fsSetDropbox(appKey,refreshToken){var db=fsInit();if(!db)return false;try{await db.collection("appConfig").doc("dropbox").set({appKey:appKey||"",refreshToken:refreshToken||"",updatedAt:Date.now(),updatedBy:(S.currentUser||"")});return true;}catch(e){return false;}}
+
+/* =====================================================================
+   ★ المزامنة السحابية اللحظية عبر Firestore (1.4.8) ★
+   - وثيقة لكل يوم:  days/{YYYY-MM-DD}   (تحرير أيام مختلفة لا يتعارض أبداً)
+   - إعدادات عامة:   meta/config          (يكتبها المالك فقط)
+   - الأدوار:        roles/{email}        (يكتبها المالك؛ يحدّث المستخدم آخر دخوله فقط)
+   - مستمعو onSnapshot يحدّثون كل الأجهزة فورياً بعد الدخول، بلا أي ربط على الأجهزة.
+   - نموذج «الدفع بالفرق»: نقارن الحالة الحالية بظلٍّ لآخر حالة معروفة سحابياً، فنكتب/نحذف
+     الوثائق المتغيّرة فقط. يمرّ كل تغيير محلي عبر نقطة scheduleDbx() الواحدة.
+   - المحاسبة والتخزين المحلي (localStorage) لا يُمَسّان: Firestore طبقة نقل فوقهما (لا فقدان بيانات).
+   ===================================================================== */
+var FSY={on:false,started:false,applying:false,pushTimer:null,retryTimer:null,unsub:[],
+  shadowDays:{},shadowCfg:"",shadowRoles:{}};
+var FS_CFG_FIELDS=["businessName","openingBalance","branches","methods","companyLogo","dayTemplate"]; /* الحقول المشتركة بين الأجهزة فقط (لا تشمل السلة/سجل الملفات/تفضيلات محلية) */
+function jstr(x){try{return JSON.stringify(x)}catch(e){return ""}}
+function fsCanWrite(){return isOwner()||myRole()==="مُدخِل اليوميات";}   /* من يكتب وثائق الأيام */
+function fsCoreFields(cfg){var c={};FS_CFG_FIELDS.forEach(function(k){c[k]=(cfg&&cfg[k]!==undefined)?cfg[k]:null});return c;}
+function fsRoleDoc(u){return {name:(u&&u.name)||"",role:(u&&u.role)||"مُدخِل اليوميات",active:!(u&&u.active===false),lastLogin:(u&&u.lastLogin)||"",createdAt:(u&&u.createdAt)||nowStamp(),updatedTs:Date.now()};}
+function fsRoleToRoster(d){return {name:(d&&d.name)||"",role:(d&&d.role)||"مُدخِل اليوميات",active:!(d&&d.active===false),lastLogin:(d&&d.lastLogin)||"",createdAt:(d&&d.createdAt)||""};}
+function fsRoleKey(u){return jstr({name:(u&&u.name)||"",role:(u&&u.role)||"",active:!(u&&u.active===false)});}
+function fsDayNorm(dt){var day=S.data[dt];if(day&&!day.updatedTs)day.updatedTs=Date.now();return day;}
+function fsSyncShadowDays(){FSY.shadowDays={};Object.keys(S.data).forEach(function(dt){FSY.shadowDays[dt]=jstr(fsDayNorm(dt))});}
+async function fsPersistQuiet(){S._noPush=true;try{await persistEverything()}catch(e){}S._noPush=false;}
+
+function fsSchedulePush(){if(!fsMode()||!FSY.on)return;if(FSY.pushTimer)clearTimeout(FSY.pushTimer);FSY.pushTimer=setTimeout(fsPushNow,900);}
+async function fsPushNow(){
+  if(!fsMode()||!FSY.on||FSY.applying)return;var db=fsInit();if(!db)return;
+  setSync("busy");
+  try{
+    /* --- فرق الأيام --- */
+    var cur={},dayOps=[];
+    Object.keys(S.data).forEach(function(dt){var s=jstr(fsDayNorm(dt));cur[dt]=s;if(s!==FSY.shadowDays[dt])dayOps.push({t:"set",id:dt})});
+    Object.keys(FSY.shadowDays).forEach(function(dt){if(cur[dt]===undefined)dayOps.push({t:"del",id:dt})});
+    if(dayOps.length&&fsCanWrite()){
+      for(var i=0;i<dayOps.length;i+=400){var chunk=dayOps.slice(i,i+400);var batch=db.batch();
+        chunk.forEach(function(o){var ref=db.collection("days").doc(o.id);if(o.t==="set")batch.set(ref,S.data[o.id]);else batch.delete(ref)});
+        await batch.commit();}
+      dayOps.forEach(function(o){if(o.t==="set")FSY.shadowDays[o.id]=cur[o.id];else delete FSY.shadowDays[o.id]});
+    } else if(dayOps.length){ /* دور للقراءة فقط: لا تكتب، فقط ثبّت الظل حتى لا تُعاد المحاولة */
+      dayOps.forEach(function(o){if(o.t==="set")FSY.shadowDays[o.id]=cur[o.id];else delete FSY.shadowDays[o.id]});
+    }
+    /* --- فرق الإعدادات العامة (المالك فقط) --- */
+    if(isOwner()){var core=fsCoreFields(S.config);var cs=jstr(core);
+      if(cs!==FSY.shadowCfg){await db.collection("meta").doc("config").set(Object.assign({},core,{cfgUpdatedTs:Date.now()}),{merge:true});FSY.shadowCfg=cs;}}
+    /* --- فرق الأدوار (المالك فقط) --- */
+    if(isOwner())await fsPushRoles(db);
+    setSync("on");S.sync.last=nowStamp();
+  }catch(e){setSync("err");if(FSY.retryTimer)clearTimeout(FSY.retryTimer);FSY.retryTimer=setTimeout(fsPushNow,7000);}
+}
+async function fsPushRoles(db){var r=roster(),batch=db.batch(),n=0;
+  Object.keys(r).forEach(function(em){var k=fsRoleKey(r[em]);if(k!==FSY.shadowRoles[em]){batch.set(db.collection("roles").doc(em),fsRoleDoc(r[em]));FSY.shadowRoles[em]=k;n++;}});
+  Object.keys(FSY.shadowRoles).forEach(function(em){if(!r[em]){batch.delete(db.collection("roles").doc(em));delete FSY.shadowRoles[em];n++;}});
+  if(n)await batch.commit();
+}
+async function fsTouchLogin(){var db=fsInit();if(!db||!S.currentUser||S.currentUser===OWNER_EMAIL)return;
+  try{await db.collection("roles").doc(S.currentUser).set({lastLogin:nowStamp(),updatedTs:Date.now()},{merge:true});}catch(e){}}
+
+/* الإقلاع: مصالحة أوّل تشغيل (دمج المحلي↔السحابي بلا فقدان) ثم ربط المستمعات اللحظية */
+async function fsStart(){
+  if(FSY.started)return true;var db=fsInit();if(!db)return false;
+  setSync("busy");
+  try{
+    var daysSnap=await db.collection("days").get();
+    var remoteDays={};daysSnap.forEach(function(d){remoteDays[d.id]=d.data()});
+    var cfgDoc=await db.collection("meta").doc("config").get();
+    var remoteCfg=(cfgDoc&&cfgDoc.exists)?cfgDoc.data():null;
+    var rolesSnap=await db.collection("roles").get();
+    var remoteRoles={};rolesSnap.forEach(function(d){remoteRoles[d.id]=d.data()});
+    var remoteEmpty=(daysSnap.size===0)&&!remoteCfg&&(rolesSnap.size===0);
+
+    /* (1) الأيام: لكل يوم، الأحدث بالطابع الزمني يفوز (المفقود محلياً يُعتمد سحابياً) */
+    Object.keys(remoteDays).forEach(function(dt){var rd=remoteDays[dt],ld=S.data[dt];
+      var rTs=num(rd.updatedTs)||0,lTs=(ld&&num(ld.updatedTs))||0;
+      if(!ld||rTs>=lTs)S.data[dt]=rd;
+      FSY.shadowDays[dt]=jstr(remoteDays[dt]);});
+    /* الأيام المحلية فقط (غير موجودة سحابياً) تبقى وستُرفع لاحقاً */
+
+    /* (2) الإعدادات العامة */
+    if(remoteCfg){var rC=num(remoteCfg.cfgUpdatedTs)||0,lC=num(S.config.cfgUpdatedTs)||0;
+      if(rC>=lC)FS_CFG_FIELDS.forEach(function(k){if(remoteCfg[k]!==undefined&&remoteCfg[k]!==null)S.config[k]=remoteCfg[k]});
+      FSY.shadowCfg=jstr(fsCoreFields(remoteCfg));}
+    else FSY.shadowCfg="";
+
+    /* (3) الأدوار → إلى S.config.users (المالك مصدر الحقيقة؛ نعتمد الروستر السحابي إن وُجد) */
+    if(rolesSnap.size){var merged={};Object.keys(remoteRoles).forEach(function(em){merged[em]=fsRoleToRoster(remoteRoles[em]);FSY.shadowRoles[em]=fsRoleKey(merged[em])});S.config.users=merged;}
+    ensureOwner();
+    if(S.currentUser&&S.currentUser!==OWNER_EMAIL){var me=roster()[S.currentUser];if(me)S.currentRole=me.role||S.currentRole;}
+
+    invalidateBal();await fsPersistQuiet();
+    FSY.on=true;
+
+    /* (4) ارفع المحلي الأحدث/الجديد (وهو «البذرة» عند أول ترحيل من جهاز المالك) */
+    if(fsCanWrite()){
+      if(remoteEmpty&&isOwner()){try{if(dbxEnabled())await dbxBackup();}catch(e){} S.config.fsMigratedAt=nowStamp();}
+      await fsPushNow();
+    } else {fsSyncShadowDays();}
+
+    /* (5) المستمعات اللحظية */
+    fsAttach(db);
+    setSync("on");S.sync.last=nowStamp();FSY.started=true;return true;
+  }catch(e){setSync("err");FSY.on=false;
+    /* تبقى البيانات المحلية سليمة؛ إعادة المحاولة عند عودة الاتصال أو الظهور */
+    return false;}
+}
+
+function fsAttach(db){
+  /* أ) الأيام — تحديث لحظي */
+  FSY.unsub.push(db.collection("days").onSnapshot(function(snap){
+    if(FSY.applying)return;var changed=false,reload=false;
+    snap.docChanges().forEach(function(ch){var doc=ch.doc;if(doc.metadata.hasPendingWrites)return;var dt=doc.id;
+      if(ch.type==="removed"){if(S.data[dt]!==undefined){delete S.data[dt];delete FSY.shadowDays[dt];changed=true;if(S.day&&S.day.date===dt)reload=true;}}
+      else{var data=doc.data();var s=jstr(data);if(s!==FSY.shadowDays[dt]){S.data[dt]=data;FSY.shadowDays[dt]=s;changed=true;
+        if(S.day&&S.day.date===dt&&!(S.view==="entry"&&S.dirty))reload=true;}}
+    });
+    if(!changed)return;invalidateBal();
+    fsPersistQuiet().then(function(){
+      if(reload&&S.day)loadDay(S.day.date);
+      if(S.view==="entry"&&S.dirty)updateSyncPill();else render();
+      setSync("on");S.sync.last=nowStamp();});
+  },function(){setSync("err");}));
+  /* ب) الإعدادات العامة */
+  FSY.unsub.push(db.collection("meta").doc("config").onSnapshot(function(doc){
+    if(FSY.applying||!doc.exists||doc.metadata.hasPendingWrites)return;var core=doc.data();
+    var cs=jstr(fsCoreFields(core));if(cs===FSY.shadowCfg)return;
+    FS_CFG_FIELDS.forEach(function(k){if(core[k]!==undefined&&core[k]!==null)S.config[k]=core[k]});
+    S.config.cfgUpdatedTs=num(core.cfgUpdatedTs)||Date.now();FSY.shadowCfg=cs;
+    invalidateBal();fsPersistQuiet().then(function(){if(!(S.view==="entry"&&S.dirty))render();});
+  },function(){}));
+  /* ج) الأدوار — فرض الصلاحيات لحظياً (إيقاف/تغيير دور يُطبَّق فوراً) */
+  FSY.unsub.push(db.collection("roles").onSnapshot(function(snap){
+    if(FSY.applying)return;var r=roster(),changed=false;
+    snap.docChanges().forEach(function(ch){if(ch.doc.metadata.hasPendingWrites)return;var em=ch.doc.id;
+      if(ch.type==="removed"){if(r[em]){delete r[em];delete FSY.shadowRoles[em];changed=true;}}
+      else{r[em]=fsRoleToRoster(ch.doc.data());FSY.shadowRoles[em]=fsRoleKey(r[em]);changed=true;}});
+    if(!changed)return;ensureOwner();
+    if(S.currentUser&&S.currentUser!==OWNER_EMAIL){var me=r[S.currentUser];
+      if(!me||me.active===false){try{firebase.auth().signOut()}catch(e){}showLogin("تم تحديث صلاحياتك. تواصل مع المالك.");return;}
+      S.currentRole=me.role||S.currentRole;if(!canSee(S.view))S.view="dashboard";}
+    fsPersistQuiet().then(function(){if(!(S.view==="entry"&&S.dirty))render();});
+  },function(){}));
+}
+/* إعادة مزامنة يدوية (زر «تحديث الآن») — المستمعات تحدّث تلقائياً، وهذا للطمأنة/الإنعاش */
+async function fsResync(){if(!fsMode())return;if(!FSY.started){await fsStart();render();return;}
+  try{var db=fsInit();if(!db)return;setSync("busy");
+    var snap=await db.collection("days").get();var seen={};
+    snap.forEach(function(d){seen[d.id]=1;var s=jstr(d.data());if(s!==FSY.shadowDays[d.id]){S.data[d.id]=d.data();FSY.shadowDays[d.id]=s;}});
+    invalidateBal();await fsPersistQuiet();setSync("on");S.sync.last=nowStamp();render();toast("محدّث ✓");
+  }catch(e){setSync("err");toast("تعذّر التحديث","err");}}
 
 function loginHTML(){return "<div id='authGate' class='authgate'><form class='authcard' onsubmit='return App.login(event)'>"+
   "<div class='authlogo'>"+LOGO_SVG+"</div><h2>نظام تقارير اليومية</h2><p class='authsub'>الضبيبي التجارية · تسجيل الدخول</p>"+
@@ -2416,13 +2599,14 @@ function hideLogin(){var g=document.getElementById("authGate");if(g)g.remove();d
 var _authStarted=false;
 async function onSignedIn(user){
   var email=(user.email||"").toLowerCase();
-  /* الربط التلقائي: إن لم يكن لهذا الجهاز مفتاح Dropbox، اجلبه من «الدرج المقفل» (Firestore) بعد تسجيل الدخول */
-  try{ if(!dbxCfg().refreshToken){ var dd=await fsGetDropbox(); if(dd&&dd.refreshToken){ S.config.dropbox={appKey:dd.appKey||dbxCfg().appKey||"",refreshToken:dd.refreshToken,enabled:true}; await DB.set("dsr_config",S.config);} } }catch(e){}
-  /* اسحب أحدث البيانات (Dropbox أو Cloudflare حسب الوضع) قبل التحقق من الأدوار */
-  if(syncOn()){try{await cloudPull(true)}catch(e){}}
   ensureOwner();
-  /* المالك: إن وُجد مفتاح Dropbox محلياً ولم يُنشر بعد، انشره في Firestore ليتصل الموظفون تلقائياً */
-  try{ if(email===OWNER_EMAIL && dbxCfg().refreshToken){ var cur=await fsGetDropbox(); if(!cur||!cur.refreshToken){ await fsSetDropbox(dbxCfg().appKey,dbxCfg().refreshToken);} } }catch(e){}
+  /* هوية مبدئية قبل المزامنة كي تعمل منطق الصلاحيات بشكل صحيح أثناء المصالحة (الأمان الحقيقي على قواعد Firestore) */
+  S.currentUser=email;
+  S.currentRole=(email===OWNER_EMAIL)?"المالك":((rosterGet(email)&&rosterGet(email).role)||"مُدخِل اليوميات");
+  /* المزامنة السحابية اللحظية: مصالحة + بذر + ربط المستمعات (تجلب أحدث الأدوار/البيانات قبل فحص الصلاحية) */
+  if(fsMode()){try{await fsStart()}catch(e){}}
+  else if(syncOn()){try{await cloudPull(true)}catch(e){}}
+  ensureOwner();
   var entry=rosterGet(email);
   if(email!==OWNER_EMAIL){
     if(!entry){showLogin("هذا الحساب غير مُصرّح له بالدخول. تواصل مع المالك.");try{firebase.auth().signOut()}catch(e){}return;}
@@ -2430,7 +2614,8 @@ async function onSignedIn(user){
   }
   S.currentUser=email;
   S.currentRole=(email===OWNER_EMAIL)?"المالك":((entry&&entry.role)||"مُدخِل اليوميات");
-  try{var me=rosterGet(email);if(me){me.lastLogin=nowStamp();saveConfig()}}catch(e){}
+  if(fsMode()){fsTouchLogin();}                                   /* تحديث آخر دخول ذاتياً (مسموح بقواعد الأمان) */
+  else{try{var me=rosterGet(email);if(me){me.lastLogin=nowStamp();saveConfig()}}catch(e){}}
   hideLogin();
   if(!canSee(S.view))S.view="dashboard";
   loadDay(S.curDate);render();
