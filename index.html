@@ -6,6 +6,7 @@
 <title>نظام تقارير اليومية</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style id="authCSS">
 .authing{overflow:hidden}
 .authgate{position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#173A31,#0d1512);display:flex;align-items:center;justify-content:center;padding:20px;font-family:'Tajawal',sans-serif}
@@ -504,7 +505,15 @@ var CLOUD=(typeof window.storage!=="undefined"&&window.storage&&typeof window.st
 var _CFG=(typeof window!=="undefined"&&window.DAYBOOK_CONFIG)||{};
 var CLOUD_API=(_CFG.cloudUrl||"").replace(/\/+$/,"");
 var CLOUD_TOKEN=_CFG.appToken||"";
-function cloudOn(){return !!CLOUD_API&&!/YOUR-SUBDOMAIN/.test(CLOUD_API);}
+/* وضع المزامنة: "dropbox" = إلغاء Cloudflare والاعتماد على Dropbox المباشر (آمن ضد التعارض عبر rev الملف).
+   للرجوع الفوري لـCloudflare عند الحاجة: غيّر القيمة إلى "cloud". لا يُحذف أي كود Cloudflare — يبقى خاملاً. */
+var SYNC_MODE="dropbox";
+function cloudOn(){return SYNC_MODE!=="dropbox" && !!CLOUD_API && !/YOUR-SUBDOMAIN/.test(CLOUD_API);}
+function dbxEnabled(){var g=dbxCfg();return !!(g&&g.enabled&&g.refreshToken);}
+function syncOn(){return cloudOn()||dbxEnabled();}
+/* طبقة النقل الموحّدة: نفس محرّك المزامنة (الطابور + الدمج الثلاثي + شريط التعارض) يعمل فوق Cloudflare أو Dropbox */
+async function syncLoad(){return cloudOn()?cloudLoad():dbxLoad();}
+async function syncSave(payload,baseRev,sovereign){return cloudOn()?cloudSave(payload,baseRev,sovereign):dbxSave(payload,baseRev,sovereign);}
 function cloudHeaders(json){var h={};if(json)h["Content-Type"]="application/json";if(CLOUD_TOKEN)h["Authorization"]="Bearer "+CLOUD_TOKEN;return h;}
 async function cloudLoad(){var r=await fetch(CLOUD_API+"/data",{method:"GET",headers:cloudHeaders(false),cache:"no-store"});
   if(r.status===204)return {payload:null,rev:(r.headers.get("X-Data-Rev")||""),epoch:0};
@@ -517,7 +526,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.4.6";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.4.7";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
 /* دوال الترحيل: MIGRATIONS[v-1] ترقّي البيانات من النسخة v إلى v+1.
    تُطبَّق تلقائياً عند فتح التطبيق أو سحب بيانات أقدم، دون مساس بأي بيانات موجودة. */
@@ -658,7 +667,9 @@ async function dbxExchange(code){var v,ak;try{v=localStorage.getItem("dbx_v");ak
   if(!r.ok)throw new Error("token "+r.status);var j=await r.json();
   S.config.dropbox.appKey=ak;S.config.dropbox.refreshToken=j.refresh_token||"";S.config.dropbox.enabled=true;
   DBX.access=j.access_token;DBX.exp=Date.now()+((j.expires_in||14400)-60)*1000;
-  try{localStorage.removeItem("dbx_v")}catch(e){}await DB.set("dsr_config",S.config);}
+  S.config.cloudDirty=true;   /* بعد الربط: انشر بيانات هذا الجهاز إلى Dropbox في أول مزامنة */
+  try{localStorage.removeItem("dbx_v")}catch(e){}await DB.set("dsr_config",S.config);
+  try{ if((S.currentUser||"").toLowerCase()===OWNER_EMAIL){ await fsSetDropbox(S.config.dropbox.appKey,S.config.dropbox.refreshToken);} }catch(e){}}
 async function dbxToken(){var g=dbxCfg();if(DBX.access&&Date.now()<DBX.exp)return DBX.access;
   if(!g.refreshToken)throw new Error("غير مرتبط");
   var body=new URLSearchParams({grant_type:"refresh_token",refresh_token:g.refreshToken,client_id:g.appKey});
@@ -671,6 +682,26 @@ async function dbxUpload(path,content){var t=await dbxToken();
 async function dbxDownload(path){var t=await dbxToken();
   var r=await fetch("https://content.dropboxapi.com/2/files/download",{method:"POST",headers:{Authorization:"Bearer "+t,"Dropbox-API-Arg":JSON.stringify({path:path})}});
   if(r.status===409)return null;if(!r.ok)throw new Error("download "+r.status);return r.text();}
+var DBX_PATH="/DailyReport/data.json";
+/* نقل Dropbox بعقد مطابق لـ cloudLoad/cloudSave: rev = rev ملف Dropbox (قفل تفاؤلي)، epoch من داخل الحمولة.
+   القفل التفاؤلي: الرفع بوضع update+rev — فإن تغيّر الملف بعيداً منذ آخر تنزيل يعيد Dropbox 409 ⇒ ندمج ثم نرفع. */
+async function dbxLoad(){var t=await dbxToken();
+  var r=await fetch("https://content.dropboxapi.com/2/files/download",{method:"POST",headers:{Authorization:"Bearer "+t,"Dropbox-API-Arg":JSON.stringify({path:DBX_PATH})}});
+  if(r.status===409)return {payload:null,rev:"",epoch:0};                 /* لا يوجد ملف بعد (أول استخدام) */
+  if(!r.ok)throw new Error("dbx download "+r.status);
+  var meta={};try{meta=JSON.parse(r.headers.get("Dropbox-API-Result")||"{}")}catch(e){}
+  var txt=await r.text();var pl=txt?JSON.parse(txt):null;
+  var rev=meta.rev||"";
+  if(!rev)rev=await dbxRevOf();     /* احتياط: إن حجب CORS ترويسة rev، اجلب rev الملف من get_metadata (جسم JSON دائماً مقروء) */
+  return {payload:pl,rev:rev,epoch:num(pl&&pl.epoch)||0};}
+async function dbxRevOf(){try{var t=await dbxToken();var r=await fetch("https://api.dropboxapi.com/2/files/get_metadata",{method:"POST",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},body:JSON.stringify({path:DBX_PATH})});if(!r.ok)return "";var j=await r.json();return j.rev||"";}catch(e){return "";}}
+async function dbxSave(payload,baseRev,sovereign){var t=await dbxToken();
+  var mode=sovereign?"overwrite":(baseRev?{".tag":"update",update:baseRev}:"add");
+  var arg={path:DBX_PATH,mode:mode,autorename:false,mute:true};
+  var r=await fetch("https://content.dropboxapi.com/2/files/upload",{method:"POST",headers:{Authorization:"Bearer "+t,"Content-Type":"application/octet-stream","Dropbox-API-Arg":JSON.stringify(arg)},body:JSON.stringify(payload)});
+  if(r.status===409){var err=new Error("conflict");err.conflict=true;err.stale=true;throw err;}  /* تعارض rev ⇒ يعالجه المحرّك بالدمج */
+  if(!r.ok)throw new Error("dbx upload "+r.status);
+  var j={};try{j=await r.json()}catch(e){}return (j.rev||"");}
 function gatherPayload(){var g=dbxCfg();var cfg=JSON.parse(JSON.stringify(S.config));cfg.dropbox={appKey:g.appKey,refreshToken:"",enabled:g.enabled};cfg.cloudDirty=false;cfg.baseRev="";delete cfg.pendingOps;delete cfg.baseSnap;delete cfg.syncRev;delete cfg.epoch;
   return{app:"dsr",version:3,schema:SCHEMA_VERSION,appVersion:APP_VERSION,epoch:num(S.config.epoch)||0,rev:num(S.config.syncRev)||0,exportedAt:nowStamp(),config:cfg,data:S.data};}
 var CONFLICT_MSG="تتوفّر بيانات أحدث في السحابة. رجاءً حدّث ثم أعد المحاولة.";
@@ -714,43 +745,43 @@ function replayOps(baseObj,ops,force){
 /* المزامنة: عند تفعيل الـ Worker يُستخدم كالمصدر الأساسي مع قفل تفاؤلي، وإلا يعود لمسار Dropbox المباشر (توافقية) */
 function scheduleDbx(){if(S._noPush)return;
   S.config.syncRev=Date.now();S.config.cloudDirty=true;DB.set("dsr_config",S.config);
-  if(cloudOn()){if(S.dbxTimer)clearTimeout(S.dbxTimer);S.dbxTimer=setTimeout(cloudPush,1200);return;}
-  var g=dbxCfg();if(!g||!g.enabled||!g.refreshToken)return;if(S.dbxTimer)clearTimeout(S.dbxTimer);S.dbxTimer=setTimeout(dbxPush,2600);}
-function scheduleRetry(){if(S._retryTimer)clearTimeout(S._retryTimer);S._retryTimer=setTimeout(function(){if(cloudOn()&&(S.config.cloudDirty||(S.config.pendingOps||[]).length))cloudPush();},12000);}
+  if(!syncOn())return;
+  if(S.dbxTimer)clearTimeout(S.dbxTimer);S.dbxTimer=setTimeout(cloudPush,cloudOn()?1200:2600);}
+function scheduleRetry(){if(S._retryTimer)clearTimeout(S._retryTimer);S._retryTimer=setTimeout(function(){if(syncOn()&&(S.config.cloudDirty||(S.config.pendingOps||[]).length))cloudPush();},12000);}
 /* غلاف بقفل أحادي (single-flight) يمنع تداخل عمليات المزامنة */
 /* فرض بيانات هذا الجهاز كاملة على السحابة (يُستخدم بعد الاستعادة أو للإنقاذ) */
-async function sovereignSync(){if(!cloudOn())return true;setSync("busy");
+async function sovereignSync(){if(!syncOn())return true;setSync("busy");
   ensureQueue();S.config.pendingOps=[];S.config.baseSnap=null;S.config.cloudDirty=false;S.sync.conflict=false;
   for(var t=0;t<2;t++){
     try{
-      var res=await cloudLoad();S.config.baseRev=(res&&res.rev)||"";
+      var res=await syncLoad();S.config.baseRev=(res&&res.rev)||"";
       S.config.epoch=((res&&num(res.epoch))||0)+1;
       var payload=gatherPayload();
-      var newRev=await cloudSave(payload,S.config.baseRev||"",true);
+      var newRev=await syncSave(payload,S.config.baseRev||"",true);
       S.config.baseRev=newRev;S.config.pendingOps=[];setBaseSnap();
       await DB.set("dsr_config",S.config);
       setSync("on");S.sync.last=nowStamp();hideConflictBanner();return true;
     }catch(e){if(!(e&&e.conflict))break;}
   }
   setSync("err");return false;}
-async function cloudPush(){if(!cloudOn())return;if(S._io){S._ioWant=true;return;}S._io=true;
-  try{await cloudPushCore();}finally{S._io=false;if(S._ioWant){S._ioWant=false;setTimeout(function(){if(cloudOn()&&S.config.cloudDirty)cloudPush()},50);}}}
+async function cloudPush(){if(!syncOn())return;if(S._io){S._ioWant=true;return;}S._io=true;
+  try{await cloudPushCore();}finally{S._io=false;if(S._ioWant){S._ioWant=false;setTimeout(function(){if(syncOn()&&S.config.cloudDirty)cloudPush()},50);}}}
 async function cloudPushCore(){setSync("busy");
-  try{var payload=gatherPayload();var newRev=await cloudSave(payload,S.config.baseRev||"");
+  try{var payload=gatherPayload();var newRev=await syncSave(payload,S.config.baseRev||"");
     S.config.baseRev=newRev;S.config.cloudDirty=false;S.sync.conflict=false;
     S.config.pendingOps=[];setBaseSnap();               /* رُفع بنجاح → أفرغ الطابور وثبّت الأساس */
     await DB.set("dsr_config",S.config);setSync("on");S.sync.last=nowStamp();hideConflictBanner();}
   catch(e){if(e&&e.conflict){
       if(e.stale){await cloudPullCore(true);return;}
       if(e.guard){toast(e.srvMsg||"حُجب حفظ مدمّر من الخادم — اعتُمدت نسخة السحابة","err");
-        var res=await cloudLoad();await adoptCloud(res);setSync("on");S.sync.last=nowStamp();render();return;}
+        var res=await syncLoad();await adoptCloud(res);setSync("on");S.sync.last=nowStamp();render();return;}
       await resolveConflict()
     }else{setSync("err");scheduleRetry();/* يبقى الطابور لإعادة المحاولة */}}}
 /* عند 409: نزّل الأحدث، أعد تطبيق الطابور تلقائياً، وارفع — أو اسأل فقط عند تعارض نفس السجل */
 async function resolveConflict(){
   setSync("busy");
   try{
-    var res=await cloudLoad();var remoteRev=res.rev||"",obj=res.payload;
+    var res=await syncLoad();var remoteRev=res.rev||"",obj=res.payload;
     var base={config:(obj&&obj.config)?cfgRecords(runMigrations(obj.config,obj.data||{},(obj&&obj.schema)||1).config):cfgRecords(S.config),
               data:(obj&&obj.data)?runMigrations(obj.config||{},obj.data,(obj&&obj.schema)||1).data:{}};
     ensureQueue();
@@ -765,11 +796,11 @@ async function resolveConflict(){
     mergedCfg.dropbox=localDbx;S.config=mergedCfg;S.data=rep.merged.data;
     S.config.baseRev=remoteRev;
     var payload=gatherPayload();var newRev;
-    try{newRev=await cloudSave(payload,remoteRev);}
+    try{newRev=await syncSave(payload,remoteRev);}
     catch(e2){
       if(e2&&e2.conflict&&e2.stale){await cloudPullCore(true);return;}
       if(e2&&e2.conflict&&e2.guard){toast(e2.srvMsg||"حُجب حفظ مدمّر — اعتُمدت السحابة","err");
-        var res2=await cloudLoad();await adoptCloud(res2);setSync("on");S.sync.last=nowStamp();render();return;}
+        var res2=await syncLoad();await adoptCloud(res2);setSync("on");S.sync.last=nowStamp();render();return;}
       throw e2;}
     S.config.baseRev=newRev;S.config.cloudDirty=false;S.sync.conflict=false;S.config.pendingOps=[];setBaseSnap();
     S._noPush=true;invalidateBal();await persistEverything();S._noPush=false;
@@ -779,7 +810,7 @@ async function resolveConflict(){
   }catch(e){ if(e&&e.conflict){ /* تغيّر الخادم مجدداً أثناء المحاولة → أعد الحلقة مرة */ setSync("err"); setTimeout(function(){if(!S.sync.conflict)cloudPull(true)},800); }
     else { setSync("err"); scheduleRetry(); } }
 }
-async function cloudPull(silent){if(!cloudOn())return;if(S._io){if(!silent)toast("المزامنة جارية…");return;}S._io=true;
+async function cloudPull(silent){if(!syncOn())return;if(S._io){if(!silent)toast("المزامنة جارية…");return;}S._io=true;
   try{await cloudPullCore(silent);}finally{S._io=false;}}
 /* اعتماد سيادي: يعتمد السحابة كاملةً ويُسقط الطابور المحلي (يطهّر الجهاز) */
 async function adoptCloud(res){var p=res&&res.payload;ensureQueue();
@@ -791,7 +822,7 @@ async function adoptCloud(res){var p=res&&res.payload;ensureQueue();
   S._noPush=true;await persistEverything();S._noPush=false;
   S.day=null;}
 async function cloudPullCore(silent){setSync("busy");
-  try{var res=await cloudLoad();var remoteRev=res.rev||"",obj=res.payload,base=S.config.baseRev||"";
+  try{var res=await syncLoad();var remoteRev=res.rev||"",obj=res.payload,base=S.config.baseRev||"";
     var srvE=num(res.epoch)||0,myE=num(S.config.epoch)||0;
     if(srvE>myE){await adoptCloud(res);setSync("on");S.sync.last=nowStamp();hideConflictBanner();
       toast("اعتُمدت النسخة المُستعادة مركزياً ✓");render();return;}
@@ -993,18 +1024,27 @@ function syncState(){if(!S.config)return {cls:"",dot:"",text:"…"};var g=dbxCfg
   if(S.sync.status==="err")return {cls:"s-err",dot:"err",text:"تعذّرت المزامنة"+(pend?" · معلّق: "+pend:"")};
   return {cls:"s-on",dot:"on",text:S.dirty?"جارٍ الحفظ "+label:"متزامن "+label};}
 async function backupNow(silent){
-  if(!cloudOn()){if(!silent)toast("النسخ السحابي يتطلب المزامنة السحابية","err");return false}
-  try{
-    var r=await fetch(CLOUD_API+"/backup",{method:"POST",headers:cloudHeaders({"Content-Type":"application/json"}),body:JSON.stringify(gatherPayload())});
-    if(r.ok){var st=nowStamp();try{localStorage.setItem("dsr_bk_day",todayISO());localStorage.setItem("dsr_bk_at",st)}catch(e){}
+  if(cloudOn()){
+    try{
+      var r=await fetch(CLOUD_API+"/backup",{method:"POST",headers:cloudHeaders({"Content-Type":"application/json"}),body:JSON.stringify(gatherPayload())});
+      if(r.ok){var st=nowStamp();try{localStorage.setItem("dsr_bk_day",todayISO());localStorage.setItem("dsr_bk_at",st)}catch(e){}
+        if(!silent)toast("حُفظت نسخة احتياطية في Dropbox › DailyReport › backups");
+        var el=document.getElementById("bkLine");if(el)el.textContent="آخر نسخة: "+st;return true}
+    }catch(e){}
+    if(!silent)toast("تعذّر إنشاء النسخة الاحتياطية","err");return false;
+  }
+  if(dbxEnabled()){
+    try{await dbxUpload("/DailyReport/backups/backup-"+todayISO()+"-"+Date.now()+".json",JSON.stringify(gatherPayload(),null,2));
+      var st2=nowStamp();try{localStorage.setItem("dsr_bk_day",todayISO());localStorage.setItem("dsr_bk_at",st2)}catch(e){}
       if(!silent)toast("حُفظت نسخة احتياطية في Dropbox › DailyReport › backups");
-      var el=document.getElementById("bkLine");if(el)el.textContent="آخر نسخة: "+st;return true}
-  }catch(e){}
-  if(!silent)toast("تعذّر إنشاء النسخة الاحتياطية","err");return false;}
+      var el2=document.getElementById("bkLine");if(el2)el2.textContent="آخر نسخة: "+st2;return true;
+    }catch(e){if(!silent)toast("تعذّر إنشاء النسخة الاحتياطية","err");return false;}
+  }
+  if(!silent)toast("النسخ الاحتياطي يتطلب ربط Dropbox","err");return false;}
 function scheduleDailyBackup(){try{
-  if(!cloudOn())return;var last=localStorage.getItem("dsr_bk_day");
+  var last=localStorage.getItem("dsr_bk_day");
   if(last===todayISO())return;
-  setTimeout(function(){backupNow(true)},6000);
+  setTimeout(function(){if(cloudOn()||dbxEnabled())backupNow(true)},6000);
 }catch(e){}}
 
 /* ===== سجل التنقل (زر الرجوع العام) ===== */
@@ -1902,11 +1942,9 @@ function showUpdateBanner(){
 }
 /* مزامنة تلقائية عند العودة للتطبيق أو عند عودة الاتصال (لأحدث بيانات عبر الأجهزة) */
 function autoSync(){
-  if(cloudOn()){if(S._syncing)return;if(S.dirty){scheduleDbx();return}
-    S._syncing=true;cloudPull(true).then(function(){S._syncing=false;if(S.view!=="entry"){S.day=null}render();}).catch(function(){S._syncing=false});return;}
-  var g=dbxCfg();if(!g||!g.enabled||!g.refreshToken)return;if(S._syncing)return;
+  if(!syncOn())return;if(S._syncing)return;
   if(S.dirty){scheduleDbx();return}
-  S._syncing=true;dbxPull(true).then(function(){S._syncing=false;if(S.view!=="entry"){S.day=null}render();}).catch(function(){S._syncing=false});}
+  S._syncing=true;cloudPull(true).then(function(){S._syncing=false;if(S.view!=="entry"){S.day=null}render();}).catch(function(){S._syncing=false});}
 function setupAutoSync(){
   document.addEventListener("visibilitychange",function(){if(!document.hidden)autoSync()});
   window.addEventListener("online",function(){updateSyncPill();autoSync()});
@@ -2359,6 +2397,12 @@ var FB2=null;
 function fbReady(){return typeof firebase!=="undefined"&&firebase.auth}
 function fbInit(){if(!fbReady())return false;try{if(!(firebase.apps&&firebase.apps.length))firebase.initializeApp(FB_CONFIG);}catch(e){}try{firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}return true;}
 function fbSecondary(){if(FB2)return FB2;try{FB2=firebase.initializeApp(FB_CONFIG,"secondary")}catch(e){FB2=firebase.app("secondary")}return FB2}
+/* ===== Firestore: «الدرج المقفل» لتوزيع مفتاح Dropbox آمناً (قراءة: كل مستخدم مسجّل، كتابة: المالك فقط عبر قواعد الأمان) ===== */
+var FS=null;
+function fsReady(){return typeof firebase!=="undefined"&&firebase.firestore;}
+function fsInit(){if(FS)return FS;if(!fsReady())return null;try{FS=firebase.firestore()}catch(e){FS=null}return FS;}
+async function fsGetDropbox(){var db=fsInit();if(!db)return null;try{var d=await db.collection("appConfig").doc("dropbox").get();return (d&&d.exists)?d.data():null;}catch(e){return null;}}
+async function fsSetDropbox(appKey,refreshToken){var db=fsInit();if(!db)return false;try{await db.collection("appConfig").doc("dropbox").set({appKey:appKey||"",refreshToken:refreshToken||"",updatedAt:Date.now(),updatedBy:(S.currentUser||"")});return true;}catch(e){return false;}}
 
 function loginHTML(){return "<div id='authGate' class='authgate'><form class='authcard' onsubmit='return App.login(event)'>"+
   "<div class='authlogo'>"+LOGO_SVG+"</div><h2>نظام تقارير اليومية</h2><p class='authsub'>الضبيبي التجارية · تسجيل الدخول</p>"+
@@ -2372,8 +2416,13 @@ function hideLogin(){var g=document.getElementById("authGate");if(g)g.remove();d
 var _authStarted=false;
 async function onSignedIn(user){
   var email=(user.email||"").toLowerCase();
-  if(cloudOn()){try{await cloudPull(true)}catch(e){}}
+  /* الربط التلقائي: إن لم يكن لهذا الجهاز مفتاح Dropbox، اجلبه من «الدرج المقفل» (Firestore) بعد تسجيل الدخول */
+  try{ if(!dbxCfg().refreshToken){ var dd=await fsGetDropbox(); if(dd&&dd.refreshToken){ S.config.dropbox={appKey:dd.appKey||dbxCfg().appKey||"",refreshToken:dd.refreshToken,enabled:true}; await DB.set("dsr_config",S.config);} } }catch(e){}
+  /* اسحب أحدث البيانات (Dropbox أو Cloudflare حسب الوضع) قبل التحقق من الأدوار */
+  if(syncOn()){try{await cloudPull(true)}catch(e){}}
   ensureOwner();
+  /* المالك: إن وُجد مفتاح Dropbox محلياً ولم يُنشر بعد، انشره في Firestore ليتصل الموظفون تلقائياً */
+  try{ if(email===OWNER_EMAIL && dbxCfg().refreshToken){ var cur=await fsGetDropbox(); if(!cur||!cur.refreshToken){ await fsSetDropbox(dbxCfg().appKey,dbxCfg().refreshToken);} } }catch(e){}
   var entry=rosterGet(email);
   if(email!==OWNER_EMAIL){
     if(!entry){showLogin("هذا الحساب غير مُصرّح له بالدخول. تواصل مع المالك.");try{firebase.auth().signOut()}catch(e){}return;}
@@ -2385,8 +2434,7 @@ async function onSignedIn(user){
   hideLogin();
   if(!canSee(S.view))S.view="dashboard";
   loadDay(S.curDate);render();
-  if(!_authStarted){_authStarted=true;registerSW();setupAutoSync();setupInstall();
-    if(!cloudOn()&&S.config.dropbox&&S.config.dropbox.enabled&&S.config.dropbox.refreshToken){try{await dbxPull(true);render()}catch(e){}}}
+  if(!_authStarted){_authStarted=true;registerSW();setupAutoSync();setupInstall();}
 }
 function startAuth(){
   if(!fbInit()){showLogin("تعذّر تحميل خدمة الدخول. تحقّق من اتصالك بالإنترنت ثم أعد فتح الصفحة.");return;}
