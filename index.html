@@ -1881,7 +1881,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.3";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.4";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -3206,7 +3206,10 @@ function chgPanelHTML(d){
     "</ul><div class='chg-note'>"+(st==="draft"?"ستُسجَّل هذه التغييرات في سجل النشاط عند إعادة الترحيل.":"مقارنةً بآخر ترحيل.")+"</div></div>";
 }
 function refreshChangePanel(){var el=document.getElementById("chgPanel");if(el&&S.day)el.innerHTML=chgPanelHTML(S.day);}
-function applyStatus(d){d.locked=!!(d.status&&d.status!=="draft");if(S.data[d.date]){S.data[d.date].status=d.status;S.data[d.date].locked=d.locked;S.data[d.date].firstPostedAt=d.firstPostedAt;S.data[d.date].postedBy=d.postedBy;S.data[d.date]._postSnap=d._postSnap;}scheduleSave();render();}
+function applyStatus(d){d.locked=!!(d.status&&d.status!=="draft");if(S.data[d.date]){S.data[d.date].status=d.status;S.data[d.date].locked=d.locked;S.data[d.date].firstPostedAt=d.firstPostedAt;S.data[d.date].postedBy=d.postedBy;S.data[d.date]._postSnap=d._postSnap;}scheduleSave();
+  /* دفع فوري لتغيير الحالة كخطوة واحدة — كي تطابق قواعد الانتقالات على الخادم (البند ٦) فلا تتجمّع خطوتان في دفعة واحدة */
+  if(typeof fsMode==="function"&&fsMode()){try{fsPushNow();}catch(e){}}
+  render();}
 function viewEntry(){
   if(!S.day||S.day.date!==S.curDate)loadDay(S.curDate);
   var d=S.day,cfg=S.config,c=computeDay(d,cfg);

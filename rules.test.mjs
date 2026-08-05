@@ -44,6 +44,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'roles', 'grant@dhtrd.com'),     { name: 'ممنوح',  role: 'المدير العام',   active: true, perms: { entry: 'allow' } });
     await setDoc(doc(db, 'roles', 'denyu@dhtrd.com'),     { name: 'ممنوع',  role: 'مُدخِل اليوميات', active: true, perms: { entry: 'deny' } });
     await setDoc(doc(db, 'days', '2026-07-30'),           { date: '2026-07-30', updatedTs: 1 });
+    await setDoc(doc(db, 'days', '2026-07-31'),           { date: '2026-07-31', status: 'posted', rows: [{ id: 'r1', sales: 100 }], updatedTs: 1 });
     await setDoc(doc(db, 'meta', 'config'),               { businessName: 'الضبيبي', cfgUpdatedTs: 1 });
     await setDoc(doc(db, 'approvals', '2026-07-30'),      { date: '2026-07-30', status: 'pending' });
     await setDoc(doc(db, 'activity', 'seed1'),            { id: 'seed1', ts: 1, type: 'login', actor: OWNER });
@@ -84,6 +85,24 @@ test('days: استثناء فردي «منح» يتيح الكتابة لدور 
 });
 test('days: استثناء فردي «منع» يمنع الكتابة عن دور يملكها (مُدخِل اليوميات)', async () => {
   await assertFails(setDoc(day(asUser('denyu@dhtrd.com')), { date: '2026-07-30', updatedTs: 8 }));
+});
+
+/* ===================== قفل الحقول + انتقالات الحالة (البند ٦) ===================== */
+const pday = (db) => doc(db, 'days', '2026-07-31'); // يومية مرحّلة (posted)
+test('قفل: تعديل مالية يومية مسودة مسموح', async () => {
+  await assertSucceeds(setDoc(day(asUser(OWNER)), { date: '2026-07-30', rows: [{ id: 'r1', sales: 50 }], updatedTs: 2 }));
+});
+test('قفل: تعديل المبلغ في يومية مرحّلة (دون إعادتها مسودة) ممنوع', async () => {
+  await assertFails(setDoc(pday(asUser(OWNER)), { date: '2026-07-31', status: 'posted', rows: [{ id: 'r1', sales: 999 }], updatedTs: 2 }));
+});
+test('حالة: مرحّلة → مقفلة (بلا تغيير مالي) مسموح', async () => {
+  await assertSucceeds(setDoc(pday(asUser(OWNER)), { date: '2026-07-31', status: 'locked', rows: [{ id: 'r1', sales: 100 }], updatedTs: 2 }));
+});
+test('حالة: إعادة المرحّلة إلى مسودة مسموح (ثم يجوز التعديل)', async () => {
+  await assertSucceeds(setDoc(pday(asUser(OWNER)), { date: '2026-07-31', status: 'draft', rows: [{ id: 'r1', sales: 100 }], updatedTs: 2 }));
+});
+test('حالة: قفز مسودة → مقفلة (تخطّي الترحيل) ممنوع', async () => {
+  await assertFails(setDoc(day(asUser(OWNER)), { date: '2026-07-30', status: 'locked', updatedTs: 2 }));
 });
 
 /* ===================== الإعدادات (meta) ===================== */

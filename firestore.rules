@@ -26,10 +26,37 @@ service cloud.firestore {
       ));
     }
 
+    // ===== قفل الحقول + انتقالات الحالة على مستوى الخادم (البند ٦) =====
+    // حالة اليومية: مسودة → مرحّلة → مقفلة (+ ملغاة)، وإعادة كمسودة من أي حالة.
+    function dstatus(d) { return ('status' in d) ? d.status : 'draft'; }
+    // الحقول المالية التي لا يجوز تغييرها بعد الترحيل (إلا بإعادتها مسودة):
+    function finKeys() { return ['rows','expenses','incomes','bankDeposit','carryIn']; }
+    function noFinChange() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(finKeys());
+    }
+    // تُسمح التغييرات المالية فقط والحالةُ مسودةٌ قبل الكتابة أو بعدها (تحرير/ترحيل/إعادة فتح):
+    function finChangeOk() {
+      return dstatus(resource.data) == 'draft'
+          || dstatus(request.resource.data) == 'draft'
+          || noFinChange();
+    }
+    // انتقالات مسموحة فقط (يمنع القفز مثل مسودة→مقفلة):
+    function validTransition() {
+      let o = dstatus(resource.data);
+      let n = dstatus(request.resource.data);
+      return (o == n)
+        || (o == 'draft'     && (n == 'posted' || n == 'cancelled'))
+        || (o == 'posted'    && (n == 'locked' || n == 'cancelled' || n == 'draft'))
+        || (o == 'locked'    && (n == 'draft'  || n == 'cancelled'))
+        || (o == 'cancelled' && (n == 'draft'));
+    }
+
     // ===== وثائق الأيام =====
     match /days/{day} {
-      allow read:  if active();
-      allow write: if canWriteDays();
+      allow read:   if active();
+      allow create: if canWriteDays();
+      allow update: if canWriteDays() && validTransition() && finChangeOk();
+      allow delete: if canWriteDays();
     }
 
     // ===== الإعدادات العامة + الأدوار المخصّصة + أسماء العرض (meta/config): كتابة للمالك فقط =====
