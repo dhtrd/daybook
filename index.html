@@ -241,6 +241,9 @@ html.pinned{overflow:hidden}
 .notifprompt .np-act{display:flex;gap:8px;flex-wrap:wrap}
 .notifprompt .np-on{background:var(--brass);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-weight:800;cursor:pointer;font-family:inherit;font-size:13px}
 .notifprompt .np-x{background:transparent;color:#cfe0d6;border:1px solid rgba(255,255,255,.3);border-radius:9px;padding:9px 12px;cursor:pointer;font-family:inherit;font-size:13px}
+.notifprompt.rembar{background:linear-gradient(120deg,#8a5a12,#c79a3a);box-shadow:0 6px 18px rgba(175,130,40,.28)}
+.notifprompt.rembar .np-on{background:#fff;color:#7c4a11}
+.notifprompt.rembar .np-x{color:#fbeccb}
 .nitem:last-child{border:none}.nitem:hover{background:var(--field)}
 .nitem .ni{font-size:15px;flex:none}
 .nitem.n-warn{background:color-mix(in srgb,var(--brass) 9%,transparent)}
@@ -1790,7 +1793,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.7.8";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.7.9";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2603,6 +2606,37 @@ function notifPromptBar(){
   try{if(localStorage.getItem("dsr_notifprompt")==="off")return "";}catch(e){}
   return "<div class='notifprompt'><span class='np-ic'>🔔</span><span class='np-tx'><b>فعّل الإشعارات</b> — لتصلك التحديثات الجديدة (يوميات واعتمادات) فوراً حتى خارج الصفحة.</span><span class='np-act'><button class='np-on' onclick='App.notifPromptEnable()'>تفعيل الإشعارات</button><button class='np-x' onclick='App.notifPromptDismiss()'>لاحقاً</button></span></div>";
 }
+/* ===== التذكير اليومي الذكي (النقطة ٨) — تنبيه خارجي في وقت محدَّد إن لم تُرحَّل يومية اليوم =====
+   الإعداد محليّ لكل جهاز (لأن الإشعار والصلاحية محليّان أصلاً)، ويُطلق إشعاراً خارجياً مرة واحدة
+   يومياً عند/بعد الوقت المحدَّد إن كانت يومية اليوم ناقصة أو ما زالت مسودة. «ذكي»: لا يُذكّر إن
+   رُحّلت اليومية، ويحترم أيام العمل، ولمن يملك صلاحية الإدخال فقط. */
+function remOn(){try{return localStorage.getItem("dsr_rem_on")==="1"}catch(e){return false}}
+function remTime(){try{return localStorage.getItem("dsr_rem_time")||"20:00"}catch(e){return "20:00"}}
+function remDaysMode(){try{return localStorage.getItem("dsr_rem_days")||"all"}catch(e){return "all"}}
+function remCanEntry(){return isOwner()||myRole()==="مُدخِل اليوميات";}
+function todayNeedsEntry(){var d=S.data[todayISO()];if(!d)return true;return dayStatus(d)==="draft";}
+function remIsDay(dt){if(remDaysMode()!=="work")return true;var g=dt.getDay();return g>=0&&g<=4;}   /* الأحد(0)–الخميس(4) */
+function checkDailyReminder(force){try{
+  if(!remCanEntry())return;
+  if(!force){
+    if(!remOn())return;
+    var last="";try{last=localStorage.getItem("dsr_rem_last")||""}catch(e){}
+    if(last===todayISO())return;
+    var now=new Date();if(!remIsDay(now))return;
+    var t=remTime().split(":"),hh=parseInt(t[0],10),mm=parseInt(t[1],10);if(isNaN(hh))hh=20;if(isNaN(mm))mm=0;
+    var mins=now.getHours()*60+now.getMinutes(),tgt=hh*60+mm;
+    if(mins<tgt)return;
+  }
+  if(!todayNeedsEntry()){if(force)toast("يومية اليوم مُسجّلة ومرحّلة ✓");return;}
+  if(!force){try{localStorage.setItem("dsr_rem_last",todayISO())}catch(e){}}
+  S._remActive=true;
+  try{if(typeof Notify!=="undefined")Notify.show("📝 تذكير يومية اليوم","لم تُرحّل يومية "+prettyDate(todayISO())+" بعد — سجّلها الآن.","rem-"+todayISO());}catch(e){}
+  if(S.view==="dashboard"){try{render()}catch(e){}}else{toast("📝 تذكير: لم تُرحّل يومية اليوم بعد");}
+}catch(e){}}
+function reminderBar(){
+  if(!S._remActive||!remCanEntry()||!todayNeedsEntry())return "";
+  return "<div class='notifprompt rembar'><span class='np-ic'>📝</span><span class='np-tx'><b>تذكير اليوم</b> — لم تُرحّل يومية "+esc(prettyDate(todayISO()))+" بعد. سجّلها قبل نهاية اليوم.</span><span class='np-act'><button class='np-on' onclick='App.remGo()'>سجّل الآن</button><button class='np-x' onclick='App.remDismiss()'>إخفاء</button></span></div>";
+}
 function notifList(){
   var out=[],role=myRole(),owner=isOwner();
   var pending=Object.keys(S.data).filter(function(d){return apprStatus(d)==="pending"});
@@ -2856,7 +2890,7 @@ function render(){
   else if(S.view==="users")body=viewUsers();
   else if(S.view==="approvals")body=viewApprovals();
   else if(S.view==="activity")body=viewActivity();
-  document.getElementById("app").innerHTML="<div class='shell' id='shell'>"+head+h("main",{class:(S._lastView!==S.view?"view-in":"")},(S.view==="dashboard"?notifPromptBar():"")+body)+drawer+"</div>";
+  document.getElementById("app").innerHTML="<div class='shell' id='shell'>"+head+h("main",{class:(S._lastView!==S.view?"view-in":"")},(S.view==="dashboard"?(reminderBar()+notifPromptBar()):"")+body)+drawer+"</div>";
   updateSyncPill();
   if(S.view==="entry"){var c=document.getElementById("cal");if(c&&S.calOpen)c.classList.add("open");applyColWidths()}
   if(_navScroll!=null){var sc=_navScroll;_navScroll=null;setTimeout(function(){try{scrollTo(0,sc)}catch(e){}},20)}
@@ -3664,6 +3698,23 @@ function viewSettings(){
     "<p class='note'>عند القفل: يظهر رمز يُطلب لفتح الجهاز، بينما تبقى الجلسة والبيانات كما هي. للخروج الكامل استخدم «تسجيل الخروج».</p>"+
     "</div></div>";
 
+  /* ==== التذكير اليومي الذكي (النقطة ٨) ==== */
+  var remEnabled=remOn(),remT=remTime(),remD=remDaysMode();
+  var notifReady=(typeof Notify!=="undefined"&&Notify.enabled());
+  var remCard="<div class='sec'><div class='sechead'>🔔 التذكير اليومي</div><div class='scard'>"+
+    "<div class='cbody'>"+
+      "<p class='note' style='margin-top:0'>تذكير ذكي يُطلق <b>إشعاراً خارجياً</b> في وقت تحدّده إن لم تُرحّل يومية اليوم — ولا يُذكّرك إن كانت مرحّلة. (الإعداد محليّ لهذا الجهاز.)</p>"+
+      "<div style='display:flex;align-items:center;gap:10px'><button type='button' class='nu-sw"+(remEnabled?" on":"")+"' title='"+(remEnabled?"إيقاف":"تفعيل")+"' onclick='App.remToggle()'><b></b></button><span style='font-size:13.5px;font-weight:700;color:var(--ink)'>تفعيل التذكير اليومي</span></div>"+
+      "<div class='two' style='margin-top:12px'>"+
+        "<div class='fld'><label>وقت التذكير</label><input type='time' value='"+esc(remT)+"' onchange='App.remSetTime(this.value)'></div>"+
+        "<div class='fld'><label>الأيام</label><select onchange='App.remSetDays(this.value)'><option value='all'"+(remD!=="work"?" selected":"")+">كل يوم</option><option value='work'"+(remD==="work"?" selected":"")+">أيام العمل (الأحد–الخميس)</option></select></div>"+
+      "</div>"+
+      "<div class='btnline' style='margin-top:12px'><button class='nbtn ghost' onclick='App.remTest()'>جرّب التذكير الآن</button></div>"+
+      (notifReady?"":"<div style='margin-top:12px;font-size:12.5px;color:#7c4a11;background:#fef3e2;border:1px solid #f3d9ac;border-radius:10px;padding:9px 12px'>⚠️ لتصلك التذكيرات خارج الصفحة فعّل «الإشعارات الخارجية» من زر 🔔 بالأعلى. (يظهر التذكير داخل التطبيق على أي حال.)</div>")+
+    "</div>"+
+    "<p class='note'>يظهر التذكير مرة واحدة في اليوم عند/بعد الوقت المحدَّد إن كان التطبيق مفتوحاً، ويبقى تنبيه داخل الرئيسية حتى تُرحّل اليومية.</p>"+
+    "</div></div>";
+
   /* ==== قالب اليوم + اسم الجهاز ==== */
   var tpl=(cfg.dayTemplate||[]);
   var devName=(function(){try{return localStorage.getItem("dsr_dev_name")||""}catch(e){return ""}})();
@@ -3679,7 +3730,7 @@ function viewSettings(){
 
   return "<div class='n-set'>"+
     "<div class='n-hd'><h1>الإعدادات</h1><p>ضبط النظام والمظهر والمزامنة والفروع وطرق الدفع</p></div>"+
-    acct+sync+general+branches+methods+theme+session+pinCard+tplCard+
+    acct+sync+general+branches+methods+theme+session+pinCard+remCard+tplCard+
     "</div>";
 }
 
@@ -4296,6 +4347,12 @@ window.App={
   notifToggleExt:function(e){if(e&&e.stopPropagation)e.stopPropagation();if(Notify.enabled()){Notify.disable();}else{Notify.request();}},
   notifPromptEnable:function(){if(typeof Notify!=="undefined")Notify.request();},
   notifPromptDismiss:function(){try{localStorage.setItem("dsr_notifprompt","off")}catch(e){}render();},
+  remToggle:function(){var on=remOn();try{localStorage.setItem("dsr_rem_on",on?"0":"1")}catch(e){}if(!on){try{if(typeof Notify!=="undefined"&&!Notify.enabled())Notify.request();}catch(e){}}render();toast(on?"أُوقف التذكير اليومي":"فُعّل التذكير اليومي");},
+  remSetTime:function(v){if(!/^\d{1,2}:\d{2}$/.test(v||"")){toast("وقت غير صالح","err");return}try{localStorage.setItem("dsr_rem_time",v);localStorage.removeItem("dsr_rem_last")}catch(e){}render();toast("وقت التذكير: "+v);},
+  remSetDays:function(v){try{localStorage.setItem("dsr_rem_days",v==="work"?"work":"all")}catch(e){}render();toast("أيام التذكير: "+(v==="work"?"أيام العمل (الأحد–الخميس)":"كل يوم"));},
+  remTest:function(){checkDailyReminder(true);},
+  remGo:function(){S._remActive=false;try{App.editDay(todayISO())}catch(e){App.go("entry")}},
+  remDismiss:function(){S._remActive=false;render();},
   closeNotif:function(){var w=document.querySelector(".notifwrap.open");if(w)w.classList.remove("open")},
   notifGo:function(v){App.closeNotif();App.go(v)},
   aprFlt:function(f){S._aprFlt=f;render()},
@@ -4931,7 +4988,8 @@ async function onSignedIn(user){
   loadDay(S.curDate);render();
   if(pinEnabled(email)&&pinIsLocked(email)){pinOpen("lock");}   /* بقي الجهاز مقفلاً قبل إعادة التحميل — النقطة ١٢ */
   maybeDailyLocalBackup();                                       /* نسخة احتياطية يومية على الجهاز — النقطة ٧ */
-  if(!_authStarted){_authStarted=true;registerSW();setupAutoSync();setupInstall();setupIdle();}
+  setTimeout(checkDailyReminder,2500);                           /* تذكير يومي ذكي — النقطة ٨ */
+  if(!_authStarted){_authStarted=true;registerSW();setupAutoSync();setupInstall();setupIdle();setInterval(checkDailyReminder,60000);}
 }
 function startAuth(){
   /* Firebase يُحمّل الآن مؤجّلاً (defer) كي لا يُبطئ ظهور الشاشة — ننتظر جاهزيته بهدوء (حتى ~7.5ث) */
