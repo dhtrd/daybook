@@ -1738,7 +1738,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.7.1";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.7.2";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2832,7 +2832,7 @@ function loadDay(date){S.curDate=date;S.calMonth=ymOf(date);var d=S.data[date];S
    فيتوزّع عبر نفس المزامنة اللحظية (بلا مجموعة أو قواعد جديدة). ينتهي تلقائياً بعد
    EDITLOCK_TTL دون نبض، فلا تتعلّق اليومية إن أُغلق الجهاز فجأة. وبعد الترحيل/الإقفال
    تُعاد كمسودة عبر «فتح للتعديل» (unlockDay) أو «إعادة» (aprReturn) بسلاسة. */
-var EDITLOCK_TTL=240000, EDITLOCK_BEAT=90000, _lockBeat=null;
+var EDITLOCK_TTL=240000, EDITLOCK_BEAT=120000, _lockBeat=null;
 function lockFresh(d){return !!(d&&d.editLock&&d.editLock.by&&(Date.now()-num(d.editLock.at)<EDITLOCK_TTL));}
 function lockedByOther(d){return lockFresh(d)&&String(d.editLock.by||"").toLowerCase()!==String(S.currentUser||"").toLowerCase();}
 function meName(){var u=(typeof rosterGet==="function"?(rosterGet(S.currentUser)||{}):{});return u.name||S.currentUser||"مستخدم";}
@@ -4471,7 +4471,7 @@ async function fsStart(){
     if(S.currentUser&&S.currentUser!==OWNER_EMAIL){var me=roster()[S.currentUser];if(me)S.currentRole=me.role||S.currentRole;}
 
     /* (3.5) سجل النشاط + الاعتمادات (مجموعات منفصلة) */
-    try{var actSnap=await db.collection("activity").get();S._activity=[];actSnap.forEach(function(d){S._activity.push(d.data())});S._activity.sort(function(a,b){return (num(b.ts)||0)-(num(a.ts)||0)});if(S._activity.length>200)S._activity=S._activity.slice(0,200);}catch(e){}
+    try{var actSnap=await db.collection("activity").orderBy("ts","desc").limit(200).get();S._activity=[];actSnap.forEach(function(d){S._activity.push(d.data())});S._activity.sort(function(a,b){return (num(b.ts)||0)-(num(a.ts)||0)});if(S._activity.length>200)S._activity=S._activity.slice(0,200);}catch(e){}
     try{var apprSnap=await db.collection("approvals").get();S._approvals={};apprSnap.forEach(function(d){S._approvals[d.id]=d.data()});}catch(e){}
 
     invalidateBal();await fsPersistQuiet();
@@ -4533,7 +4533,7 @@ function fsAttach(db){
     fsPersistQuiet().then(function(){if(!(S.view==="entry"&&S.dirty))render();});
   },function(){}));
   /* د) سجل النشاط — لحظي */
-  FSY.unsub.push(db.collection("activity").onSnapshot(function(snap){
+  FSY.unsub.push(db.collection("activity").orderBy("ts","desc").limit(200).onSnapshot(function(snap){
     if(FSY.applying)return;var ch=false;S._activity=S._activity||[];
     snap.docChanges().forEach(function(c){if(c.doc.metadata&&c.doc.metadata.hasPendingWrites)return;if(c.type==="removed")return;var d=c.doc.data();if(!d||!d.id)return;if(!S._activity.some(function(x){return x.id===d.id})){S._activity.push(d);ch=true;}});
     if(!ch)return;S._activity.sort(function(a,b){return (num(b.ts)||0)-(num(a.ts)||0)});if(S._activity.length>200)S._activity=S._activity.slice(0,200);if(!(S.view==="entry"&&S.dirty))render();
