@@ -176,6 +176,30 @@ a{color:var(--brass)}
 .idle-card p{font-size:13.5px;color:var(--text);margin:0 0 14px}.idle-card p b{color:var(--neg);font-size:16px}
 .idle-track{height:8px;border-radius:5px;background:var(--field);overflow:hidden;margin-bottom:16px}
 .idle-fill{height:100%;background:var(--neg);border-radius:5px;transition:width .9s linear}
+/* ===== قفل سريع برمز PIN (النقطة ١٢) ===== */
+.pinlock{position:fixed;inset:0;z-index:9900;background:linear-gradient(150deg,var(--acc),var(--ink));display:grid;place-items:center;padding:20px;animation:pinfade .25s var(--ease)}
+@keyframes pinfade{from{opacity:0}to{opacity:1}}
+.pin-card{background:var(--surface);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.45);padding:26px 24px 20px;width:320px;max-width:92vw;text-align:center;outline:none;animation:v2up .32s var(--ease)}
+.pin-lg{width:58px;height:58px;margin:0 auto 10px;display:grid;place-items:center}
+.pin-lg svg{width:58px;height:58px}
+.pin-nm{font-size:17px;font-weight:900;color:var(--ink)}
+.pin-sub{font-size:12.5px;color:var(--muted);margin:3px 0 16px}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin-bottom:12px}
+.pin-dots i{width:14px;height:14px;border-radius:50%;background:var(--field);border:1.5px solid var(--line);transition:transform .12s var(--easeS),background .12s,border-color .12s}
+.pin-dots i.on{background:var(--acc);border-color:var(--acc);transform:scale(1.12)}
+.pin-err{min-height:18px;font-size:12.5px;color:var(--neg);font-weight:700;margin-bottom:8px}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 auto;max-width:252px}
+.pin-k{height:56px;border:1px solid var(--line);background:var(--field);border-radius:14px;font-size:22px;font-weight:800;color:var(--ink);cursor:pointer;font-family:inherit;transition:transform .08s,background .15s;-webkit-tap-highlight-color:transparent}
+.pin-k:hover{background:var(--line2)}
+.pin-k:active{transform:scale(.94)}
+.pin-del{font-size:20px;color:var(--neg)}
+.pin-min{background:transparent;border-color:transparent;font-size:13px;font-weight:800;color:var(--muted)}
+.pin-min:hover{background:var(--field)}
+.pin-lo{margin-top:16px;background:none;border:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;padding:6px}
+.pin-lo:hover{color:var(--neg)}
+.pin-card.shake{animation:pinshake .4s}
+@keyframes pinshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+html.pinned{overflow:hidden}
 /* ===== الإشعارات ===== */
 .notifwrap{position:relative;display:inline-flex}
 .nbadge{position:absolute;top:-4px;inset-inline-start:-4px;background:var(--neg);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:grid;place-items:center;padding:0 3px}
@@ -1744,7 +1768,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.7.5";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.7.6";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2579,8 +2603,8 @@ function viewApprovals(){
   return "<div class='n-appr'>"+head+hint+"<div class='filters'>"+filters+"</div>"+(cards?"<div class='appr-list'>"+cards+"</div>":"<div class='empty'>لا يوميات في هذه الحالة</div>")+"</div>";
 }
 /* ===== سجل النشاط ===== */
-function actIcon(t){var m={login:"🔑",newdevice:"🔐",add:"➕",edit:"✏️",delete:"🗑️",approve:"✅",return:"↩️",role:"👤",export:"📤",send:"📨",post:"📋",lock:"🔒",revert:"↩️",cancel:"🚫"};return m[t]||"•";}
-function actColor(t){var m={login:"#2C74D6",newdevice:"#C9931F",add:"#0f6b57",edit:"#AF8228",delete:"#e0553f",approve:"#0f6b57",return:"#e0553f",role:"#6D5AE0",export:"#2C74D6",send:"#AF8228",post:"#0f6b57",lock:"#173A31",revert:"#AF8228",cancel:"#e0553f"};return m[t]||"#8a998f";}
+function actIcon(t){var m={login:"🔑",newdevice:"🔐",add:"➕",edit:"✏️",delete:"🗑️",approve:"✅",return:"↩️",role:"👤",export:"📤",send:"📨",post:"📋",lock:"🔒",revert:"↩️",cancel:"🚫",pinset:"🔒",pinchg:"🔒",pinoff:"🔓"};return m[t]||"•";}
+function actColor(t){var m={login:"#2C74D6",newdevice:"#C9931F",add:"#0f6b57",edit:"#AF8228",delete:"#e0553f",approve:"#0f6b57",return:"#e0553f",role:"#6D5AE0",export:"#2C74D6",send:"#AF8228",post:"#0f6b57",lock:"#173A31",revert:"#AF8228",cancel:"#e0553f",pinset:"#173A31",pinchg:"#AF8228",pinoff:"#8a998f"};return m[t]||"#8a998f";}
 function viewActivity(){
   /* ==== بيانات حقيقية (منسوخة حرفياً من الدالة الحالية) ==== */
   var acts=(S._activity||[]);var flt=S._actFlt||{q:"",type:"",user:""};
@@ -2715,6 +2739,7 @@ function render(){
       "<button class='burger' title='القائمة' onclick='App.toggleDrawer()'>☰</button>"+
       backBtn+h("div",{class:"logo"},LOGO_SVG)+
       h("div",{style:"min-width:0"},h("h1",{},esc(S.config.businessName))+h("small",{},subTitle))+
+      (pinEnabled(S.currentUser)?h("button",{class:"backbtn",title:"قفل الجهاز برمز سريع",onclick:"App.pinLockNow()",style:"min-width:36px;font-size:15px"},"🔒"):"")+
       h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn",title:"دليل الاستخدام",onclick:"App.help()",style:"min-width:36px;font-weight:900;font-size:15px"},"؟")+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
   var _u=rosterGet(S.currentUser)||{};var uname=_u.name||S.currentUser||"مستخدم";var urole=myRole();
   var drawer="<div class='bd' onclick='App.closeDrawer()'></div><aside class='drawer'>"+
@@ -3479,6 +3504,19 @@ function viewSettings(){
     "<p class='note'>يظهر تنبيه بعدّاد تنازلي بالتوقيت الفعلي قبل تسجيل الخروج عند عدم النشاط، ويظهر أيضاً في عنوان التبويب. (الإعداد يُزامَن على كل الأجهزة.)</p>"+
     "</div></div>";
 
+  /* ==== قفل الجهاز السريع برمز PIN (النقطة ١٢) ==== */
+  var hasPin=pinEnabled(S.currentUser);
+  var pinCard="<div class='sec'><div class='sechead'>🔒 قفل الجهاز السريع (رمز PIN)</div><div class='scard'>"+
+    "<div class='cbody'>"+
+      "<p class='note' style='margin-top:0'>اقفل شاشة الجهاز برمز من ٤ أرقام دون تسجيل خروج — مناسب للأجهزة المشتركة. أسرع من إعادة إدخال البريد وكلمة المرور، وتبقى جلستك قائمة ويبقى القفل بعد تحديث الصفحة. <b>الرمز محفوظ على هذا الجهاز فقط ولا يُزامَن.</b></p>"+
+      "<div style='font-size:13px;font-weight:800;color:"+(hasPin?"var(--pos)":"var(--muted)")+";margin:2px 0 12px'>"+(hasPin?"✓ رمز القفل مُفعّل على هذا الجهاز":"لا يوجد رمز على هذا الجهاز")+"</div>"+
+      (hasPin
+        ? "<div class='btnline'><button class='nbtn' onclick='App.pinLockNow()'>🔒 اقفل الآن</button><button class='nbtn ghost' onclick='App.pinSetup()'>تغيير الرمز</button><button class='nbtn danger' onclick='App.pinDisable()'>إلغاء الرمز</button></div>"
+        : "<div class='btnline'><button class='nbtn' onclick='App.pinSetup()'>+ تعيين رمز قفل</button></div>")+
+    "</div>"+
+    "<p class='note'>عند القفل: يظهر رمز يُطلب لفتح الجهاز، بينما تبقى الجلسة والبيانات كما هي. للخروج الكامل استخدم «تسجيل الخروج».</p>"+
+    "</div></div>";
+
   /* ==== قالب اليوم + اسم الجهاز ==== */
   var tpl=(cfg.dayTemplate||[]);
   var devName=(function(){try{return localStorage.getItem("dsr_dev_name")||""}catch(e){return ""}})();
@@ -3494,7 +3532,7 @@ function viewSettings(){
 
   return "<div class='n-set'>"+
     "<div class='n-hd'><h1>الإعدادات</h1><p>ضبط النظام والمظهر والمزامنة والفروع وطرق الدفع</p></div>"+
-    acct+sync+general+branches+methods+theme+session+tplCard+
+    acct+sync+general+branches+methods+theme+session+pinCard+tplCard+
     "</div>";
 }
 
@@ -3912,6 +3950,94 @@ function setupIdle(){
   idleReset();if(IDLE.timer)clearInterval(IDLE.timer);IDLE.timer=setInterval(idleTick,1000);
 }
 
+/* ===== قفل سريع برمز PIN (النقطة ١٢) — قفل الجهاز المشترك دون تسجيل خروج كامل =====
+   يُخزَّن الرمز (٤ أرقام) مجزّأً محلياً لكل مستخدم (dsr_pin_<email>) — تفضيل محلي على الجهاز،
+   لا يُزامَن ولا يُكتب في Firestore (يحترم خفض التكلفة — النقطة ٢). القفل يغطّي الشاشة ويُبقي
+   جلسة Firebase قائمة، فيُفتح برمز قصير بدل إعادة إدخال البريد وكلمة المرور. يبقى القفل بعد
+   إعادة تحميل الصفحة (dsr_lock_<email>) حتى إدخال الرمز أو تسجيل الخروج. */
+function pinKey_(email){return "dsr_pin_"+String(email||S.currentUser||"").toLowerCase();}
+function pinHash(s){var h=5381,i=String(s).length;while(i)h=(h*33)^String(s).charCodeAt(--i);return "p"+(h>>>0).toString(36);}
+function pinStored(email){try{return localStorage.getItem(pinKey_(email))||""}catch(e){return ""}}
+function pinSet(email,pin){try{if(pin)localStorage.setItem(pinKey_(email),pinHash(pin));else localStorage.removeItem(pinKey_(email));}catch(e){}}
+function pinEnabled(email){return !!pinStored(email);}
+function pinVerify(email,pin){var hh=pinStored(email);return !!hh&&hh===pinHash(pin);}
+function pinLockKey(email){return "dsr_lock_"+String(email||S.currentUser||"").toLowerCase();}
+function pinIsLocked(email){try{return localStorage.getItem(pinLockKey(email))==="1"}catch(e){return false}}
+function pinSetLocked(email,on){try{if(on)localStorage.setItem(pinLockKey(email),"1");else localStorage.removeItem(pinLockKey(email));}catch(e){}}
+var PINUI={el:null,mode:null,buf:"",step:"",first:""};
+function pinDotsHTML(){var s="";for(var i=0;i<4;i++)s+="<i"+(i<PINUI.buf.length?" class='on'":"")+"></i>";return s;}
+function pinRenderDots(){var w=document.getElementById("pinDots");if(w)w.innerHTML=pinDotsHTML();}
+function pinClearErr(){var e=document.getElementById("pinErr");if(e)e.textContent="";}
+function pinTitle(){
+  if(PINUI.mode==="lock")return {t:esc(meName()),s:"الجهاز مقفل — أدخل الرمز للمتابعة"};
+  if(PINUI.step==="new")return {t:(pinEnabled(S.currentUser)?"تغيير رمز القفل":"تعيين رمز قفل"),s:"اختر رمزاً من ٤ أرقام"};
+  return {t:"تأكيد الرمز",s:"أعد إدخال الرمز نفسه"};
+}
+function pinRender(){
+  if(!PINUI.el)return;
+  var ti=pinTitle();
+  var keys=[1,2,3,4,5,6,7,8,9].map(function(k){return "<button type='button' class='pin-k' onclick='App.pinKey("+k+")'>"+k+"</button>"}).join("");
+  var blLeft=(PINUI.mode==="lock")
+    ? "<span class='pin-k pin-min' style='visibility:hidden'></span>"
+    : "<button type='button' class='pin-k pin-min' onclick='App.pinCancel()'>إلغاء</button>";
+  var lastRow=blLeft+"<button type='button' class='pin-k' onclick='App.pinKey(0)'>0</button>"+
+              "<button type='button' class='pin-k pin-del' onclick='App.pinDel()' title='حذف'>⌫</button>";
+  PINUI.el.innerHTML="<div class='pin-card' tabindex='0'>"+
+    "<div class='pin-lg'>"+LOGO_SVG+"</div>"+
+    "<div class='pin-nm'>"+ti.t+"</div>"+
+    "<div class='pin-sub'>"+ti.s+"</div>"+
+    "<div class='pin-dots' id='pinDots'>"+pinDotsHTML()+"</div>"+
+    "<div class='pin-err' id='pinErr'></div>"+
+    "<div class='pin-pad'>"+keys+lastRow+"</div>"+
+    (PINUI.mode==="lock"?"<button type='button' class='pin-lo' onclick='App.logout()'>تسجيل الخروج بدلاً من ذلك ⤶</button>":"")+
+  "</div>";
+  var card=PINUI.el.querySelector(".pin-card");if(card&&card.focus){try{card.focus()}catch(e){}}
+}
+function pinKeydown(e){
+  if(!PINUI.el)return;
+  if(e.key>="0"&&e.key<="9"){e.preventDefault();pinPush(+e.key);}
+  else if(e.key==="Backspace"){e.preventDefault();pinDel();}
+}
+function pinOpen(mode){
+  if(PINUI.el)return;
+  if(mode==="lock"&&!pinEnabled(S.currentUser))return;
+  PINUI.mode=mode;PINUI.buf="";PINUI.step=(mode==="lock"?"enter":"new");PINUI.first="";
+  if(mode==="lock"){pinSetLocked(S.currentUser,true);try{releaseLock()}catch(e){}try{App.closeDrawer()}catch(e){}}
+  var d=document.createElement("div");d.id="pinLock";d.className="pinlock";
+  document.body.appendChild(d);PINUI.el=d;
+  document.documentElement.classList.add("pinned");
+  document.addEventListener("keydown",pinKeydown,true);
+  pinRender();
+}
+function pinPush(n){
+  if(!PINUI.el||PINUI.buf.length>=4)return;
+  pinClearErr();PINUI.buf+=String(n);pinRenderDots();
+  if(PINUI.buf.length===4)setTimeout(pinComplete,130);
+}
+function pinDel(){if(!PINUI.el)return;PINUI.buf=PINUI.buf.slice(0,-1);pinRenderDots();pinClearErr();}
+function pinShake(msg){var c=PINUI.el&&PINUI.el.querySelector(".pin-card");if(c){c.classList.remove("shake");void c.offsetWidth;c.classList.add("shake");}var e=document.getElementById("pinErr");if(e)e.textContent=msg||"رمز غير صحيح";PINUI.buf="";pinRenderDots();}
+function pinComplete(){
+  var buf=PINUI.buf;
+  if(PINUI.mode==="lock"){
+    if(pinVerify(S.currentUser,buf)){pinClose(true);}else{pinShake("رمز غير صحيح");}
+    return;
+  }
+  if(PINUI.step==="new"){PINUI.first=buf;PINUI.step="confirm";PINUI.buf="";pinRender();return;}
+  /* confirm */
+  if(buf===PINUI.first){
+    var had=pinEnabled(S.currentUser);pinSet(S.currentUser,buf);pinClose(false);
+    logEvent(had?"pinchg":"pinset",(had?"غيّر":"فعّل")+" رمز قفل الجهاز السريع");
+    toast(had?"تم تغيير الرمز ✓":"تم تعيين رمز القفل ✓");render();
+  }else{PINUI.step="new";PINUI.first="";pinShake("الرمزان غير متطابقين — أعد الإدخال");}
+}
+function pinClose(wasLock){
+  document.removeEventListener("keydown",pinKeydown,true);
+  if(PINUI.el&&PINUI.el.parentNode)PINUI.el.parentNode.removeChild(PINUI.el);
+  var u=S.currentUser;PINUI={el:null,mode:null,buf:"",step:"",first:""};
+  document.documentElement.classList.remove("pinned");
+  if(wasLock&&u)pinSetLocked(u,false);
+}
+
 /* ===== سحب الصفوف لإعادة الترتيب (يدعم اللمس) ===== */
 function setupDrag(){
   var D={active:false,tr:null,pid:null,grip:null};
@@ -4033,6 +4159,12 @@ window.App={
   actSearch:function(v){S._actFlt=S._actFlt||{q:"",type:"",user:""};S._actFlt.q=v;var q=(v||"").toLowerCase();var els=document.querySelectorAll(".act-tl .act-item");Array.prototype.forEach.call(els,function(el){var t=(el.textContent||"").toLowerCase();el.style.display=(!q||t.indexOf(q)>=0)?"":"none"})},
   setTheme:function(m){m=(m==="dark")?"dark":"light";try{localStorage.setItem("dsr_mode",m);if(S.currentUser)localStorage.setItem("dsr_mode_"+String(S.currentUser).toLowerCase(),m);}catch(e){}document.documentElement.setAttribute("data-mode",m);render()},
   toggleTheme:function(){App.setTheme(curTheme()==="dark"?"light":"dark");},
+  pinKey:function(n){pinPush(n)},
+  pinDel:function(){pinDel()},
+  pinCancel:function(){if(PINUI.mode!=="lock")pinClose(false)},
+  pinLockNow:function(){try{App.closeDrawer()}catch(e){}if(!pinEnabled(S.currentUser)){pinOpen("setup");return}pinOpen("lock")},
+  pinSetup:function(){try{App.closeDrawer()}catch(e){}pinOpen("setup")},
+  pinDisable:function(){openConfirm({title:"إلغاء رمز القفل؟",body:"لن يُطلب رمز عند قفل هذا الجهاز بعد الآن.",danger:true,confirm:"إلغاء الرمز",onOk:function(){pinSet(S.currentUser,"");pinSetLocked(S.currentUser,false);logEvent("pinoff","ألغى قفل الجهاز السريع");render();toast("أُلغي رمز القفل")}})},
   setIdleMin:function(v){var n=Math.max(1,Math.min(240,Math.round(num(v))||10));S.config.session=S.config.session||{};S.config.session.idleMin=n;saveConfig();render();toast("مهلة الخمول: "+n+" دقيقة")},
   setWarnSec:function(v){var n=Math.max(3,Math.min(120,Math.round(num(v))||10));S.config.session=S.config.session||{};S.config.session.warnSec=n;saveConfig();render();toast("مدة التنبيه: "+n+" ثانية")},
   navSearch:function(q){q=(q||"").trim();var any=false;var items=document.querySelectorAll("#dnav .di");Array.prototype.forEach.call(items,function(el){var lbl=el.getAttribute("data-lbl")||"",dsc=el.getAttribute("data-dsc")||"";var hit=!q||lbl.indexOf(q)>=0||dsc.indexOf(q)>=0;el.style.display=hit?"":"none";if(hit)any=true});var nr=document.getElementById("noresult");if(nr)nr.style.display=any?"none":"block"},
@@ -4641,6 +4773,7 @@ async function onSignedIn(user){
   hideLogin();
   if(!canSee(S.view))S.view="dashboard";
   loadDay(S.curDate);render();
+  if(pinEnabled(email)&&pinIsLocked(email)){pinOpen("lock");}   /* بقي الجهاز مقفلاً قبل إعادة التحميل — النقطة ١٢ */
   if(!_authStarted){_authStarted=true;registerSW();setupAutoSync();setupInstall();setupIdle();}
 }
 function startAuth(){
