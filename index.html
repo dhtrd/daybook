@@ -1686,6 +1686,28 @@ html[data-mode="dark"] .n-files .dt th{background:#1E7A5A}
 .n-users .nu-nm{font-weight:800;color:var(--ink);font-size:13.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .n-users .nu-em{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .n-users .nu-badge{font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--rc,var(--acc)) 15%,transparent);color:var(--rc,var(--acc));white-space:nowrap;flex:none}
+/* ===== استثناءات صلاحيات المستخدم (مرحلة المستخدمين U1) ===== */
+.n-users .nu-uw{display:flex;flex-direction:column}
+.n-users .nu-permbtn{border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:9px;padding:6px 9px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;flex:none;display:inline-flex;align-items:center;gap:5px;transition:.12s;-webkit-tap-highlight-color:transparent}
+.n-users .nu-permbtn:hover{border-color:var(--brass)}
+.n-users .nu-permbtn.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.n-users .nu-permbtn b{background:var(--brass);color:#fff;border-radius:999px;min-width:16px;height:16px;display:inline-grid;place-items:center;font-size:10px;padding:0 4px}
+.n-users .nu-perms-panel{background:var(--field);border:1px solid var(--line);border-radius:0 0 12px 12px;margin:-4px 0 0;padding:12px 14px 13px;animation:v2up .2s var(--ease)}
+.n-users .pp-h{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:10px}
+.n-users .pp-h .pp-role{font-weight:700;color:var(--muted);font-size:11.5px;margin-inline-start:6px}
+.n-users .pp-grid{display:flex;flex-direction:column;gap:6px}
+.n-users .pp-row{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:6px 10px}
+.n-users .pp-name{flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.n-users .pp-eff{font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;flex:none}
+.n-users .pp-eff.y{background:rgba(30,122,90,.14);color:var(--pos)}
+.n-users .pp-eff.n{background:rgba(180,70,47,.14);color:var(--neg)}
+.n-users .pp-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+.n-users .pp-b{appearance:none;border:none;background:var(--surface);color:var(--muted);font-family:inherit;font-size:11px;font-weight:800;padding:6px 9px;cursor:pointer;border-inline-start:1px solid var(--line);transition:.12s;white-space:nowrap}
+.n-users .pp-b:first-child{border-inline-start:none}
+.n-users .pp-b:hover{background:var(--field)}
+.n-users .pp-b.on.inherit{background:var(--muted);color:#fff}
+.n-users .pp-b.on.allow{background:var(--pos);color:#fff}
+.n-users .pp-b.on.deny{background:var(--neg);color:#fff}
 
 /* مفتاح التفعيل */
 .n-users .nu-sw{appearance:none;-webkit-appearance:none;border:none;padding:0;width:40px;height:23px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;flex:none;transition:background .15s}
@@ -1827,7 +1849,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.8.4";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.0";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -4470,6 +4492,14 @@ window.App={
     if(!name||!em||!pw){toast("أكمل الاسم والبريد وكلمة المرور","err");return}if(pw.length<6){toast("كلمة المرور 6 أحرف على الأقل","err");return}if(rosterGet(em)){toast("هذا البريد مضاف مسبقاً","err");return}
     toast("جارٍ إنشاء الحساب…");var sec=fbSecondary();sec.auth().createUserWithEmailAndPassword(em,pw).then(function(){return sec.auth().signOut()}).then(function(){roster()[em]={name:name,role:role,active:true,createdAt:nowStamp()};logEvent("add","أضاف مستخدم "+name+" ("+role+")",{target:em});saveConfig();render();toast("أُضيف المستخدم ✓")}).catch(function(ex){toast(authErrMsg(ex),"err")})},
   usrRole:function(em,role){var u=rosterGet(em);if(!u||em===OWNER_EMAIL)return;u.role=role;logEvent("role","غيّر دور "+(u.name||em)+" إلى "+role,{target:em});saveConfig();render();toast("تم تغيير الدور")},
+  usrPermsToggle:function(em){if(!isOwner())return;S._openPerms=(S._openPerms===em?null:em);render();},
+  usrPerm:function(em,action,val){if(!isOwner())return;if(em===OWNER_EMAIL){toast("المالك كامل الصلاحيات دائماً","err");return}var u=rosterGet(em);if(!u)return;
+    u.perms=(u.perms&&typeof u.perms==="object")?u.perms:{};
+    if(val==="inherit")delete u.perms[action];else if(val==="allow"||val==="deny")u.perms[action]=val;
+    if(!Object.keys(u.perms).length)delete u.perms;
+    var vl=({inherit:"يرث الدور",allow:"مسموح",deny:"ممنوع"})[val]||val;
+    logEvent("perm","صلاحية "+(u.name||em)+": "+screenLabel(action)+" ← "+vl,{target:em});
+    saveConfig();render();toast(screenLabel(action)+": "+vl);},
   usrToggle:function(em){var u=rosterGet(em);if(!u||em===OWNER_EMAIL)return;u.active=(u.active===false);logEvent("edit",(u.active?"فعّل":"أوقف")+" المستخدم "+(u.name||em),{target:em});saveConfig();render();toast(u.active?"مُفعّل":"موقوف")},
   usrReset:function(em){firebase.auth().sendPasswordResetEmail(em).then(function(){toast("📧 أُرسل رابط إعادة التعيين إلى "+em)}).catch(function(ex){toast(authErrMsg(ex),"err")})},
   usrDel:function(em){if(em===OWNER_EMAIL){toast("لا يمكن حذف المالك","err");return}openConfirm({title:"حذف المستخدم؟",body:"سيُمنع من الدخول للنظام. (يبقى حساب الدخول في Firebase لكن بلا صلاحية.)",danger:true,confirm:"حذف",onOk:function(){var nm=(rosterGet(em)&&rosterGet(em).name)||em;delete roster()[em];logEvent("delete","حذف المستخدم "+nm,{target:em});saveConfig();render();toast("حُذف المستخدم")}})},
@@ -4815,7 +4845,24 @@ function rosterGet(email){return roster()[(email||"").toLowerCase()]}
 function ensureOwner(){var r=roster();if(!r[OWNER_EMAIL])r[OWNER_EMAIL]={name:"المالك",role:"المالك",active:true,createdAt:nowStamp()};else{r[OWNER_EMAIL].role="المالك";r[OWNER_EMAIL].active=true}}
 function myRole(){return S.currentRole||"مُدخِل اليوميات"}
 function isOwner(){return (S.currentUser||"")===OWNER_EMAIL||myRole()==="المالك"}
-function canSee(view){if(view==="day")view="dashboard";if(!S.currentUser)return true;if(isOwner())return true;var p=PERM[myRole()]||[];return p.indexOf(view)>=0}
+/* ===== نموذج الصلاحيات رباعي الطبقات (مرحلة المستخدمين — البندان ١+٢) =====
+   القرار لأي شاشة/إجراء: المالك ← استثناء الفرد (perms) ← إعداد الدور (PERM) ← الافتراضي (منع).
+   استثناءات الفرد تُخزَّن في user.perms = {action:"allow"|"deny"} (غيابها = يرث الدور)، وتُزامَن. */
+var SCREENS_CAT=[["dashboard","الرئيسية","🏠"],["entry","إدخال يومي","✎"],["reports","التقارير","📊"],["approvals","الاعتمادات","✅"],["users","المستخدمون","👥"],["activity","سجل النشاط","🕘"],["files","الملفات","📁"],["branches","الإعدادات","⚙️"],["data","البيانات","🗄️"]];
+function screenLabel(a){for(var i=0;i<SCREENS_CAT.length;i++)if(SCREENS_CAT[i][0]===a)return SCREENS_CAT[i][1];return a;}
+function roleAllows(role,action){var p=PERM[role]||[];return p.indexOf(action)>=0;}
+function userPermOverride(u,action){if(!u||!u.perms||typeof u.perms!=="object")return null;var v=u.perms[action];return (v==="allow"||v==="deny")?v:null;}
+function canUser(email,action){var em=String(email||"").toLowerCase();var u=rosterGet(em)||{};
+  if(em===OWNER_EMAIL||u.role==="المالك")return true;
+  var ov=userPermOverride(u,action);if(ov)return ov==="allow";
+  return roleAllows(u.role||"مُدخِل اليوميات",action);}
+function can(action){                                   /* للمستخدم الحالي */
+  if(!S.currentUser)return true;
+  if(isOwner())return true;
+  var u=rosterGet(S.currentUser)||{};
+  var ov=userPermOverride(u,action);if(ov)return ov==="allow";
+  return roleAllows(myRole(),action);}
+function canSee(view){if(view==="day")view="dashboard";if(!S.currentUser)return true;return can(view);}
 function authErrMsg(ex){var c=(ex&&ex.code)||"";if(/wrong-password|invalid-credential|invalid-login-credentials/.test(c))return "البريد أو كلمة المرور غير صحيحة";if(/user-not-found/.test(c))return "لا يوجد حساب بهذا البريد";if(/too-many-requests/.test(c))return "محاولات كثيرة — انتظر قليلاً ثم أعد المحاولة";if(/network-request-failed/.test(c))return "تعذّر الاتصال بالإنترنت";if(/user-disabled/.test(c))return "هذا الحساب معطّل";if(/email-already-in-use/.test(c))return "هذا البريد مستخدم مسبقاً";if(/weak-password/.test(c))return "كلمة المرور ضعيفة (6 أحرف على الأقل)";if(/invalid-email/.test(c))return "صيغة البريد غير صحيحة";return "تعذّر إتمام العملية"+(c?" ("+c+")":"")}
 
 var FB2=null;
@@ -4850,9 +4897,9 @@ var FS_CFG_FIELDS=["businessName","openingBalance","branches","methods","company
 function jstr(x){try{return JSON.stringify(x)}catch(e){return ""}}
 function fsCanWrite(){return isOwner()||myRole()==="مُدخِل اليوميات";}   /* من يكتب وثائق الأيام */
 function fsCoreFields(cfg){var c={};FS_CFG_FIELDS.forEach(function(k){c[k]=(cfg&&cfg[k]!==undefined)?cfg[k]:null});return c;}
-function fsRoleDoc(u){return {name:(u&&u.name)||"",role:(u&&u.role)||"مُدخِل اليوميات",active:!(u&&u.active===false),lastLogin:(u&&u.lastLogin)||"",createdAt:(u&&u.createdAt)||nowStamp(),updatedTs:Date.now()};}
-function fsRoleToRoster(d){return {name:(d&&d.name)||"",role:(d&&d.role)||"مُدخِل اليوميات",active:!(d&&d.active===false),lastLogin:(d&&d.lastLogin)||"",createdAt:(d&&d.createdAt)||""};}
-function fsRoleKey(u){return jstr({name:(u&&u.name)||"",role:(u&&u.role)||"",active:!(u&&u.active===false)});}
+function fsRoleDoc(u){return {name:(u&&u.name)||"",role:(u&&u.role)||"مُدخِل اليوميات",active:!(u&&u.active===false),lastLogin:(u&&u.lastLogin)||"",createdAt:(u&&u.createdAt)||nowStamp(),perms:(u&&u.perms&&typeof u.perms==="object")?u.perms:{},updatedTs:Date.now()};}
+function fsRoleToRoster(d){var o={name:(d&&d.name)||"",role:(d&&d.role)||"مُدخِل اليوميات",active:!(d&&d.active===false),lastLogin:(d&&d.lastLogin)||"",createdAt:(d&&d.createdAt)||""};if(d&&d.perms&&typeof d.perms==="object"&&Object.keys(d.perms).length)o.perms=d.perms;return o;}
+function fsRoleKey(u){return jstr({name:(u&&u.name)||"",role:(u&&u.role)||"",active:!(u&&u.active===false),perms:(u&&u.perms)||{}});}
 function fsDayNorm(dt){var day=S.data[dt];if(day&&!day.updatedTs)day.updatedTs=Date.now();return day;}
 function fsSyncShadowDays(){FSY.shadowDays={};Object.keys(S.data).forEach(function(dt){FSY.shadowDays[dt]=jstr(fsDayNorm(dt))});}
 async function fsPersistQuiet(){S._noPush=true;try{await persistEverything()}catch(e){}S._noPush=false;}
@@ -5085,6 +5132,21 @@ function startAuth(){
   firebase.auth().onAuthStateChanged(function(user){if(user){onSignedIn(user);}else{if(_authStarted){location.reload();}else{showLogin();}}});
 }
 
+/* لوحة صلاحيات الشاشات لكل مستخدم (استثناءات فردية — البند ٢) */
+function userPermsPanelHTML(em,u){
+  var grid=SCREENS_CAT.map(function(s){
+    var act=s[0];var ov=(u.perms&&u.perms[act])||"inherit";var eff=canUser(em,act);var rd=roleAllows(u.role||"مُدخِل اليوميات",act);
+    function b(val,lbl,cls){return "<button type='button' class='pp-b"+(ov===val?" on "+cls:"")+"' onclick=\"App.usrPerm('"+em+"','"+act+"','"+val+"')\">"+lbl+"</button>";}
+    return "<div class='pp-row'><span class='pp-name'>"+s[2]+" "+esc(s[1])+"</span>"+
+      "<span class='pp-eff "+(eff?"y":"n")+"' title='النتيجة الفعلية'>"+(eff?"يرى":"لا يرى")+"</span>"+
+      "<span class='pp-seg'>"+b("inherit","يرث"+(ov==="inherit"?" ("+(rd?"مسموح":"ممنوع")+")":""),"inherit")+b("allow","✓ منح","allow")+b("deny","✗ منع","deny")+"</span></div>";
+  }).join("");
+  return "<div class='nu-perms-panel'>"+
+    "<div class='pp-h'>🔐 صلاحيات الشاشات — <b>"+esc(u.name||em)+"</b> <span class='pp-role'>الدور: "+esc(u.role||"—")+"</span></div>"+
+    "<div class='pp-grid'>"+grid+"</div>"+
+    "<div class='note' style='margin:9px 0 0'>«يرث» = حسب الدور · «منح»/«منع» استثناء خاص لهذا المستخدم يتجاوز الدور. المالك دائماً كامل الصلاحيات.</div>"+
+  "</div>";
+}
 function viewUsers(){
   if(!isOwner())return "<div class='n-users'>"+h("div",{class:"card"},"<div class='note'>هذه الشاشة للمالك فقط.</div>")+"</div>";
 
@@ -5122,12 +5184,15 @@ function viewUsers(){
       "</div></details>";
     }
 
-    return "<div class='nu-u"+(off?" nu-off":"")+"' style='--rc:"+col+"'>"+
+    var custom=(u.perms&&typeof u.perms==="object")?Object.keys(u.perms).length:0;
+    var permBtn=owner?"":"<button type='button' class='nu-permbtn"+(S._openPerms===em?" on":"")+"' onclick=\"App.usrPermsToggle('"+em+"')\" title='صلاحيات الشاشات لهذا المستخدم'>🔐"+(custom?" <b>"+custom+"</b>":"")+"</button>";
+    var panel=(!owner&&S._openPerms===em)?userPermsPanelHTML(em,u):"";
+    return "<div class='nu-uw'><div class='nu-u"+(off?" nu-off":"")+"' style='--rc:"+col+"'>"+
       "<div class='nu-av'>"+av+"</div>"+
       "<div class='nu-id'><div class='nu-nm'>"+esc(u.name||"—")+"</div><div class='nu-em'>"+meta+"</div></div>"+
       "<span class='nu-badge'>"+esc(u.role||"—")+"</span>"+
-      sw+menu+
-    "</div>";
+      permBtn+sw+menu+
+    "</div>"+panel+"</div>";
   }).join("");
 
   var usersCard=h("div",{class:"card"},
@@ -5166,7 +5231,7 @@ function viewUsers(){
   var permCard=h("div",{class:"card"},
     "<div class='nu-ch'><h3>الأدوار والصلاحيات</h3><span class='nu-sp'></span><span class='note' style='margin:0'>اختر دوراً لعرض شاشاته</span></div>"+
     "<div class='nu-permwrap'>"+seg+"<div class='nu-panels'>"+panels+"</div></div>"+
-    "<div class='note nu-hint'>الصلاحيات مرتبطة بالدور (عرض فقط هنا) — لمنح مستخدم صلاحية أو سحبها، غيّر دوره من قائمة ⋮.</div>"
+    "<div class='note nu-hint'>هذه صلاحيات <b>الدور</b> الافتراضية (عرض فقط). لمنح مستخدم بعينه صلاحية أو منعها دون تغيير دوره، استخدم زر <b>🔐</b> بجانب اسمه في «المستخدمون» أعلاه — الاستثناء الفردي يتجاوز الدور.</div>"
   );
 
   return "<div class='n-users'>"+
