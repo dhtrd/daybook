@@ -1247,6 +1247,7 @@ html[data-mode="dark"] .n-entry .etw .total td.stick{background:#1E7A5A;color:#f
 /* ---- أزرار الإجراءات السفلية ---- */
 .n-entry .ent-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px}
 .n-entry .ent-actions .btn{padding:11px 20px;border-radius:11px;font-size:14px;font-weight:800}
+.cancel-badge{display:inline-block;margin-inline-start:8px;background:color-mix(in srgb,var(--neg) 14%,transparent);color:var(--neg);border:1px solid color-mix(in srgb,var(--neg) 35%,transparent);border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:800;vertical-align:middle}
 
 /* ===== redesign: files.css ===== */
 /* ===================================================================
@@ -1737,7 +1738,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.7.0";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.7.1";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2821,6 +2822,7 @@ function viewDashboard(){
 
 /* ===== الإدخال اليومي ===== */
 function loadDay(date){S.curDate=date;S.calMonth=ymOf(date);var d=S.data[date];S.day=d?JSON.parse(JSON.stringify(d)):blankDay(date);S.day.date=date;
+  {var _st=dayStatus(S.day);S.day.status=_st;S.day.locked=(_st!=="draft");}  /* توحيد الحالة (يشمل الأيام القديمة) */
   if(!d&&!(S.day.rows||[]).length&&(S.config&&S.config.dayTemplate||[]).length){
     S.day.rows=(S.config.dayTemplate||[]).map(function(b){return {id:uuid(),branchId:b.id||"",branch:b.name||"",sales:"",pays:{},notes:""}});
   }
@@ -2862,6 +2864,13 @@ function releaseLock(){
   if(!date)return; var d=S.data[date];
   if(lockMine(d)){delete d.editLock; if(S.day&&S.day.date===date&&S.day.editLock)delete S.day.editLock; lockPush();}
 }
+/* ===== نموذج حالات اليومية (النقطة ١ + الاقتراح ٦): مسودة → مرحّلة → مقفلة (+ ملغاة) ===== */
+function dayStatus(d){if(!d)return "draft";var s=d.status;if(s==="draft"||s==="posted"||s==="locked"||s==="cancelled")return s;if(s==="approved")return d.locked?"locked":"posted";if(d.locked)return "locked";return "draft";}
+function isFrozen(d){return dayStatus(d)!=="draft";}
+function statusLabel(st){return ({draft:"مسودة",posted:"مرحّلة",locked:"مقفلة",cancelled:"ملغاة"})[st]||"مسودة";}
+function postSnap(d){var c=computeDay(d,S.config);return {sales:c.sales,cash:c.cash,exp:c.totalExpenses,inc:c.totalIncome,bank:num(d.bankDeposit),rows:(d.rows||[]).length};}
+function diffSnap(a,b){if(!a||!b)return "";var L={sales:"المبيعات",cash:"النقد",exp:"المصروفات",inc:"الإيرادات",bank:"الإيداع البنكي",rows:"عدد الفروع"};var out=[];for(var k in L){if(num(a[k])!==num(b[k]))out.push(L[k]+": "+fmt(a[k])+"←"+fmt(b[k]));}return out.join("، ");}
+function applyStatus(d){d.locked=!!(d.status&&d.status!=="draft");if(S.data[d.date]){S.data[d.date].status=d.status;S.data[d.date].locked=d.locked;S.data[d.date].firstPostedAt=d.firstPostedAt;S.data[d.date].postedBy=d.postedBy;S.data[d.date]._postSnap=d._postSnap;}scheduleSave();render();}
 function viewEntry(){
   if(!S.day||S.day.date!==S.curDate)loadDay(S.curDate);
   var d=S.day,cfg=S.config,c=computeDay(d,cfg);
@@ -2870,14 +2879,17 @@ function viewEntry(){
   var histbar="<div class='histbar'><button id='btnUndo' class='histbtn' onclick='App.undo()' title='تراجع (Ctrl+Z)'"+(_hist.undo.length?"":" disabled")+">"+IC.undo+"<span>تراجع</span></button><button id='btnRedo' class='histbtn' onclick='App.redo()' title='إعادة (Ctrl+Y)'"+(_hist.redo.length?"":" disabled")+">"+IC.redo+"<span>إعادة</span></button><button class='histbtn' onclick='App.clearMarks()'"+(marksN?"":" disabled")+" title='إعادة جميع ألوان التحقق (الأخضر/الأحمر) إلى الوضع الافتراضي — لا يمس أي قيم'><span>مسح ألوان التدقيق"+(marksN?" ("+marksN+")":"")+"</span></button><span style='flex:1'></span><button id='btnSave' class='histbtn save"+(S.dirty?" dirty":"")+"' onclick='App.saveNow()'"+(S.dirty?"":" disabled")+" title='حفظ التغييرات الآن (يُحفظ تلقائياً أيضاً)'><span class='sicon'>"+IC.save+"</span><span class='slbl'>"+(S.dirty?"حفظ التغييرات":"محفوظ")+"</span></button></div>";
   var warns=dayWarnings(d,cfg,c,prev);
   var warnbar=warns.length?"<div class='warnbar'><b>تنبيهات المراجعة ("+warns.length+"):</b> "+warns.map(esc).join(" · ")+"</div>":"";
-  var lockbar=d.locked?"<div class='lockbar'>🔒 <b>اليومية مقفلة</b> (طُبعت واعتُمدت) — التعديل معطّل، والتلوين للتدقيق مسموح. <button class='btn ghost' style='padding:5px 12px' onclick='App.unlockDay()'>فتح للتعديل</button></div>":"";
+  var st=dayStatus(d);
+  var lockbar = st==="posted" ? "<div class='lockbar'>📋 <b>اليومية مرحّلة</b> — للقراءة. لتعديلها أعِدها كمسودة. <button class='btn ghost' style='padding:5px 12px' onclick='App.reopenDraft()'>إعادة كمسودة</button></div>"
+    : st==="locked" ? "<div class='lockbar'>🔒 <b>اليومية مقفلة</b> — للقراءة. <button class='btn ghost' style='padding:5px 12px' onclick='App.reopenDraft()'>إعادة كمسودة</button></div>"
+    : st==="cancelled" ? "<div class='lockbar rolockbar'>🚫 <b>اليومية ملغاة</b>. <button class='btn ghost' style='padding:5px 12px' onclick='App.reopenDraft()'>إعادة كمسودة</button></div>"
+    : "";
   var copyBar=(!S.data[d.date]&&!(d.rows||[]).length)?"<div style='margin:0 0 10px'><button class='btn ghost' onclick='App.copyPrevDay()'>نسخ فروع آخر يوم (بقيم فارغة)</button></div>":"";
-  var stt=d.locked?"locked":((d.status==="draft"||!S.data[d.date])?"draft":"approved");
-  /* الخطوات (عرض فقط) — نفس منطق الحالة، بهيئة الموك-أب: دوائر مرقّمة موصولة */
-  var st1=(stt==="draft")?"on":"dn";
-  var st2=(stt==="approved")?"on":((stt==="locked")?"dn":"");
-  var st3=(stt==="locked")?"on":"";
-  var stepper="<div class='stepper'><div class='s "+st1+"'><span class='c'>"+((stt==="draft")?"1":"✓")+"</span>مسودة</div><div class='ln'></div><div class='s "+st2+"'><span class='c'>"+((stt==="locked")?"✓":"2")+"</span>معتمد</div><div class='ln'></div><div class='s "+st3+"'><span class='c'>3</span>مقفل</div></div>";
+  /* الخطوات (عرض فقط): مسودة → مرحّلة → مقفلة (+ شارة ملغاة) */
+  var st1=(st==="draft")?"on":"dn";
+  var st2=(st==="posted")?"on":((st==="locked")?"dn":"");
+  var st3=(st==="locked")?"on":"";
+  var stepper="<div class='stepper'><div class='s "+st1+"'><span class='c'>"+((st==="draft")?"1":"✓")+"</span>مسودة</div><div class='ln'></div><div class='s "+st2+"'><span class='c'>"+((st==="locked")?"✓":"2")+"</span>مرحّلة</div><div class='ln'></div><div class='s "+st3+"'><span class='c'>3</span>مقفلة</div>"+(st==="cancelled"?"<span class='cancel-badge'>🚫 ملغاة</span>":"")+"</div>";
   var other=lockedByOther(d);
   var editLockBar=other?"<div class='lockbar rolockbar'>🔒 <b>"+esc((d.editLock&&(d.editLock.byName||d.editLock.by))||"مستخدم آخر")+"</b> يحرّر هذه اليومية الآن — التعديل معطّل حتى ينتهي أو خلال دقائق قليلة. <button class='btn ghost' style='padding:5px 12px' onclick=\"App.go('dashboard')\">عودة</button></div>":"";
   return editLockBar+"<div class='n-entry"+(other?" ro-lock":"")+"'>"+
@@ -2888,9 +2900,12 @@ function viewEntry(){
     h("div",{class:"grid fin-grid"},balanceBeforeCard(d,c,prev,carried)+finalTotalCard(d,c)+expensesCard(d,c)+incomesCard(d,c))+
     h("div",{class:"card audit-card",style:"padding:11px 16px"},h("div",{class:"audit"},auditText(d)))+
     h("div",{class:"ent-actions"},
-      (d.status==="draft"?"<button class='btn' style='background:var(--pos);border-color:var(--pos)' onclick='App.approveDay()'>اعتماد اليومية ✓</button>":"")+
+      (st==="draft"?"<button class='btn' style='background:var(--pos);border-color:var(--pos)' onclick='App.postDay()'>ترحيل ✓</button>":"")+
+      (st==="posted"?"<button class='btn' onclick='App.lockDay2()'>قفل 🔒</button><button class='btn ghost' onclick='App.reopenDraft()'>إعادة كمسودة</button>":"")+
+      ((st==="locked"||st==="cancelled")?"<button class='btn ghost' onclick='App.reopenDraft()'>إعادة كمسودة</button>":"")+
       "<button class='btn ghost' onclick=\"App.openDay('"+d.date+"')\">عرض كتقرير</button>"+
-      "<button class='btn brass' onclick=\"App.printDay('"+d.date+"')\">"+IC.print+" طباعة (A4)</button>")+
+      "<button class='btn brass' onclick=\"App.printDay('"+d.date+"')\">"+IC.print+" طباعة (A4)</button>"+
+      (st!=="cancelled"?"<button class='btn ghost' style='color:var(--neg)' onclick='App.cancelDay()'>إلغاء</button>":""))+
   "</div>";
 }
 function dateNav(){
@@ -2898,7 +2913,7 @@ function dateNav(){
   return h("div",{class:"datenav"},
     h("div",{class:"dn-top"},
       h("div",{class:"dn-arrows"},"<button class='iconbtn' title='اليوم السابق' onclick='App.navDay(-1)'>"+IC.chevR+"</button><button class='iconbtn' title='اليوم التالي' onclick='App.navDay(1)'>"+IC.chevL+"</button>")+
-      h("div",{class:"dn-cur"},"<div class='d'>"+prettyDate(d.date)+(d.dateTo?" ← "+prettyDate(d.dateTo):"")+"</div><div class='s "+(hasData?"hasdata":"")+"'>"+(hasData?"يومية محفوظة":"يومية جديدة")+(d.locked?" · 🔒 مقفلة":"")+(d.status==="draft"?" · <b style='color:#7a5b12'>مسودة</b>":"")+"</div>")+
+      h("div",{class:"dn-cur"},"<div class='d'>"+prettyDate(d.date)+(d.dateTo?" ← "+prettyDate(d.dateTo):"")+"</div><div class='s "+(hasData?"hasdata":"")+"'>"+(hasData?"يومية محفوظة":"يومية جديدة")+(function(){var st=dayStatus(d);var ic={draft:"",posted:"🔁 ",locked:"🔒 ",cancelled:"🚫 "}[st];var cl={draft:"#7a5b12",posted:"#0f6b57",locked:"#173A31",cancelled:"#e0553f"}[st];return " · <b style='color:"+cl+"'>"+ic+statusLabel(st)+"</b>";})()+"</div>")+
       "<button class='iconbtn' title='التقويم' onclick='App.toggleCal()'>"+IC.cal+"</button>")+
     "<div class='dn-quick'>"+
       "<button class='btn ghost' style='padding:7px 13px' onclick='App.navToday()'>اليوم</button>"+
@@ -4083,7 +4098,14 @@ window.App={
       })()}});
   },
   approveDay:function(){if(!S.day)return;histMark("status");S.day.status="approved";if(S.data[S.day.date])S.data[S.day.date].status="approved";scheduleSave();render();toast("اعتُمدت اليومية ✓")},
-  unlockDay:function(){openConfirm({title:"فتح اليومية للتعديل؟",body:"طُبعت هذه اليومية وأُقفلت لحمايتها من التعديل السهوي. فتحها يسمح بالتعديل مجدداً (يبقى تاريخ الطباعة).",confirm:"فتح للتعديل",onOk:function(){S.day.locked=false;if(S.data[S.day.date])S.data[S.day.date].locked=false;scheduleSave();render();toast("فُتحت اليومية للتعديل")}})},
+  unlockDay:function(){App.reopenDraft();},
+  postDay:function(){var d=S.day;if(!d)return;if(dayStatus(d)!=="draft"){toast("اليومية ليست مسودة");return;}histMark("status");d.status="posted";
+    if(!d.firstPostedAt){d.firstPostedAt=nowStamp();d.postedBy=meName();d._postSnap=postSnap(d);logEvent("post","رحّل يومية "+prettyDate(d.date),{date:d.date});toast("رُحّلت اليومية ✓");}
+    else{var ch=diffSnap(d._postSnap,postSnap(d));d._postSnap=postSnap(d);logEvent("post","أعاد ترحيل يومية "+prettyDate(d.date)+(ch?" — عُدّل بعد الترحيل: "+ch:" (بلا تغيير في القيم)"),{date:d.date});toast("أُعيد الترحيل ✓");}
+    applyStatus(d);},
+  lockDay2:function(){var d=S.day;if(!d)return;if(dayStatus(d)!=="posted"){toast("رحّل اليومية أولاً");return;}histMark("status");d.status="locked";logEvent("lock","أقفل يومية "+prettyDate(d.date),{date:d.date});applyStatus(d);toast("أُقفلت اليومية 🔒");},
+  cancelDay:function(){var d=S.day;if(!d)return;openConfirm({title:"وسم اليومية كملغاة؟",body:"لا تُحذف بياناتها، ويمكن إعادتها كمسودة لاحقاً.",danger:true,confirm:"وسم ملغاة",onOk:function(){histMark("status");d.status="cancelled";logEvent("cancel","ألغى يومية "+prettyDate(d.date),{date:d.date});applyStatus(d);toast("وُسِمت ملغاة");}});},
+  reopenDraft:function(){var d=S.day;if(!d)return;var prev=dayStatus(d);if(prev==="draft"){toast("اليومية مسودة أصلاً");return;}openConfirm({title:"إعادة كمسودة؟",body:"ستعود اليومية إلى وضع التحرير. سيُسجَّل من أعادها، وما يُعدَّل بعد الترحيل.",confirm:"إعادة كمسودة",onOk:function(){histMark("status");d.status="draft";logEvent("revert","أعاد يومية "+prettyDate(d.date)+" إلى مسودة (من «"+statusLabel(prev)+"»)",{date:d.date});applyStatus(d);acquireLock(d.date);toast("أُعيدت كمسودة — يمكنك التعديل");}});},
   copyPrevDay:function(){if(eGuard())return;
     var ks=Object.keys(S.data).filter(function(x){return x<S.curDate}).sort();
     var src=ks.length?S.data[ks[ks.length-1]]:null;
