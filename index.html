@@ -1966,7 +1966,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.20";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.21";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -5383,6 +5383,39 @@ var _syncRenderT=null;
 function scheduleRender(){if(S.view==="entry"&&S.dirty)return;if(_syncRenderT)return;_syncRenderT=setTimeout(function(){_syncRenderT=null;scheduleRender();},200);}
 
 function fsSchedulePush(){if(!fsMode()||!FSY.on)return;if(FSY.pushTimer)clearTimeout(FSY.pushTimer);FSY.pushTimer=setTimeout(fsPushNow,900);}
+/* تشخيص وتعافٍ عند رفض الخادم دفعَ يومية: نعزل كل يومية على حدة — الناجحة تُثبّت، والمرفوضة نهائياً
+   (permission-denied/…): نوقف إعادة محاولتها اللانهائية ونكشف السبب (من→إلى + هل تغيّر مالي + رمز الخطأ).
+   الأخطاء العابرة (شبكة) تُرمى ليعيد المعالجُ العام المحاولة كالمعتاد. لا تُحذف أي بيانات محلية. */
+function _fsPermanent(code){return code==="permission-denied"||code==="invalid-argument"||code==="failed-precondition"||code==="not-found";}
+async function fsPushDaysIsolated(db,dayOps,cur){
+  var stuck=[],fk=['rows','expenses','incomes','bankDeposit','carryIn'];
+  for(var j=0;j<dayOps.length;j++){var o=dayOps[j];var ref=db.collection("days").doc(o.id);
+    try{
+      if(o.t==="set")await ref.set(S.data[o.id]);else await ref.delete();
+      if(o.t==="set")FSY.shadowDays[o.id]=cur[o.id];else delete FSY.shadowDays[o.id];
+    }catch(e2){
+      var code=(e2&&e2.code)||"error";
+      if(!_fsPermanent(code))throw e2;                 /* عابر → أعد المحاولة لاحقاً */
+      var toSt=(o.t==="del")?"حذف":((S.data[o.id]&&S.data[o.id].status)||"draft");
+      var fromSt="?",fin=false;
+      try{var srv=await ref.get();if(srv&&srv.exists){var sd=srv.data();fromSt=sd.status||"draft";
+        if(o.t==="set"&&S.data[o.id])fin=fk.some(function(k){return jstr(sd[k])!==jstr(S.data[o.id][k]);});}
+        else fromSt="غير موجودة";}catch(_g){}
+      FSY.shadowDays[o.id]=cur[o.id];                   /* أوقف إعادة المحاولة لهذه اليومية (النسخة المحلية تبقى) */
+      stuck.push({id:o.id,code:code,from:fromSt,to:toSt,fin:fin});
+    }
+  }
+  return stuck;
+}
+function fsReportStuck(stuck){try{
+  S._syncStuck=stuck;
+  if(!S._stuckSeen)S._stuckSeen={};
+  var fresh=stuck.filter(function(s){var k=s.id+"|"+s.code;if(S._stuckSeen[k])return false;S._stuckSeen[k]=1;return true;});
+  if(!fresh.length)return;                                   /* لا تكرّر التنبيه لنفس اليومية/السبب */
+  var m=fresh.map(function(s){return prettyDate(s.id)+": "+s.from+"→"+s.to+(s.fin?" ⚠مالي":"")+" ["+s.code+"]";}).join(" · ");
+  try{toast("تعذّر حفظ تعديل على يومية على السحابة — "+m,"err");}catch(_t){}
+  try{if(typeof logEvent==="function")logEvent("info","تعذّرت مزامنة يومية: "+m);}catch(_l){}
+}catch(e){}}
 async function fsPushNow(){
   if(!fsMode()||!FSY.on||FSY.applying)return;var db=fsInit();if(!db)return;
   setSync("busy");
@@ -5392,10 +5425,16 @@ async function fsPushNow(){
     Object.keys(S.data).forEach(function(dt){var s=jstr(fsDayNorm(dt));cur[dt]=s;if(s!==FSY.shadowDays[dt])dayOps.push({t:"set",id:dt})});
     Object.keys(FSY.shadowDays).forEach(function(dt){if(cur[dt]===undefined)dayOps.push({t:"del",id:dt})});
     if(dayOps.length&&fsCanWrite()){
-      for(var i=0;i<dayOps.length;i+=400){var chunk=dayOps.slice(i,i+400);var batch=db.batch();
-        chunk.forEach(function(o){var ref=db.collection("days").doc(o.id);if(o.t==="set")batch.set(ref,S.data[o.id]);else batch.delete(ref)});
-        await batch.commit();}
-      dayOps.forEach(function(o){if(o.t==="set")FSY.shadowDays[o.id]=cur[o.id];else delete FSY.shadowDays[o.id]});
+      try{
+        for(var i=0;i<dayOps.length;i+=400){var chunk=dayOps.slice(i,i+400);var batch=db.batch();
+          chunk.forEach(function(o){var ref=db.collection("days").doc(o.id);if(o.t==="set")batch.set(ref,S.data[o.id]);else batch.delete(ref)});
+          await batch.commit();}
+        dayOps.forEach(function(o){if(o.t==="set")FSY.shadowDays[o.id]=cur[o.id];else delete FSY.shadowDays[o.id]});
+      }catch(_bErr){
+        /* فشلت الدفعة: نعزل كل يومية لمعرفة المتعثّرة وسببها ووقف إعادة المحاولة اللانهائية (بلا حذف بيانات) */
+        var _stuck=await fsPushDaysIsolated(db,dayOps,cur);
+        if(_stuck.length)fsReportStuck(_stuck);
+      }
     } else if(dayOps.length){ /* دور للقراءة فقط: لا تكتب، فقط ثبّت الظل حتى لا تُعاد المحاولة */
       dayOps.forEach(function(o){if(o.t==="set")FSY.shadowDays[o.id]=cur[o.id];else delete FSY.shadowDays[o.id]});
     }
