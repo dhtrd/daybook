@@ -1935,7 +1935,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.12";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.13";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -5349,10 +5349,9 @@ function fsAttach(db){
         if(S.day&&S.day.date===dt&&!(S.view==="entry"&&S.dirty))reload=true;}}
     });
     if(!changed)return;
-    if(FSY._primed&&Notify.enabled()&&notifDates.length){
-      if(notifDates.length===1){var nd0=notifDates[0];Notify.show("تحديث يومية",prettyDate(nd0.dt)+(nd0.by?" — بواسطة "+nd0.by:""),"day-"+nd0.dt);}
-      else Notify.show("تحديث بيانات","تم تحديث "+notifDates.length+" يوميات من جهاز آخر","days-bulk");
-    }
+    /* لا إشعار خارجي لكل تعديل بيانات في اليومية (كان مزعجاً — يظهر مع كل تغيير خليّة).
+       الإشعارات الخارجية تقتصر على الحركات العامة (ترحيل/إعادة كمسودة/قفل/إلغاء/اعتماد/إعادة) القادمة من
+       سجل النشاط (النقطة ٢). المزامنة اللحظية للبيانات تبقى كما هي — فقط أُزيل الإشعار. */
     invalidateBal();
     fsPersistQuiet().then(function(){
       if(reload&&S.day)loadDay(S.day.date);
