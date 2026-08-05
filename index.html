@@ -1724,6 +1724,8 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
 var APP_VERSION="1.6.0";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+/* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
+function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
 /* دوال الترحيل: MIGRATIONS[v-1] ترقّي البيانات من النسخة v إلى v+1.
    تُطبَّق تلقائياً عند فتح التطبيق أو سحب بيانات أقدم، دون مساس بأي بيانات موجودة. */
@@ -4227,7 +4229,7 @@ window.App={
         else toast("تمت الاستعادة محلياً فقط — تعذّر فرضها على السحابة. استخدم «فرض المحلي على السحابة» من صفحة البيانات.","err")}})}catch(e){toast("تعذّرت الاستعادة: "+e.message,"err")}input.value=""},
   applyUpdate:function(){var b=document.getElementById("updBar");if(b)b.remove();if(_updReg&&_updReg.waiting){_updReg.waiting.postMessage({type:"SKIP_WAITING"})}else{location.reload()}},
   checkUpdate:function(){toast("جارٍ البحث عن تحديث…");try{if("serviceWorker" in navigator)navigator.serviceWorker.getRegistration().then(function(reg){if(reg)reg.update()})}catch(e){}
-    fetch("./version.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){if(j&&j.version&&j.version!==APP_VERSION){toast("يتوفّر إصدار "+j.version+" — سيظهر زر التحديث");}else{toast("أنت على أحدث إصدار ("+APP_VERSION+")")}}).catch(function(){toast("تعذّر التحقق من التحديث","err")})},
+    fetch("./version.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){if(j&&j.version&&verNewer(j.version,APP_VERSION)){toast("يتوفّر إصدار "+j.version+" — سيظهر زر التحديث");}else{toast("أنت على أحدث إصدار ("+APP_VERSION+")")}}).catch(function(){toast("تعذّر التحقق من التحديث","err")})},
   setBiz:function(v){S.config.businessName=v.trim()||"تقرير اليومية";saveConfig();render()},
   setLogo:function(input){var f=input.files&&input.files[0];if(!f)return;if(f.size>2*1024*1024&&f.type!=="image/svg+xml"){toast("الحجم كبير (أقصى 2MB)","err");return}
     var rd=new FileReader();rd.onload=function(){var data=rd.result;
