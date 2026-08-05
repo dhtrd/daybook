@@ -1346,8 +1346,8 @@ html[data-mode="dark"] .n-entry #entryTbl .total td.stick{background:#1E7A5A;col
 .n-entry .audit{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
 .n-entry .audit b{color:var(--ink);font-weight:700}
 
-/* ---- أزرار الإجراءات السفلية ---- */
-.n-entry .ent-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+/* ---- أزرار الإجراءات (أعلى شاشة الإدخال — النقطة ١) ---- */
+.n-entry .ent-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:2px 0 14px}
 .n-entry .ent-actions .btn{padding:11px 20px;border-radius:11px;font-size:14px;font-weight:800}
 .cancel-badge{display:inline-block;margin-inline-start:8px;background:color-mix(in srgb,var(--neg) 14%,transparent);color:var(--neg);border:1px solid color-mix(in srgb,var(--neg) 35%,transparent);border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:800;vertical-align:middle}
 
@@ -1881,7 +1881,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.4";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.5";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -3232,20 +3232,22 @@ function viewEntry(){
   var other=lockedByOther(d);
   var editLockBar=other?"<div class='lockbar rolockbar'>🔒 <b>"+esc((d.editLock&&(d.editLock.byName||d.editLock.by))||"مستخدم آخر")+"</b> يحرّر هذه اليومية الآن — التعديل معطّل حتى ينتهي أو خلال دقائق قليلة. <button class='btn ghost' style='padding:5px 12px' onclick=\"App.go('dashboard')\">عودة</button></div>":"";
   /* لوحة «تغييرات بعد آخر ترحيل» (النقطة ٦) — حاوية ثابتة تُحدَّث حيّاً مع كل تعديل خليّة (refreshChangePanel) وتُسجَّل عند إعادة الترحيل */
-  return editLockBar+"<div class='n-entry"+(other?" ro-lock":"")+"'>"+
-    h("div",{class:"ent-top"},secHead("تسجيل","إدخال يومي")+stepper)+
-    dateNav()+
-    lockbar+"<div id='chgPanel'>"+chgPanelHTML(d)+"</div>"+warnbar+copyBar+histbar+
-    entryTable(d,cfg,c)+
-    h("div",{class:"grid fin-grid"},balanceBeforeCard(d,c,prev,carried)+finalTotalCard(d,c)+expensesCard(d,c)+incomesCard(d,c))+
-    h("div",{class:"card audit-card",style:"padding:11px 16px"},h("div",{class:"audit"},auditText(d)))+
-    h("div",{class:"ent-actions"},
+  /* شريط الإجراءات (ترحيل/قفل/إعادة كمسودة/عرض كتقرير/طباعة/إلغاء) — يُوضع أعلى الشاشة قرب الترويسة/الخطوات/التاريخ لسهولة الوصول دون تمرير للأسفل (النقطة ١) */
+  var actionsBar=h("div",{class:"ent-actions"},
       (st==="draft"?"<button class='btn' style='background:var(--pos);border-color:var(--pos)' onclick='App.postDay()'>ترحيل ✓</button>":"")+
       (st==="posted"?"<button class='btn' onclick='App.lockDay2()'>قفل 🔒</button><button class='btn ghost' onclick='App.reopenDraft()'>إعادة كمسودة</button>":"")+
       ((st==="locked"||st==="cancelled")?"<button class='btn ghost' onclick='App.reopenDraft()'>إعادة كمسودة</button>":"")+
       "<button class='btn ghost' onclick=\"App.openDay('"+d.date+"')\">عرض كتقرير</button>"+
       "<button class='btn brass' onclick=\"App.printDay('"+d.date+"')\">"+IC.print+" طباعة (A4)</button>"+
-      (st!=="cancelled"?"<button class='btn ghost' style='color:var(--neg)' onclick='App.cancelDay()'>إلغاء</button>":""))+
+      (st!=="cancelled"?"<button class='btn ghost' style='color:var(--neg)' onclick='App.cancelDay()'>إلغاء</button>":""));
+  return editLockBar+"<div class='n-entry"+(other?" ro-lock":"")+"'>"+
+    h("div",{class:"ent-top"},secHead("تسجيل","إدخال يومي")+stepper)+
+    dateNav()+
+    actionsBar+
+    lockbar+"<div id='chgPanel'>"+chgPanelHTML(d)+"</div>"+warnbar+copyBar+histbar+
+    entryTable(d,cfg,c)+
+    h("div",{class:"grid fin-grid"},balanceBeforeCard(d,c,prev,carried)+finalTotalCard(d,c)+expensesCard(d,c)+incomesCard(d,c))+
+    h("div",{class:"card audit-card",style:"padding:11px 16px"},h("div",{class:"audit"},auditText(d)))+
   "</div>";
 }
 function dateNav(){
