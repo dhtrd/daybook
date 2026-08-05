@@ -197,6 +197,25 @@ a{color:var(--brass)}
 .acct-modal .acct-sec .seg{display:inline-flex;background:var(--field);border:1px solid var(--line);border-radius:9px;overflow:hidden;flex:none}
 .acct-modal .acct-sec .seg span{padding:7px 13px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;transition:.12s}
 .acct-modal .acct-sec .seg span.on{background:var(--acc);color:#fff}
+/* ===== بطاقات الأمان/الدخول السريع (نافذة أول دخول + بطاقة حسابي) ===== */
+.secrows{display:flex;flex-direction:column;gap:9px;width:100%}
+.secopt{background:var(--field);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+.secopt-h{display:flex;align-items:flex-start;gap:9px}
+.secopt-ic{width:32px;height:32px;border-radius:9px;background:color-mix(in srgb,var(--acc) 14%,transparent);display:grid;place-items:center;font-size:16px;flex:none}
+.secopt-t{flex:1;min-width:0}
+.secopt-t b{display:block;font-size:13px;font-weight:800;color:var(--ink)}
+.secopt-t span{display:block;font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:2px}
+.secopt-st{font-size:10.5px;font-weight:800;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap;flex:none;align-self:center}
+.secopt-st.on{color:var(--pos);border-color:color-mix(in srgb,var(--pos) 40%,transparent);background:color-mix(in srgb,var(--pos) 12%,transparent)}
+.secopt-b{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.secbtn{display:inline-flex;align-items:center;gap:5px;background:var(--acc);color:#fff;border:none;border-radius:9px;padding:8px 13px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;transition:transform .1s,filter .15s}
+.secbtn:hover{filter:brightness(1.05)}.secbtn:active{transform:scale(.97)}
+.secbtn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.secbtn.danger{background:var(--neg);color:#fff}
+.secopt-done{display:inline-flex;align-items:center;font-size:12px;font-weight:800;color:var(--pos)}
+.acct-modal .acct-secblk{display:block;margin:14px 0 4px}
+.acct-modal .acct-secblk>label{display:block;font-size:13.5px;font-weight:800;color:var(--ink);margin-bottom:9px}
+.sec-modal .secintro{margin:0 0 13px}
 .bd{position:fixed;inset:0;background:rgba(8,16,12,.4);opacity:0;pointer-events:none;transition:opacity .3s;z-index:9600}
 .shell.open .bd{opacity:1;pointer-events:auto}
 /* ===== نافذة تنبيه الخمول ===== */
@@ -1943,7 +1962,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.14";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.15";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -4299,10 +4318,68 @@ function openAccount(){try{App.closeDrawer()}catch(e){}
     "<div class='acct-sec'><label>التباين</label>"+seg(hc,[["0","عادي","App.setContrast(0)"],["1","عالٍ","App.setContrast(1)"]])+"</div>"+
     "<div class='note' style='margin:4px 0 12px'>✓ تفضيلاتك تُحفظ في حسابك وتتبعك على كل أجهزتك.</div>"+
     "<button class='btn ghost' style='width:100%' onclick='App.acctPassword()'>🔑 تغيير كلمة المرور</button>"+
+    "<div class='acct-secblk'><label>🔐 الأمان والدخول السريع (هذا الجهاز)</label><div class='secrows'>"+secRowsHTML(S.currentUser,true)+"</div>"+
+      "<div class='note' style='margin-top:9px'>🔒 رمز القفل والبصمة محفوظان على هذا الجهاز فقط ولا يُزامنان — فعّلهما على كل جهاز تستخدمه.</div></div>"+
   "</div></div>";
   document.getElementById("modalRoot").innerHTML=body;_modalType="acct";
 }
 function refreshAccountModal(){if(_modalType==="acct"&&document.querySelector(".acct-modal"))openAccount();}
+/* ===== نافذة أول دخول: تفعيل القفل/الدخول السريع على الجهاز الجديد + نفس الخيارات داخل «حسابي» =====
+   المنطق: عند أول دخول من جهاز (حتى بنفس الحساب) نعرض نافذة منبثقة يمكن تجاهلها أو التفعيل منها.
+   الرمز/البصمة محليّان لكل جهاز ولا يُزامنان — لذا العَلَم (dsr_secseen_<email>) محليّ أيضاً. */
+function secKey(email){return "dsr_secseen_"+String(email||S.currentUser||"").toLowerCase();}
+function secSeen(email){try{return !!localStorage.getItem(secKey(email))}catch(e){return false}}
+function secMarkSeen(email){try{localStorage.setItem(secKey(email),String(Date.now()))}catch(e){}}
+function secRow(icon,title,desc,on,btns){
+  return "<div class='secopt'><div class='secopt-h'>"+
+    "<span class='secopt-ic'>"+icon+"</span>"+
+    "<div class='secopt-t'><b>"+title+"</b><span>"+desc+"</span></div>"+
+    "<span class='secopt-st"+(on?" on":"")+"'>"+(on?"مُفعّل ✓":"غير مُفعّل")+"</span>"+
+    "</div><div class='secopt-b'>"+btns+"</div></div>";
+}
+/* full=true ← بطاقة «حسابي» (إدارة كاملة) ، full=false ← النافذة المنبثقة (تفعيل فقط) */
+function secRowsHTML(email,full){
+  var hasPin=pinEnabled(email),hasBio=bioEnabled(email),bioSup=BIO.supported();
+  var pinBtns=hasPin
+    ? (full?"<button class='secbtn' onclick='App.pinLockNow()'>🔒 اقفل الآن</button><button class='secbtn ghost' onclick='App.secPinSetup()'>تغيير الرمز</button><button class='secbtn danger' onclick='App.pinDisable()'>إلغاء</button>"
+           :"<span class='secopt-done'>✓ مُفعّل على هذا الجهاز</span>")
+    : "<button class='secbtn' onclick='App.secPinSetup()'>+ تعيين رمز قفل</button>";
+  var rows=secRow("🔒","قفل الجهاز السريع (رمز)","اقفل الشاشة برمز من ٤ أرقام دون تسجيل خروج — مناسب للأجهزة المشتركة.",hasPin,pinBtns);
+  if(bioSup){
+    var bioBtns=hasBio
+      ? (full?"<button class='secbtn' onclick='App.bioTest()'>👤 تجربة الفتح</button><button class='secbtn danger' onclick='App.bioDisable()'>إلغاء</button>"
+             :"<span class='secopt-done'>✓ مُفعّل على هذا الجهاز</span>")
+      : "<button class='secbtn' onclick='App.secBioEnable()'>+ تفعيل البصمة / الوجه</button>";
+    rows+=secRow("👤","الدخول السريع (بصمة / Face ID)","افتح القفل بالبصمة أو الوجه بدل كتابة الرمز/كلمة المرور.",hasBio,bioBtns);
+  }
+  return rows;
+}
+function openSecurityPrompt(email){
+  secMarkSeen(email);
+  var body="<div class='modal-bg' onclick='if(event.target===this)App.secDismiss()'><div class='modal sec-modal'>"+
+    "<h3><span>🔐 حماية الدخول على هذا الجهاز</span><button class='iconbtn' onclick='App.secDismiss()'>"+IC.x+"</button></h3>"+
+    "<p class='note secintro'>سجّلت الدخول من جهاز جديد. يمكنك تأمين وتسريع الوصول بأحد الخيارين — أو تجاهلهما الآن وتفعيلهما لاحقاً من «حسابي». <b>الرمز والبصمة محفوظان على هذا الجهاز فقط ولا يُزامنان.</b></p>"+
+    "<div class='secrows' id='secPromptRows'>"+secRowsHTML(email,false)+"</div>"+
+    "<button class='btn ghost' style='width:100%;margin-top:12px;justify-content:center' onclick='App.secDismiss()'>ليس الآن</button>"+
+    "<div class='note' style='text-align:center;margin-top:10px'>يمكنك تفعيلها لاحقاً في أي وقت من «حسابي».</div>"+
+  "</div></div>";
+  document.getElementById("modalRoot").innerHTML=body;_modalType="secprompt";
+}
+function secPromptRefresh(){var el=document.getElementById("secPromptRows");if(el&&_modalType==="secprompt")el.innerHTML=secRowsHTML(S.currentUser,false);}
+/* يُستدعى بعد الدخول للتطبيق — يعرض النافذة مرة واحدة لكل جهاز، ولا يتعارض مع شاشة القفل */
+function maybeSecurityPrompt(email){
+  try{
+    if(!email||secSeen(email))return;
+    if(PINUI.el)return;                         /* شاشة القفل ظاهرة — لا نتدخّل */
+    if(lockEnabled(email)){secMarkSeen(email);return;}   /* الجهاز مؤمَّن أصلاً (رمز/بصمة) — لا داعي للتذكير */
+    setTimeout(function(){
+      if(secSeen(email)||PINUI.el)return;
+      if(_modalType&&_modalType!=="secprompt")return;     /* نافذة أخرى مفتوحة — نؤجّل للدخول التالي */
+      if(String(S.currentUser||"").toLowerCase()!==String(email).toLowerCase())return;
+      openSecurityPrompt(email);
+    },700);
+  }catch(e){}
+}
 /* النقطة ٥ — تغيير كلمة المرور داخل التطبيق: يتطلب كلمة المرور الحالية (reauthenticate) قبل التغيير */
 function openPwChange(){
   var body="<div class='modal-bg' onclick='if(event.target===this)App.closeModal()'><div class='modal acct-modal'>"+
@@ -4761,6 +4838,11 @@ window.App={
   bioTest:function(){var em=S.currentUser;if(!em)return;toast("اتبع مطالبة البصمة/الوجه…");BIO.verify(em,function(ok){if(ok)toast("نجح التحقق بالبصمة ✓");else toast("تعذّر التحقق بالبصمة","err");});},
   bioUnlock:function(){if(!PINUI.el)return;var e=document.getElementById("pinErr");if(e)e.textContent="";var btn=document.querySelector(".pin-bio");if(btn)btn.classList.add("load");
     BIO.verify(S.currentUser,function(ok){if(btn)btn.classList.remove("load");if(ok){pinClose(true);}else{if(e)e.textContent="تعذّر التحقق بالبصمة — أعد المحاولة"+(pinEnabled(S.currentUser)?" أو أدخل الرمز":"");}});},
+  /* نافذة أول دخول + بطاقة حسابي: تفعيل الرمز/البصمة على هذا الجهاز */
+  secPinSetup:function(){secMarkSeen(S.currentUser);try{App.closeModal()}catch(e){}try{App.closeDrawer()}catch(e){}setTimeout(function(){pinOpen("setup")},180);},
+  secBioEnable:function(){var em=S.currentUser;if(!em)return;secMarkSeen(em);if(!BIO.supported()){toast("جهازك لا يدعم الدخول السريع","err");return;}toast("اتبع مطالبة البصمة/الوجه…");
+    BIO.enable(em,function(ok){if(ok){logEvent("pinset","فعّل الدخول السريع (بصمة/الوجه)");render();refreshAccountModal();secPromptRefresh();toast("تم تفعيل الدخول السريع ✓");}else{toast("تعذّر التفعيل — قد لا يدعم جهازك البصمة/الوجه أو أُلغيت العملية","err");}});},
+  secDismiss:function(){secMarkSeen(S.currentUser);App.closeModal();},
   pinSetup:function(){try{App.closeDrawer()}catch(e){}pinOpen("setup")},
   pinDisable:function(){openConfirm({title:"إلغاء رمز القفل؟",body:"لن يُطلب رمز عند قفل هذا الجهاز بعد الآن.",danger:true,confirm:"إلغاء الرمز",onOk:function(){pinSet(S.currentUser,"");pinSetLocked(S.currentUser,false);logEvent("pinoff","ألغى قفل الجهاز السريع");render();toast("أُلغي رمز القفل")}})},
   setIdleMin:function(v){var n=Math.max(1,Math.min(240,Math.round(num(v))||10));S.config.session=S.config.session||{};S.config.session.idleMin=n;saveConfig();render();toast("مهلة الخمول: "+n+" دقيقة")},
@@ -5486,6 +5568,7 @@ function enterApp(email){
   if(!canSee(S.view))S.view="dashboard";
   loadDay(S.curDate);render();
   if(lockEnabled(email)&&pinIsLocked(email)){pinOpen("lock");}  /* بقي الجهاز مقفلاً قبل إعادة التحميل — رمز أو بصمة (النقطتان ١٢ و٦) */
+  maybeSecurityPrompt(email);                                   /* أول دخول من جهاز: اقترح تفعيل القفل/الدخول السريع (يُعرض مرة واحدة لكل جهاز) */
   maybeDailyLocalBackup();                                       /* نسخة احتياطية يومية على الجهاز — النقطة ٧ */
   setTimeout(checkDailyReminder,2500);                           /* تذكير يومي ذكي — النقطة ٨ */
   if(!_authStarted){_authStarted=true;registerSW();setupAutoSync();setupInstall();setupIdle();setInterval(checkDailyReminder,60000);}
