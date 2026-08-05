@@ -1966,7 +1966,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.18";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.19";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2462,6 +2462,12 @@ function amtSettle(el){var raw=String(el.value||""),isFx=raw.charAt(0)==="=";
   if(v==null){if(isFx)el.value="";/* عملية غير مكتملة بلا «=» تُترك كما هي ليصحّحها المستخدم */}
   else el.value=String(v);
   return el.value}
+
+/* عرض المبالغ بصيغة محاسبية (فواصل آلاف) — للعرض فقط، لا يمسّ القيمة المخزّنة (num يتجاهل الفواصل عند الحساب).
+   الحقل غير المُركّز عليه يُنسَّق؛ عند التركيز تُزال الفواصل للتحرير (focusin)، وعند المغادرة تُعاد (focusout).
+   الصيغ/العمليات (تحوي عوامل) لا تُنسَّق حتى لا تتعارض مع الحاسبة داخل الخلية. */
+function fmtAmtEl(el){if(!el)return;var raw=String(el.value||"").replace(/,/g,"").trim();if(/^-?\d+(\.\d+)?$/.test(raw))el.value=num(raw).toLocaleString("en-US",{maximumFractionDigits:2});}
+function formatAmts(){try{var els=document.querySelectorAll("input[inputmode='decimal']");var af=document.activeElement;for(var i=0;i<els.length;i++){if(els[i]!==af)fmtAmtEl(els[i]);}}catch(e){}}
 
 /* التركيز على حقل مبلغ صف مصروف/إيراد بعد إعادة الرسم */
 function focusItem(kind,i){setTimeout(function(){try{
@@ -3156,7 +3162,7 @@ function render(){
   else if(S.view==="approvals")body=viewApprovals();
   else if(S.view==="activity")body=viewActivity();
   document.getElementById("app").innerHTML="<div class='shell' id='shell'>"+head+h("main",{class:(S._lastView!==S.view?"view-in":"")},(S.view==="dashboard"?(reminderBar()+notifPromptBar()):"")+body)+drawer+"</div>";
-  updateSyncPill();
+  updateSyncPill();formatAmts();
   if(S.view==="entry"){var c=document.getElementById("cal");if(c&&S.calOpen)c.classList.add("open");applyColWidths()}
   if(_navScroll!=null){var sc=_navScroll;_navScroll=null;setTimeout(function(){try{scrollTo(0,sc)}catch(e){}},20)}
   var _nv=(S._lastView!==S.view);S._lastView=S.view;
@@ -3511,7 +3517,7 @@ function recompute(){
   set("expTot",fmt(c.totalExpenses)+" ر.س");set("incTot",fmt(c.totalIncome)+" ر.س");
   refreshChangePanel();   /* تحديث لوحة «تغييرات بعد آخر ترحيل» حيّاً (النقطة ٦) */
 }
-function refreshTable(){var card=document.getElementById("entryTbl");if(!card){render();return}card.closest(".card").outerHTML=entryTable(S.day,S.config,computeDay(S.day,S.config));applyColWidths();}
+function refreshTable(){var card=document.getElementById("entryTbl");if(!card){render();return}card.closest(".card").outerHTML=entryTable(S.day,S.config,computeDay(S.day,S.config));applyColWidths();formatAmts();}
 
 /* ===== عرض التقرير (للقراءة) مع تعديل/طباعة ===== */
 function viewDay(){
@@ -4702,6 +4708,13 @@ function setupDrag(){
   document.addEventListener("pointerup",end);
   document.addEventListener("pointercancel",end);
 }
+/* تنسيق المبالغ بصيغة محاسبية على كل الأجهزة (مستقل عن شريط الصيغة اللمسي):
+   عند التركيز على حقل مبلغ تُزال الفواصل للتحرير، وعند مغادرته يُعاد التنسيق (للأرقام الصريحة فقط، لا الصيغ). */
+function setupAmtFmt(){
+  document.addEventListener("focusin",function(e){var t=e.target;
+    if(t&&t.tagName==="INPUT"&&t.getAttribute&&t.getAttribute("inputmode")==="decimal"&&!t.disabled){try{if(String(t.value).indexOf(",")>=0)t.value=t.value.replace(/,/g,"");}catch(_e){}}});
+  document.addEventListener("focusout",function(e){try{var lo=e&&e.target;if(lo&&lo.tagName==="INPUT"&&lo.getAttribute&&lo.getAttribute("inputmode")==="decimal")fmtAmtEl(lo);}catch(_e){}});
+}
 function setupFxBar(){try{
   if(!window.matchMedia||!matchMedia("(pointer:coarse)").matches)return;
   if(!document.createElement||!document.body||!document.body.appendChild)return;
@@ -5783,7 +5796,7 @@ function curFs(){try{var v=localStorage.getItem("dsr_fs")||"normal";return (v===
 function curContrast(){try{return localStorage.getItem("dsr_contrast")==="1"}catch(e){return false}}
 function applyReadability(){try{document.documentElement.setAttribute("data-fs",curFs());document.documentElement.setAttribute("data-contrast",curContrast()?"high":"normal");}catch(e){}}
 (async function init(){
-  applyTheme();applyReadability();installIcons();setupDrag();setupKeys();setupKeys2();setupKeysUndo();setupColResize();setupDD();setupFxBar();scheduleDailyBackup();
+  applyTheme();applyReadability();installIcons();setupDrag();setupKeys();setupKeys2();setupKeysUndo();setupColResize();setupDD();setupFxBar();setupAmtFmt();scheduleDailyBackup();
   await loadAll();
   try{var qp=new URLSearchParams(location.search);if(qp.get("code")){try{await dbxExchange(qp.get("code"));toast("تم الربط مع دروبوكس")}catch(e){toast("تعذّر الربط مع دروبوكس","err")}try{history.replaceState({},"",redirectUri())}catch(e){}}}catch(e){}
   startAuth();   /* بوابة تسجيل الدخول — لا يُعرض النظام إلا بعد الدخول */
