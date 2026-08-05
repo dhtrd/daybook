@@ -1966,7 +1966,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.17";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.18";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -3137,7 +3137,7 @@ function render(){
       backBtn+h("div",{class:"logo"},LOGO_SVG)+
       h("div",{style:"min-width:0"},h("h1",{},esc(S.config.businessName))+h("small",{},subTitle))+
       (lockEnabled(S.currentUser)?h("button",{class:"backbtn",title:"قفل الجهاز (رمز/بصمة)",onclick:"App.pinLockNow()",style:"min-width:36px;font-size:15px"},"🔒"):"")+
-      h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn"+(S._refreshing?" refreshing":""),id:"refreshBtn",title:"إعادة تحميل البيانات (تحديث)",onclick:"App.dataRefresh()",style:"min-width:36px"},'<svg class="rf-ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>')+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
+      h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn"+(S._refreshing?" refreshing":""),id:"refreshBtn",title:"تحديث التطبيق",onclick:"App.appUpdate()",style:"min-width:36px"},'<svg class="rf-ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>')+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
   var _u=rosterGet(S.currentUser)||{};var uname=_u.name||S.currentUser||"مستخدم";var urole=myRole();
   var drawer="<div class='bd' onclick='App.closeDrawer()'></div><aside class='drawer'>"+
     "<div class='dhead'><div class='dhrow'><div class='dlg'>"+LOGO_SVG+"</div><div style='min-width:0'><div class='dhn'>"+esc(S.config.businessName)+"</div><div class='dhs'>نظام تقارير اليومية</div></div><button class='dclose' title='إغلاق' onclick='App.closeDrawer()'>✕</button></div>"+
@@ -4768,17 +4768,27 @@ function openPrompt(o){_modalType="prompt";_modalCb={ok:o.onOk||null,cancel:null
 window.App={
   go:function(v){if(v!=="day"&&!canSee(v)){toast("لا تملك صلاحية هذه الشاشة","err");return}flush(function(){if(v!==S.view)navPush();S.view=v;render()})},
   syncPillGo:function(){if(canSee("data"))App.go("data");else if(fsMode())fsResync();else if(App.cloudSyncNow)App.cloudSyncNow()},
-  /* زر «تحديث» بجانب الإشعارات — إعادة تحميل البيانات يدوياً (سحب أحدث نسخة + إعادة عرض) دون إعادة تحميل الصفحة كاملة */
-  dataRefresh:function(){
+  /* زر «تحديث» بجانب الإشعارات — تحديث التطبيق ككل: يفحص أحدث نسخة عبر عامل الخدمة ويطبّقها، ثم إعادة تحميل كاملة
+     (فتتحدّث الواجهة وأكواد التطبيق والبيانات معاً). يعمل حتى بلا عامل خدمة (إعادة تحميل مباشرة)، ومهما تعذّر يعيد التحميل. */
+  appUpdate:function(){
     if(S._refreshing)return;S._refreshing=true;
     var el=document.getElementById("refreshBtn");if(el)el.classList.add("refreshing");
-    var t0=Date.now();
-    var fin=function(){var wait=Math.max(0,650-(Date.now()-t0));setTimeout(function(){S._refreshing=false;var e=document.getElementById("refreshBtn");if(e)e.classList.remove("refreshing");},wait);};
+    toast("جارٍ تحديث التطبيق…");
+    var done=false,go=function(){if(done)return;done=true;try{location.reload()}catch(e){}};
     try{
-      if(fsMode()){fsResync().then(fin,fin);}
-      else if(typeof syncOn==="function"&&syncOn()){cloudPull(false).then(function(){try{render()}catch(e){}fin();},fin);}
-      else{try{if(S.curDate)loadDay(S.curDate);render();}catch(e){}toast("تم تحديث الصفحة ✓");fin();}
-    }catch(e){toast("تعذّر التحديث","err");fin();}
+      var swc=(typeof navigator!=="undefined")?navigator.serviceWorker:null;
+      if(swc&&swc.getRegistration){
+        swc.getRegistration().then(function(reg){
+          if(!reg){go();return;}
+          try{swc.addEventListener("controllerchange",go);}catch(e){}
+          reg.update().then(function(){
+            if(reg.waiting){try{reg.waiting.postMessage({type:"SKIP_WAITING"});}catch(e){}}
+            setTimeout(go,1400);
+          },function(){setTimeout(go,700);});
+        },go);
+      }else{go();}
+    }catch(e){go();}
+    setTimeout(go,3000);                                   /* ضمان إعادة التحميل مهما حدث */
   },
   toggleDrawer:function(){var s=document.getElementById("shell");if(s)s.classList.toggle("open")},
   closeDrawer:function(){var s=document.getElementById("shell");if(s)s.classList.remove("open")},
