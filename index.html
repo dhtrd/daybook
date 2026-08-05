@@ -1823,7 +1823,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.8.1";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.8.2";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2274,15 +2274,21 @@ function evalExpr(src){var s=String(src||"");if(s.charAt(0)!=="=")return null;s=
   return Math.round(v*100)/100}
 function _fxMark(el,fx){if(el.classList)el.classList.toggle("fx",!!fx);
   var p=el.parentNode;if(p&&p.classList&&String(p.className||"").indexOf("box")>=0)p.classList.toggle("fx",!!fx)}
-/* أثناء الكتابة: يعقّم، يقيّم الصيغة إن وُجدت، يعيد القيمة الرقمية للتخزين ويلوّن الحقل */
-function amtRead(el){var t=sanitizeAmt(el);var fx=t.charAt(0)==="=";var store;
-  if(fx){var v=evalExpr(t);store=(v==null)?"":String(v);el.title=(v==null)?"صيغة غير مكتملة":("= "+fmt(v))}
-  else{store=t;el.title=""}
-  _fxMark(el,fx);return store}
-/* عند مغادرة الحقل: تتحول الصيغة الظاهرة إلى نتيجتها الرقمية */
-function amtSettle(el){if(String(el.value||"").charAt(0)!=="="){_fxMark(el,false);return null}
-  var v=evalExpr(el.value);_fxMark(el,false);el.title="";
-  el.value=(v==null)?"":String(v);return el.value}
+/* هل النص عملية حسابية؟ (يحوي عاملاً/قوساً مع رقم) — النقطة ١٠: حاسبة داخل الخلية بلا «=» */
+function isAmtExpr(t){return /[+\-*/()]/.test(t)&&/[0-9]/.test(t);}
+/* أثناء الكتابة: يعقّم، يقيّم الصيغة (بـ«=» أو بدونها) ويعيد القيمة الرقمية للتخزين ويلوّن الحقل */
+function amtRead(el){var t=sanitizeAmt(el);var store;
+  if(t.charAt(0)==="="){var v=evalExpr(t);store=(v==null)?"":String(v);el.title=(v==null)?"صيغة غير مكتملة":("= "+fmt(v));_fxMark(el,true);}
+  else if(isAmtExpr(t)){var v2=evalExpr("="+t);if(v2==null){store=t;el.title="أكمل العملية…";_fxMark(el,false);}else{store=String(v2);el.title="= "+fmt(v2);_fxMark(el,true);}}
+  else{store=t;el.title="";_fxMark(el,false);}
+  return store}
+/* عند مغادرة الحقل: تتحول العملية الظاهرة إلى نتيجتها الرقمية (بـ«=» أو بدونها) */
+function amtSettle(el){var raw=String(el.value||""),isFx=raw.charAt(0)==="=";
+  if(!isFx&&!isAmtExpr(raw)){_fxMark(el,false);return null}
+  var v=evalExpr(isFx?raw:("="+raw));_fxMark(el,false);el.title="";
+  if(v==null){if(isFx)el.value="";/* عملية غير مكتملة بلا «=» تُترك كما هي ليصحّحها المستخدم */}
+  else el.value=String(v);
+  return el.value}
 
 /* التركيز على حقل مبلغ صف مصروف/إيراد بعد إعادة الرسم */
 function focusItem(kind,i){setTimeout(function(){try{
@@ -3227,7 +3233,7 @@ function entryTable(d,cfg,c){
   var empty=(d.rows||[]).length?"":"<div class='emptyline'>لا صفوف. أضف صفاً أو «إضافة الفروع».</div>";
   S._flashRow=null;
   var swipeHint="<div class='etw-hint'><span class='a'>↔</span><span>اسحب الجدول أفقياً لعرض بقية الأعمدة (النقد والملاحظات)</span></div>";
-  return h("div",{class:"card"},cardHead("مبيعات الفروع","النقد يُحسب تلقائياً · يمكن تكرار الفرع")+
+  return h("div",{class:"card"},cardHead("مبيعات الفروع","النقد يُحسب تلقائياً · يمكن تكرار الفرع · اكتب عملية حسابية في أي خلية مبلغ (مثال: 1200+350)")+
     swipeHint+"<div class='tw etw'><table id='entryTbl'><thead><tr>"+th+"</tr></thead><tbody id='entryBody'>"+rows+totRow+"</tbody></table></div>"+empty+hint+actions);
 }
 function balanceBeforeCard(d,c,prev,carried){
