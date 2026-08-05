@@ -1,7 +1,7 @@
 /* ===== Service Worker — نظام تقارير اليومية =====
    عند إصدار تحديث جديد: غيّر الرقم في APP_VERSION فقط (هنا وفي index.html/version.json).
    الكاش يتجدّد تلقائياً، ولا يمسّ بيانات المستخدم إطلاقاً (البيانات في IndexedDB/localStorage). */
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.6.1";
 const CACHE = "dsr-cache-v" + APP_VERSION;
 
 /* ملفات الواجهة الأساسية (App Shell) — مسارات نسبية لتعمل على أي نطاق أو مجلد فرعي */
@@ -50,16 +50,19 @@ self.addEventListener("fetch", (e) => {
 
   const sameOrigin = url.origin === self.location.origin;
 
-  // الواجهة (HTML): الشبكة أولاً ثم الكاش (لضمان جلب أحدث نسخة عند الاتصال)
+  // الواجهة (HTML): الكاش فوراً ثم تحديث بالخلفية (stale-while-revalidate)
+  // يعرض الشاشة لحظياً من الكاش دون انتظار تنزيل الصفحة كاملة، ويجلب أحدث نسخة بالخلفية
+  // فتظهر عند الزيارة التالية (مع شريط «تحديث متاح» عند تغيّر الإصدار).
   if (sameOrigin && isHTML(req)) {
     e.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put("./index.html", copy));
-          return res;
+      caches.open(CACHE).then((c) =>
+        c.match("./index.html").then((cached) => {
+          const net = fetch(req)
+            .then((res) => { c.put("./index.html", res.clone()); return res; })
+            .catch(() => cached);
+          return cached || net;   // كاش فوري إن وُجد، وإلا الشبكة (أول زيارة)
         })
-        .catch(() => caches.match(req).then((r) => r || caches.match("./index.html")))
+      )
     );
     return;
   }
