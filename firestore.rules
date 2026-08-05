@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // دوال مساعدة
+    // ===== دوال مساعدة =====
     function signedIn() { return request.auth != null; }
     function em()       { return request.auth.token.email; }
     function isOwner()  { return signedIn() && em() == 'a2@dhtrd.com'; }
@@ -10,51 +10,66 @@ service cloud.firestore {
     function roleData() { return get(/databases/$(database)/documents/roles/$(em())).data; }
     function myRole()   { return hasRole() ? roleData().role : ''; }
     function active()   { return isOwner() || (hasRole() && roleData().active == true); }
-    function canWriteDays() { return isOwner() || (active() && myRole() == 'مُدخِل اليوميات'); }
 
-    // وثائق الأيام: قراءة لكل مستخدم فعّال، كتابة للمالك أو مُدخِل اليوميات
+    // استثناء الفرد لصلاحية «الإدخال» (البند ٢): يُخزَّن المالكُ perms في وثيقة الدور.
+    // allow = منح صريح، deny = منع صريح، غيره = يرث الدور.
+    function permEntry() {
+      return (hasRole() && 'perms' in roleData() && 'entry' in roleData().perms)
+        ? roleData().perms.entry : '';
+    }
+    // قرار كتابة الأيام (يطابق نموذج العميل رباعي الطبقات — البند ٤):
+    // المالك؛ أو (فعّال و [منحٌ صريح للإدخال] أو [ليس ممنوعاً و دورُه الأساسي مُدخِل اليوميات]).
+    function canWriteDays() {
+      return isOwner() || ( active() && (
+        permEntry() == 'allow' ||
+        ( permEntry() != 'deny' && myRole() == 'مُدخِل اليوميات' )
+      ));
+    }
+
+    // ===== وثائق الأيام =====
     match /days/{day} {
       allow read:  if active();
       allow write: if canWriteDays();
     }
 
-    // الإعدادات العامة (اسم النشاط/الرصيد الافتتاحي/الفروع/طرق الدفع/الشعار): كتابة للمالك فقط
+    // ===== الإعدادات العامة + الأدوار المخصّصة + أسماء العرض (meta/config): كتابة للمالك فقط =====
     match /meta/{doc} {
       allow read:  if active();
       allow write: if isOwner();
     }
 
-    // الأدوار: قراءة لكل مسجّل؛ الإنشاء/الحذف للمالك؛ ويحدّث المستخدم آخر دخوله فقط
+    // ===== الأدوار: قراءة لكل مسجّل؛ الإنشاء/الحذف للمالك =====
+    // المالك يعدّل كل شيء. المستخدم يعدّل وثيقته الخاصة في حقول ذاتية فقط:
+    // lastLogin + prefs + updatedTs — ولا يمسّ role/perms/branches/active/name (يمنع تصعيد الصلاحية).
     match /roles/{userEmail} {
-      allow read:          if signedIn();
-      allow create, delete: if isOwner();
+      allow read:            if signedIn();
+      allow create, delete:  if isOwner();
       allow update: if isOwner()
         || ( signedIn() && userEmail == em()
-             && request.resource.data.role   == resource.data.role
-             && request.resource.data.active == resource.data.active
-             && request.resource.data.name   == resource.data.name );
+             && request.resource.data.diff(resource.data)
+                  .affectedKeys().hasOnly(['lastLogin','prefs','updatedTs']) );
     }
 
-    // درج Dropbox (اختياري — للنسخ الاحتياطي لدى المالك)
+    // ===== درج Dropbox (اختياري) =====
     match /appConfig/{doc} {
       allow read:  if signedIn();
       allow write: if isOwner();
     }
 
-    // سجل النشاط: قراءة لكل فعّال، إنشاء لكل فعّال (سجل تراكمي)، التعديل/الحذف للمالك فقط
+    // ===== سجل النشاط: إلحاقي — إنشاء لكل فعّال، لا تعديل/حذف إلا للمالك =====
     match /activity/{id} {
-      allow read:   if active();
-      allow create: if active();
-      allow update, delete: if isOwner();
+      allow read:            if active();
+      allow create:          if active();
+      allow update, delete:  if isOwner();
     }
 
-    // الاعتمادات: قراءة لكل فعّال؛ الكتابة للمالك أو المدير المالي (اعتماد/إعادة) أو مُدخِل اليوميات (إرسال)
+    // ===== الاعتمادات: المالك أو المدير المالي (اعتماد/إعادة) أو مُدخِل اليوميات (إرسال) =====
     match /approvals/{date} {
       allow read:  if active();
       allow write: if isOwner() || myRole() == 'المدير المالي' || myRole() == 'مُدخِل اليوميات';
     }
 
-    // منع أي شيء آخر
+    // ===== منع أي شيء آخر =====
     match /{document=**} { allow read, write: if false; }
   }
 }

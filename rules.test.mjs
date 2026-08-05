@@ -41,6 +41,8 @@ beforeEach(async () => {
     await setDoc(doc(db, 'roles', 'fin@dhtrd.com'),       { name: 'مالي',   role: 'المدير المالي',  active: true });
     await setDoc(doc(db, 'roles', 'gen@dhtrd.com'),       { name: 'عام',    role: 'المدير العام',   active: true });
     await setDoc(doc(db, 'roles', 'off@dhtrd.com'),       { name: 'موقوف',  role: 'مُدخِل اليوميات', active: false });
+    await setDoc(doc(db, 'roles', 'grant@dhtrd.com'),     { name: 'ممنوح',  role: 'المدير العام',   active: true, perms: { entry: 'allow' } });
+    await setDoc(doc(db, 'roles', 'denyu@dhtrd.com'),     { name: 'ممنوع',  role: 'مُدخِل اليوميات', active: true, perms: { entry: 'deny' } });
     await setDoc(doc(db, 'days', '2026-07-30'),           { date: '2026-07-30', updatedTs: 1 });
     await setDoc(doc(db, 'meta', 'config'),               { businessName: 'الضبيبي', cfgUpdatedTs: 1 });
     await setDoc(doc(db, 'approvals', '2026-07-30'),      { date: '2026-07-30', status: 'pending' });
@@ -77,6 +79,12 @@ test('days: مستخدم موقوف (active=false) ممنوع من القراء�
 test('days: بريد غير معروف (بلا دور) ممنوع', async () => {
   await assertFails(getDoc(day(asUser('stranger@dhtrd.com'))));
 });
+test('days: استثناء فردي «منح» يتيح الكتابة لدور لا يملكها (المدير العام)', async () => {
+  await assertSucceeds(setDoc(day(asUser('grant@dhtrd.com')), { date: '2026-07-30', updatedTs: 7 }));
+});
+test('days: استثناء فردي «منع» يمنع الكتابة عن دور يملكها (مُدخِل اليوميات)', async () => {
+  await assertFails(setDoc(day(asUser('denyu@dhtrd.com')), { date: '2026-07-30', updatedTs: 8 }));
+});
 
 /* ===================== الإعدادات (meta) ===================== */
 test('meta: المالك يكتب، والفعّالون يقرأون فقط', async () => {
@@ -112,6 +120,20 @@ test('roles: المستخدم يحدّث آخر دخوله فقط (لا يرفع
   // محاولة تعديل دور مستخدم آخر = ممنوعة
   await assertFails(setDoc(doc(db, 'roles', 'fin@dhtrd.com'),
     { name: 'مالي', role: 'مُدخِل اليوميات', active: true }, { merge: true }));
+});
+test('roles: المستخدم يحفظ تفضيلاته (prefs) في وثيقته', async () => {
+  const db = asUser('entry@dhtrd.com');
+  await assertSucceeds(setDoc(doc(db, 'roles', 'entry@dhtrd.com'),
+    { prefs: { mode: 'dark', fs: 'xl', contrast: '1' }, updatedTs: 9 }, { merge: true }));
+});
+test('roles: المستخدم لا يمنح نفسه صلاحيات (perms) ولا يغيّر نطاق فروعه (branches)', async () => {
+  const db = asUser('entry@dhtrd.com');
+  // تصعيد صلاحية ذاتي = ممنوع
+  await assertFails(setDoc(doc(db, 'roles', 'entry@dhtrd.com'),
+    { perms: { users: 'allow' }, updatedTs: 10 }, { merge: true }));
+  // تغيير نطاق فروعه بنفسه = ممنوع
+  await assertFails(setDoc(doc(db, 'roles', 'entry@dhtrd.com'),
+    { branches: ['b1'], updatedTs: 11 }, { merge: true }));
 });
 
 /* ===================== سجل النشاط (activity) ===================== */
