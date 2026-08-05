@@ -208,6 +208,20 @@ html.pinned{overflow:hidden}
 .chg-list li{font-size:12.5px;color:var(--text);background:var(--field);border-radius:8px;padding:6px 10px;border:1px solid var(--line2);line-height:1.6}
 .chg-list li.chg-more{background:none;border:none;color:var(--muted);font-weight:700;padding:2px 4px}
 .chg-note{font-size:11.5px;color:var(--muted);margin-top:8px}
+/* ===== النسخ الاحتياطي على الجهاز (النقطة ٧) ===== */
+.bk-status{margin:2px 0 10px}
+.bk-ok{font-size:13px;font-weight:800;color:var(--pos)}
+.bk-ctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--field);border:1px solid var(--line);border-radius:12px;padding:9px 12px;margin-bottom:10px}
+.bk-ctl-l{font-size:13.5px;font-weight:700;color:var(--ink)}
+.bk-keep{font-size:12.5px;color:var(--muted);font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.bk-keep select{font-family:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--surface);color:var(--ink)}
+.bk-list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.bk-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:var(--surface)}
+.bk-meta{min-width:0;flex:1}
+.bk-d{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+.bk-badge{font-size:10.5px;font-weight:800;color:var(--pos);background:rgba(30,122,90,.12);border:1px solid rgba(30,122,90,.25);border-radius:999px;padding:1px 8px}
+.bk-acts{display:flex;gap:6px;flex-wrap:wrap}
+.btn.sm{padding:5px 12px;font-size:12.5px}
 /* ===== الإشعارات ===== */
 .notifwrap{position:relative;display:inline-flex}
 .nbadge{position:absolute;top:-4px;inset-inline-start:-4px;background:var(--neg);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:grid;place-items:center;padding:0 3px}
@@ -1776,7 +1790,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.7.7";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.7.8";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2310,6 +2324,82 @@ function scheduleDailyBackup(){try{
   if(last===todayISO())return;
   setTimeout(function(){if(cloudOn()||dbxEnabled())backupNow(true)},6000);
 }catch(e){}}
+
+/* ===== النسخ الاحتياطي التلقائي اليومي على الجهاز (النقطة ٧) — مستقل عن Dropbox/السحابة =====
+   يحفظ لقطة كاملة مؤرخة داخل تخزين الجهاز مرة كل يوم، ثم «يتحقّق» منها بإعادة القراءة ومطابقة
+   عدد الأيام (نسخة مُتحقَّقة)، ويحتفظ بعدد محدَّد (افتراضي ٧) حاذفاً الأقدم. يعمل في وضع Firestore
+   بلا أي ربط خارجي، ولا يكتب شيئاً في السحابة (لا يزيد تكلفة — النقطة ٢). قابل للاستعادة والتنزيل. */
+function localBkEnabled(){try{return localStorage.getItem("dsr_bk_auto")!=="off"}catch(e){return true}}
+function localBkKeep(){try{var n=parseInt(localStorage.getItem("dsr_bk_keep")||"7",10);return Math.max(3,Math.min(30,n||7))}catch(e){return 7}}
+function bkKey(day){return "dsr_bk_snap_"+day;}
+function bkIndexGet(){try{var a=JSON.parse(localStorage.getItem("dsr_bk_index")||"[]");return Array.isArray(a)?a:[]}catch(e){return []}}
+function bkIndexSet(a){try{localStorage.setItem("dsr_bk_index",JSON.stringify(a))}catch(e){}}
+async function pruneLocalBackups(keep){
+  var ks=await DB.keys("dsr_bk_snap_");ks.sort();               /* تصاعدي بالتاريخ (الأقدم أولاً) */
+  while(ks.length>keep){var k=ks.shift();await DB.del(k);}
+}
+async function localBackupNow(silent){
+  try{
+    var day=todayISO(),key=bkKey(day),payload=gatherPayload();
+    var nDays=Object.keys(S.data||{}).length;
+    var rec={at:nowStamp(),day:day,days:nDays,ver:APP_VERSION,payload:payload};
+    var ok=await DB.set(key,rec),back=ok?await DB.get(key):null;
+    var verified=!!(back&&back.payload&&back.payload.data&&Object.keys(back.payload.data).length===nDays);
+    if(!verified){                                              /* الأرجح امتلاء التخزين — نُقلّم القديم ونعيد مرة */
+      await pruneLocalBackups(Math.max(1,localBkKeep()-2));
+      ok=await DB.set(key,rec);back=ok?await DB.get(key):null;
+      verified=!!(back&&back.payload&&back.payload.data&&Object.keys(back.payload.data).length===nDays);
+    }
+    if(!verified){if(!silent)toast("تعذّر إنشاء نسخة على الجهاز (قد تكون مساحة التخزين ممتلئة)","err");return false;}
+    var idx=bkIndexGet().filter(function(x){return x.day!==day});
+    idx.push({day:day,at:rec.at,days:nDays,verified:true});
+    idx.sort(function(a,b){return a.day<b.day?1:-1});           /* الأحدث أولاً */
+    if(idx.length>localBkKeep())idx=idx.slice(0,localBkKeep());
+    bkIndexSet(idx);
+    await pruneLocalBackups(localBkKeep());
+    try{localStorage.setItem("dsr_bk_local_at",rec.at);localStorage.setItem("dsr_bk_local_day",day);}catch(e){}
+    if(!silent)toast("✓ حُفظت نسخة على الجهاز ("+nDays+" يوم) — مُتحقَّقة");
+    return true;
+  }catch(e){if(!silent)toast("تعذّر إنشاء النسخة: "+(e&&e.message||e),"err");return false;}
+}
+function maybeDailyLocalBackup(){try{
+  if(!localBkEnabled())return;
+  var lastL="";try{lastL=localStorage.getItem("dsr_bk_local_day")||""}catch(e){}
+  if(lastL===todayISO())return;
+  setTimeout(function(){localBackupNow(true).then(function(ok){if(ok&&S.view==="data")render();})},4000);
+}catch(e){}}
+/* تطبيق حمولة استعادة (مشترك) — يهاجر ويُثبّت محلياً ثم يدفع حسب وضع المزامنة */
+async function restorePayloadApply(obj){
+  var localDbx=S.config.dropbox;var cfg=obj.config||S.config;cfg.dropbox=localDbx;
+  var mig=runMigrations(cfg,obj.data||{},(obj.schema||1));S.config=mig.config;S.data=mig.data;
+  ensureQueue();S.config.pendingOps=[];S.config.baseSnap=null;S.config.baseRev="";S.config.cloudDirty=false;S.sync.conflict=false;
+  invalidateBal();S._noPush=true;await persistEverything();S._noPush=false;
+  await DB.set("dsr_meta",{schema:SCHEMA_VERSION,appVersion:APP_VERSION,updatedAt:nowStamp()});
+  var okS=true;
+  if(cloudOn())okS=await sovereignSync();
+  else if(fsMode()){try{await fsPushNow()}catch(e){}}            /* دفع الفرق إلى Firestore فوراً */
+  S.day=null;render();
+  return okS;
+}
+/* بطاقة النسخ الاحتياطي على الجهاز في شاشة البيانات (النقطة ٧) */
+function localBackupCard(){
+  var idx=bkIndexGet(),lastAt="";try{lastAt=localStorage.getItem("dsr_bk_local_at")||""}catch(e){}
+  var auto=localBkEnabled(),keep=localBkKeep();
+  var statusLine=lastAt?"<span class='bk-ok'>✓ آخر نسخة مُتحقَّقة: "+esc(lastAt)+"</span>":"<span class='note' style='margin:0'>لم تُنشأ نسخة تلقائية بعد — تُنشأ تلقائياً عند أول فتح اليوم.</span>";
+  var keepOpts=[3,5,7,10,14,30].map(function(n){return "<option value='"+n+"'"+(n===keep?" selected":"")+">"+n+"</option>"}).join("");
+  var rows=idx.length?idx.map(function(b){
+    return "<div class='bk-row'><div class='bk-meta'><div class='bk-d'><b>"+esc(prettyDate(b.day))+"</b>"+(b.verified?"<span class='bk-badge'>✓ مُتحقَّقة</span>":"")+"</div><div class='note' style='margin:2px 0 0'>"+esc(b.at||"")+" · "+num(b.days)+" يوم</div></div>"+
+      "<div class='bk-acts'><button class='btn ghost sm' onclick=\"App.bkRestore('"+b.day+"')\">استعادة</button><button class='btn ghost sm' onclick=\"App.bkDownload('"+b.day+"')\">"+IC.dl+" تنزيل</button></div></div>";
+  }).join(""):"<div class='note' style='margin:0'>لا نسخ محفوظة بعد.</div>";
+  return h("div",{class:"card"},
+    "<div class='ch'><h3>🛡️ نسخة احتياطية يومية على الجهاز</h3><span class='sp'></span><span class='note' style='margin:0'>تلقائية · مُتحقَّقة · بلا إنترنت</span></div>"+
+    "<p class='note' style='margin-top:0'>تُحفظ نسخة كاملة مؤرخة داخل هذا الجهاز مرة كل يوم ويُتحقَّق منها تلقائياً. تعمل في وضع Firestore دون أي ربط، وتتيح <b>العودة إلى أي يوم سابق</b> إن حدث خطأ — فالمزامنة ليست بديلاً عن النسخ (الحذف الخاطئ يتزامن للجميع، أما النسخة فتبقى).</p>"+
+    "<div class='bk-status'>"+statusLine+"</div>"+
+    "<div class='bk-ctl'><button type='button' class='nu-sw"+(auto?" on":"")+"' title='"+(auto?"إيقاف":"تفعيل")+" النسخ التلقائي' onclick='App.bkToggleAuto()'><b></b></button><span class='bk-ctl-l'>نسخ تلقائي يومي</span><span class='sp'></span><label class='bk-keep'>يحتفظ بآخر <select onchange='App.bkSetKeep(this.value)'>"+keepOpts+"</select> نسخة</label></div>"+
+    "<div class='btnrow'><button class='btn' onclick='App.bkRunNow()'>"+IC.save+" أنشئ نسخة الآن</button></div>"+
+    "<div class='bk-list'>"+rows+"</div>"
+  );
+}
 
 /* ===== سجل التنقل (زر الرجوع العام) ===== */
 var _nav=[],_navScroll=null;
@@ -3678,7 +3768,7 @@ function viewData(){
   var about=h("div",{class:"card"},chHead(IC.folder+" حول التطبيق والتحديثات")+
     "<div class='linkrow'><div class='note'>الإصدار الحالي: <b class='ink'>"+APP_VERSION+"</b> · نسخة البيانات: <b>"+SCHEMA_VERSION+"</b><br>التحديثات تُطبَّق تلقائياً عند نشر نسخة جديدة، وبياناتك وإعداداتك تبقى محفوظة دائماً.</div><button class='btn ghost' onclick='App.checkUpdate()'>"+IC.up+" بحث عن تحديث</button></div>");
 
-  return h("div",{class:"n-data"},head+stats+bkCard+rescueCard+lastEdits+maint+link+about+sync+exp+(CLOUD?"":"<p class='note center'>لرفع النظام على الإنترنت: أنشئ مستودع GitHub وارفع كل الملفات وفعّل GitHub Pages. راجع ملف README.</p>"));
+  return h("div",{class:"n-data"},head+stats+localBackupCard()+bkCard+rescueCard+lastEdits+maint+link+about+sync+exp+(CLOUD?"":"<p class='note center'>لرفع النظام على الإنترنت: أنشئ مستودع GitHub وارفع كل الملفات وفعّل GitHub Pages. راجع ملف README.</p>"));
 }
 function viewFiles(){
   /* ===== محلّي فقط لبناء الواجهة (لا يغيّر أي منطق بيانات) ===== */
@@ -4510,6 +4600,11 @@ window.App={
     openConfirm({title:"حذف نهائي؟",body:"سيُحذف «<b>"+esc(e.label||"عنصر")+"</b>» نهائياً ولا يمكن استرجاعه.",danger:true,confirm:"حذف نهائي",onOk:function(){S.config.trash=(S.config.trash||[]).filter(function(x){return x.id!==id});persistEverything();render();toast("تم الحذف النهائي")}})},
   emptyTrash:function(){if(!(S.config.trash||[]).length)return;openConfirm({title:"تفريغ السلة؟",body:"سيتم حذف كل عناصر السلة نهائياً ولا يمكن استرجاعها.",danger:true,confirm:"تفريغ",onOk:function(){S.config.trash=[];persistEverything();render();toast("تم تفريغ السلة")}})},
   backup:function(){dl(new Blob([JSON.stringify(gatherPayload(),null,2)],{type:"application/json"}),"نسخة_احتياطية_"+todayISO()+".json");toast("تم حفظ النسخة")},
+  bkRunNow:function(){localBackupNow(false).then(function(ok){if(ok&&S.view==="data")render()})},
+  bkToggleAuto:function(){var on=localBkEnabled();try{localStorage.setItem("dsr_bk_auto",on?"off":"on")}catch(e){}render();toast(on?"أُوقف النسخ التلقائي اليومي":"فُعّل النسخ التلقائي اليومي")},
+  bkSetKeep:function(v){var n=Math.max(3,Math.min(30,parseInt(v,10)||7));try{localStorage.setItem("dsr_bk_keep",String(n))}catch(e){}pruneLocalBackups(n).then(function(){var idx=bkIndexGet();if(idx.length>n){bkIndexSet(idx.slice(0,n));}if(S.view==="data")render();});toast("يحتفظ بآخر "+n+" نسخة")},
+  bkDownload:async function(day){var rec=await DB.get(bkKey(day));if(!rec||!rec.payload){toast("النسخة غير متوفرة","err");return}dl(new Blob([JSON.stringify(rec.payload,null,2)],{type:"application/json"}),"نسخة_"+day+".json");toast("تم تنزيل النسخة")},
+  bkRestore:async function(day){var rec=await DB.get(bkKey(day));if(!rec||!rec.payload||!rec.payload.data){toast("النسخة غير متوفرة أو تالفة","err");return}var n=Object.keys(rec.payload.data).length;openConfirm({title:"استعادة نسخة "+prettyDate(day)+"؟",body:"سيتم استبدال جميع البيانات الحالية بمحتوى هذه النسخة (<b>"+n+" يوم</b>)"+((fsMode()||cloudOn())?" وتُدفع إلى السحابة/المزامنة":"")+". لا يمكن التراجع.",danger:true,confirm:"استعادة",onOk:async function(){toast("جارٍ الاستعادة…");var okS=await restorePayloadApply(rec.payload);toast(okS?"تمت الاستعادة ✓":"تمت الاستعادة محلياً — تعذّر الدفع للسحابة، استخدم «فرض المحلي على السحابة»",okS?undefined:"err")}})},
   restore:async function(input){var f=input.files&&input.files[0];if(!f)return;try{var obj=JSON.parse(await f.text());if(!obj.data)throw new Error("ملف غير صالح");openConfirm({title:"استبدال كل البيانات؟",body:"سيتم استبدال جميع البيانات الحالية بمحتوى الملف. لا يمكن التراجع.",danger:true,confirm:"استبدال",onOk:async function(){var localDbx=S.config.dropbox;var cfg=obj.config||S.config;cfg.dropbox=localDbx;var mig=runMigrations(cfg,obj.data||{},(obj.schema||1));S.config=mig.config;S.data=mig.data;
         ensureQueue();S.config.pendingOps=[];S.config.baseSnap=null;S.config.baseRev="";S.config.cloudDirty=false;S.sync.conflict=false;
         invalidateBal();S._noPush=true;await persistEverything();S._noPush=false;
@@ -4835,6 +4930,7 @@ async function onSignedIn(user){
   if(!canSee(S.view))S.view="dashboard";
   loadDay(S.curDate);render();
   if(pinEnabled(email)&&pinIsLocked(email)){pinOpen("lock");}   /* بقي الجهاز مقفلاً قبل إعادة التحميل — النقطة ١٢ */
+  maybeDailyLocalBackup();                                       /* نسخة احتياطية يومية على الجهاز — النقطة ٧ */
   if(!_authStarted){_authStarted=true;registerSW();setupAutoSync();setupInstall();setupIdle();}
 }
 function startAuth(){
