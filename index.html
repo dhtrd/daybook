@@ -138,6 +138,10 @@ a{color:var(--brass)}
 .sync-pill.s-on{background:#e7f3ec;border-color:#bfe0cd;color:#1c6b4d}
 .sync-pill.s-busy{background:#f7f0dd;border-color:#e7d7ab;color:#8a6a1f}
 .sync-pill.s-err{background:#fbe9e2;border-color:#f0c6b6;color:#a03d1f}
+.sync-pill .rf-ic{display:inline-block;vertical-align:middle}
+.sync-pill.refreshing{pointer-events:none;opacity:.9}
+.sync-pill.refreshing .rf-ic{animation:rfspin .7s linear infinite;transform-origin:50% 50%}
+@keyframes rfspin{to{transform:rotate(-360deg)}}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:#c9c2b3;flex:none}
 .sync-dot.on{background:var(--pos)} .sync-dot.err{background:var(--neg)} .sync-dot.busy{background:var(--brass);animation:pulse 1s infinite}
 @keyframes pulse{50%{opacity:.35}}
@@ -1962,7 +1966,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.15";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.16";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2313,9 +2317,11 @@ async function dbxBackup(){var g=dbxCfg();if(!g.refreshToken){toast("اربط د
   try{await dbxUpload("/DailyReport/backups/backup-"+todayISO()+"-"+Date.now()+".json",JSON.stringify(gatherPayload(),null,2));toast("تم حفظ نسخة في دروبوكس")}catch(e){toast("تعذّر الحفظ: "+e.message,"err")}}
 function setSync(st){S.sync.status=st;updateSyncPill()}
 function updateSyncPill(){var el=document.getElementById("syncPill");if(!el)return;
-  var st=syncState();el.className="sync-pill"+(st.cls?" "+st.cls:"");
-  var dot=el.querySelector(".sync-dot");if(dot)dot.className="sync-dot"+(st.dot?" "+st.dot:"");
-  var txt=el.querySelector("span:last-child");if(txt)txt.textContent=st.text;}
+  /* الزر صار «تحديث يدوي» (بدل مؤشّر الحالة) — نُبقي لون الحالة والعنوان فقط دون تغيير النص/الأيقونة */
+  var st=syncState();
+  el.classList.remove("s-on","s-busy","s-err");if(st.cls)el.classList.add(st.cls);
+  el.title="إعادة تحميل البيانات"+(st.text?" — "+st.text:"");
+  var dot=el.querySelector(".sync-dot");if(dot)dot.className="sync-dot"+(st.dot?" "+st.dot:"");}
 
 /* أيقونات */
 var LOGO_SVG='<svg viewBox="0 0 80 80" width="80" height="80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="شعار التطبيق"><rect width="80" height="80" rx="20" fill="#173A31"/><rect x="20" y="18" width="40" height="46" rx="5" fill="#fff"/><rect x="37" y="18" width="6" height="46" fill="#E7EFEA"/><rect x="26" y="28" width="10" height="3.4" rx="1.7" fill="#AF8228"/><rect x="26" y="37" width="10" height="3.4" rx="1.7" fill="#cdd6d0"/><rect x="44" y="28" width="10" height="3.4" rx="1.7" fill="#cdd6d0"/><rect x="44" y="37" width="10" height="3.4" rx="1.7" fill="#AF8228"/><path d="M26 49l4 4 8-9" fill="none" stroke="#1E7A5A" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -3133,7 +3139,7 @@ function render(){
       backBtn+h("div",{class:"logo"},LOGO_SVG)+
       h("div",{style:"min-width:0"},h("h1",{},esc(S.config.businessName))+h("small",{},subTitle))+
       (lockEnabled(S.currentUser)?h("button",{class:"backbtn",title:"قفل الجهاز (رمز/بصمة)",onclick:"App.pinLockNow()",style:"min-width:36px;font-size:15px"},"🔒"):"")+
-      h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn abhide",title:"دليل الاستخدام",onclick:"App.help()",style:"min-width:36px;font-weight:900;font-size:15px"},"؟")+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
+      h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn abhide",title:"دليل الاستخدام",onclick:"App.help()",style:"min-width:36px;font-weight:900;font-size:15px"},"؟")+h("button",{id:"syncPill",class:"sync-pill"+(S._refreshing?" refreshing":""),title:"إعادة تحميل البيانات",onclick:"App.dataRefresh()"},'<svg class="rf-ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg><span>تحديث</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
   var _u=rosterGet(S.currentUser)||{};var uname=_u.name||S.currentUser||"مستخدم";var urole=myRole();
   var drawer="<div class='bd' onclick='App.closeDrawer()'></div><aside class='drawer'>"+
     "<div class='dhead'><div class='dhrow'><div class='dlg'>"+LOGO_SVG+"</div><div style='min-width:0'><div class='dhn'>"+esc(S.config.businessName)+"</div><div class='dhs'>نظام تقارير اليومية</div></div><button class='dclose' title='إغلاق' onclick='App.closeDrawer()'>✕</button></div>"+
@@ -4764,6 +4770,18 @@ function openPrompt(o){_modalType="prompt";_modalCb={ok:o.onOk||null,cancel:null
 window.App={
   go:function(v){if(v!=="day"&&!canSee(v)){toast("لا تملك صلاحية هذه الشاشة","err");return}flush(function(){if(v!==S.view)navPush();S.view=v;render()})},
   syncPillGo:function(){if(canSee("data"))App.go("data");else if(fsMode())fsResync();else if(App.cloudSyncNow)App.cloudSyncNow()},
+  /* زر «تحديث» بجانب الإشعارات — إعادة تحميل البيانات يدوياً (سحب أحدث نسخة + إعادة عرض) دون إعادة تحميل الصفحة كاملة */
+  dataRefresh:function(){
+    if(S._refreshing)return;S._refreshing=true;
+    var el=document.getElementById("syncPill");if(el)el.classList.add("refreshing");
+    var t0=Date.now();
+    var fin=function(){var wait=Math.max(0,650-(Date.now()-t0));setTimeout(function(){S._refreshing=false;var e=document.getElementById("syncPill");if(e)e.classList.remove("refreshing");},wait);};
+    try{
+      if(fsMode()){fsResync().then(fin,fin);}
+      else if(typeof syncOn==="function"&&syncOn()){cloudPull(false).then(function(){try{render()}catch(e){}fin();},fin);}
+      else{try{if(S.curDate)loadDay(S.curDate);render();}catch(e){}toast("تم تحديث الصفحة ✓");fin();}
+    }catch(e){toast("تعذّر التحديث","err");fin();}
+  },
   toggleDrawer:function(){var s=document.getElementById("shell");if(s)s.classList.toggle("open")},
   closeDrawer:function(){var s=document.getElementById("shell");if(s)s.classList.remove("open")},
   goNav:function(v){App.closeDrawer();App.go(v)},
@@ -5429,6 +5447,8 @@ async function fsStart(){
     return false;}
 }
 
+/* عنوان الإشعار الخارجي حسب نوع النشاط — يعيد استخدام أيقونة النوع وتصنيفه (أمان/يوميات/اعتمادات/مستخدمون/تصدير) */
+function actNotifTitle(d){try{var ic=(typeof actIcon==="function"?actIcon(d&&d.type):"🔔")||"🔔";var tg=(typeof actTagFor==="function"?actTagFor(d||{}):"نشاط");return ic+" "+tg;}catch(e){return "🔔 نشاط جديد";}}
 function fsAttach(db){
   /* أ) الأيام — تحديث لحظي */
   FSY.unsub.push(db.collection("days").onSnapshot(function(snap){
@@ -5470,12 +5490,17 @@ function fsAttach(db){
   },function(){}));
   /* د) سجل النشاط — لحظي */
   FSY.unsub.push(db.collection("activity").orderBy("ts","desc").limit(200).onSnapshot(function(snap){
-    if(FSY.applying)return;var ch=false,_nd=null,_newTop=null;S._activity=S._activity||[];
+    if(FSY.applying)return;var ch=false,_nd=null,_fresh=[];S._activity=S._activity||[];
     snap.docChanges().forEach(function(c){if(c.doc.metadata&&c.doc.metadata.hasPendingWrites)return;if(c.type==="removed")return;var d=c.doc.data();if(!d||!d.id)return;if(!S._activity.some(function(x){return x.id===d.id})){S._activity.push(d);ch=true;
-      if(String(d.actor||"").toLowerCase()!==String(S.currentUser||"").toLowerCase()){if(!_newTop||(num(d.ts)||0)>(num(_newTop.ts)||0))_newTop=d;if(d.type==="newdevice")_nd=d;}}});
+      if(String(d.actor||"").toLowerCase()!==String(S.currentUser||"").toLowerCase()){_fresh.push(d);if(d.type==="newdevice")_nd=d;}}});
     if(!ch)return;
-    /* إشعار خارجي + اهتزاز الجرس لأي نشاط جديد من غيرك (النقطة ٢) */
-    if(_newTop){_notifShake=true;if(FSY._primed&&typeof Notify!=="undefined"&&Notify.enabled()){try{Notify.show(_newTop.type==="newdevice"?"🔐 دخول من جهاز جديد":"🔔 نشاط جديد",((_newTop.actorName||_newTop.actor||"")+" "+(_newTop.detail||"")).trim(),"act-"+_newTop.id);}catch(e){}}}
+    /* إشعار خارجي + اهتزاز الجرس لكل نشاط جديد من غيرك يظهر في سجل النشاط (النقطة ٢).
+       تعديل بيانات اليومية نفسها لا يُسجَّل نشاطاً ولا يُشعِر (يُدار في مستمع days أعلاه) — فيُستثنى تلقائياً. */
+    if(_fresh.length){_notifShake=true;if(FSY._primed&&typeof Notify!=="undefined"&&Notify.enabled()){
+        _fresh.sort(function(a,b){return (num(a.ts)||0)-(num(b.ts)||0)});   /* الأقدم أولاً كي يبقى الأحدث في الأعلى */
+        if(_fresh.length<=4){_fresh.forEach(function(d){try{Notify.show(actNotifTitle(d),((d.actorName||d.actor||"")+" "+(d.detail||"")).trim(),"act-"+d.id);}catch(e){}});}
+        else{var _lt=_fresh[_fresh.length-1];try{Notify.show("🔔 "+_fresh.length+" أنشطة جديدة",((_lt.actorName||_lt.actor||"")+" "+(_lt.detail||"")+" …").trim(),"act-bulk-"+_lt.id);}catch(e){}}
+      }}
     if(FSY._primed&&_nd&&isOwner()){toast("🔐 دخول من جهاز جديد: "+(_nd.actorName||_nd.actor||""));}
     S._activity.sort(function(a,b){return (num(b.ts)||0)-(num(a.ts)||0)});if(S._activity.length>200)S._activity=S._activity.slice(0,200);scheduleRender();
   },function(){}));
