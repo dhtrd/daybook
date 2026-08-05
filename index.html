@@ -4,9 +4,20 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
 <title>نظام تقارير اليومية</title>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+/* شاشة بداية فورية — تظهر لحظياً قبل تحميل باقي التطبيق فلا تبقى الشاشة فارغة */
+#splash{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(circle at 78% 12%,rgba(30,122,90,.30),transparent 45%),linear-gradient(135deg,#0f3f34,#0d1512);transition:opacity .45s ease;font-family:'Tajawal',system-ui,sans-serif}
+#splash.hide{opacity:0;pointer-events:none}
+#splash .sp-logo{width:78px;height:78px;border-radius:20px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.42);animation:sp-pop .5s cubic-bezier(.34,1.4,.64,1)}
+#splash .sp-logo svg{width:100%;height:100%;display:block}
+#splash .sp-spin{width:30px;height:30px;border:3px solid rgba(255,255,255,.22);border-top-color:#E8B84B;border-radius:50%;animation:sp-spin .8s linear infinite}
+#splash .sp-txt{color:#cfe8dd;font-weight:800;font-size:14px}
+@keyframes sp-spin{to{transform:rotate(360deg)}}
+@keyframes sp-pop{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:none}}
+</style>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style id="authCSS">
 .authing{overflow:hidden}
 .authgate{position:fixed;inset:0;z-index:99999;background:radial-gradient(circle at 78% 12%,rgba(30,122,90,.28),transparent 42%),linear-gradient(135deg,#0f3f34,#0d1512);display:grid;place-items:center;padding:20px;font-family:'Tajawal',sans-serif}
@@ -1646,10 +1657,11 @@ html[data-mode="dark"] .n-files .dt th{background:#1E7A5A}
 </style>
 </head>
 <body>
+<div id="splash"><div class="sp-logo"><svg viewBox="0 0 80 80" width="80" height="80" xmlns="http://www.w3.org/2000/svg" aria-label="شعار"><rect width="80" height="80" rx="20" fill="#173A31"/><rect x="20" y="18" width="40" height="46" rx="5" fill="#fff"/><rect x="37" y="18" width="6" height="46" fill="#E7EFEA"/><rect x="26" y="28" width="10" height="3.4" rx="1.7" fill="#AF8228"/><rect x="26" y="37" width="10" height="3.4" rx="1.7" fill="#cdd6d0"/><rect x="44" y="28" width="10" height="3.4" rx="1.7" fill="#cdd6d0"/><rect x="44" y="37" width="10" height="3.4" rx="1.7" fill="#AF8228"/><path d="M26 49l4 4 8-9" fill="none" stroke="#1E7A5A" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="sp-spin"></div><div class="sp-txt">نظام تقارير اليومية</div></div>
 <div id="app"></div>
 <div id="modalRoot"></div>
 <div id="printroot"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="./config.js"></script>
 <script>
 "use strict";
@@ -1723,7 +1735,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.6.0";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.6.1";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2658,6 +2670,7 @@ function viewActivity(){
   return "<div class='n-act'>"+head+filters+body+"</div>";
 }
 function render(){
+  if(typeof removeSplash==="function")removeSplash();
   if(KIOSK){kioskRender();return}
   _ddReg.length=0;
   var IC_USERS="<svg viewBox='0 0 24 24' width='20' height='20' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='9' cy='8' r='3'/><path d='M3.5 20c0-3 2.6-5 5.5-5s5.5 2 5.5 5'/><path d='M16 6a3 3 0 010 6'/><path d='M17.5 15c2 .5 3.5 2 3.5 5'/></svg>";
@@ -3774,6 +3787,7 @@ function setupInstall(){
 var _updReg=null,_swReloaded=false;
 function registerSW(){
   if(!("serviceWorker" in navigator))return;
+  var _hadCtrl=!!navigator.serviceWorker.controller;   /* هل توجد نسخة مُتحكِّمة مسبقاً؟ (زيارة أولى = لا) */
   navigator.serviceWorker.register("./sw.js").then(function(reg){
     _updReg=reg;
     if(reg.waiting&&navigator.serviceWorker.controller)showUpdateBanner();
@@ -3781,7 +3795,8 @@ function registerSW(){
       nw.addEventListener("statechange",function(){if(nw.state==="installed"&&navigator.serviceWorker.controller)showUpdateBanner();});});
     setInterval(function(){reg.update().catch(function(){})},60*60*1000);
   }).catch(function(){});
-  navigator.serviceWorker.addEventListener("controllerchange",function(){if(_swReloaded)return;_swReloaded=true;location.reload();});
+  /* لا تُعِد التحميل عند أول تحكّم (الزيارة الأولى) — فقط عند تحديث فعلي، لتفادي تحميل مزدوج بطيء */
+  navigator.serviceWorker.addEventListener("controllerchange",function(){if(_swReloaded)return;if(!_hadCtrl){_hadCtrl=true;return;}_swReloaded=true;location.reload();});
 }
 function showUpdateBanner(){
   if(document.getElementById("updBar"))return;
@@ -4509,7 +4524,8 @@ function loginHTML(){return "<div id='authGate' class='authgate'><div class='scr
   "</div>"+
   "<div class='foot'>🔒 دخول آمن — محمي بحساب Firebase<br>لإعادة تعيين كلمة المرور تواصل مع المالك.</div>"+
   "</form></div></div>";}
-function showLogin(msg){var g=document.getElementById("authGate");if(!g){var d=document.createElement("div");d.innerHTML=loginHTML();document.body.appendChild(d.firstChild);}document.documentElement.classList.add("authing");if(msg){var e=document.getElementById("authErr");if(e){e.textContent=msg;e.classList.add("show")}}}
+function removeSplash(){var s=document.getElementById("splash");if(s){s.classList.add("hide");setTimeout(function(){if(s&&s.parentNode)s.parentNode.removeChild(s)},480);}}
+function showLogin(msg){removeSplash();var g=document.getElementById("authGate");if(!g){var d=document.createElement("div");d.innerHTML=loginHTML();document.body.appendChild(d.firstChild);}document.documentElement.classList.add("authing");if(msg){var e=document.getElementById("authErr");if(e){e.textContent=msg;e.classList.add("show")}}}
 function hideLogin(){var g=document.getElementById("authGate");if(g)g.remove();document.documentElement.classList.remove("authing");}
 
 var _authStarted=false;
@@ -4539,7 +4555,9 @@ async function onSignedIn(user){
   if(!_authStarted){_authStarted=true;registerSW();setupAutoSync();setupInstall();setupIdle();}
 }
 function startAuth(){
-  if(!fbInit()){showLogin("تعذّر تحميل خدمة الدخول. تحقّق من اتصالك بالإنترنت ثم أعد فتح الصفحة.");return;}
+  /* Firebase يُحمّل الآن مؤجّلاً (defer) كي لا يُبطئ ظهور الشاشة — ننتظر جاهزيته بهدوء (حتى ~7.5ث) */
+  if(!fbReady()){startAuth._n=(startAuth._n||0)+1;if(startAuth._n<150){setTimeout(startAuth,50);return;}showLogin("تعذّر تحميل خدمة الدخول. تحقّق من اتصالك بالإنترنت ثم أعد فتح الصفحة.");return;}
+  fbInit();
   firebase.auth().onAuthStateChanged(function(user){if(user){onSignedIn(user);}else{if(_authStarted){location.reload();}else{showLogin();}}});
 }
 
