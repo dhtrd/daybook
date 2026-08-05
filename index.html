@@ -306,6 +306,14 @@ html.pinned{overflow:hidden}
 .np2-empty{text-align:center;color:var(--muted);padding:28px 14px;font-weight:600;font-size:12.5px}
 .np2-foot .npext{border-bottom:none}
 .np2-all{width:100%;border:none;border-top:1px solid var(--line);background:transparent;color:var(--acc);font-weight:800;font-size:12px;padding:9px;cursor:pointer;font-family:inherit}
+/* عرض مناسب للجوال: نافذة الإشعارات تصبح لوحة عريضة أسفل الترويسة بدل قائمة منسدلة ضيّقة */
+@media(max-width:560px){
+  .notifpanel.np2{position:fixed;top:58px;inset-inline:8px;width:auto;max-width:none;border-radius:16px;z-index:9800}
+  .np2-body{max-height:66vh}
+  .np2-item{padding:10px 11px}
+  .np2-t{font-size:13.5px}
+  .np2-head{padding:13px 15px}
+}
 .notifprompt{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(120deg,#123328,#1c4b3c);color:#fff;border-radius:14px;padding:12px 16px;margin:0 0 14px;box-shadow:0 6px 18px rgba(21,92,67,.22)}
 .notifprompt .np-ic{font-size:20px;flex:none}
 .notifprompt .np-tx{flex:1;min-width:180px;font-size:13.5px;line-height:1.6}
@@ -1935,7 +1943,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.13";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.14";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
