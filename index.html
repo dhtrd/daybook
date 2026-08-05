@@ -1708,6 +1708,14 @@ html[data-mode="dark"] .n-files .dt th{background:#1E7A5A}
 .n-users .pp-b.on.inherit{background:var(--muted);color:#fff}
 .n-users .pp-b.on.allow{background:var(--pos);color:#fff}
 .n-users .pp-b.on.deny{background:var(--neg);color:#fff}
+.n-users .pp-branches{display:flex;flex-wrap:wrap;gap:7px}
+.n-users .pp-brchip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.12s}
+.n-users .pp-brchip:hover{border-color:var(--brass)}
+.n-users .pp-brchip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+/* صف فرع خارج نطاق المستخدم (قراءة فقط) — البند ٣ */
+#entryTbl tr.ro-scope td{opacity:.62}
+#entryTbl tr.ro-scope td.stick{opacity:1}
+#entryTbl tr.ro-scope .ro-tag{display:inline-grid;place-items:center;width:30px;height:30px;font-size:14px;opacity:.7}
 
 /* مفتاح التفعيل */
 .n-users .nu-sw{appearance:none;-webkit-appearance:none;border:none;padding:0;width:40px;height:23px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;flex:none;transition:background .15s}
@@ -1849,7 +1857,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.0";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.1";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2819,8 +2827,8 @@ function viewApprovals(){
   return "<div class='n-appr'>"+head+hint+"<div class='filters'>"+filters+"</div>"+(cards?"<div class='appr-list'>"+cards+"</div>":"<div class='empty'>لا يوميات في هذه الحالة</div>")+"</div>";
 }
 /* ===== سجل النشاط ===== */
-function actIcon(t){var m={login:"🔑",newdevice:"🔐",add:"➕",edit:"✏️",delete:"🗑️",approve:"✅",return:"↩️",role:"👤",export:"📤",send:"📨",post:"📋",lock:"🔒",revert:"↩️",cancel:"🚫",pinset:"🔒",pinchg:"🔒",pinoff:"🔓"};return m[t]||"•";}
-function actColor(t){var m={login:"#2C74D6",newdevice:"#C9931F",add:"#0f6b57",edit:"#AF8228",delete:"#e0553f",approve:"#0f6b57",return:"#e0553f",role:"#6D5AE0",export:"#2C74D6",send:"#AF8228",post:"#0f6b57",lock:"#173A31",revert:"#AF8228",cancel:"#e0553f",pinset:"#173A31",pinchg:"#AF8228",pinoff:"#8a998f"};return m[t]||"#8a998f";}
+function actIcon(t){var m={login:"🔑",newdevice:"🔐",add:"➕",edit:"✏️",delete:"🗑️",approve:"✅",return:"↩️",role:"👤",export:"📤",send:"📨",post:"📋",lock:"🔒",revert:"↩️",cancel:"🚫",pinset:"🔒",pinchg:"🔒",pinoff:"🔓",perm:"🔐",scope:"🏬"};return m[t]||"•";}
+function actColor(t){var m={login:"#2C74D6",newdevice:"#C9931F",add:"#0f6b57",edit:"#AF8228",delete:"#e0553f",approve:"#0f6b57",return:"#e0553f",role:"#6D5AE0",export:"#2C74D6",send:"#AF8228",post:"#0f6b57",lock:"#173A31",revert:"#AF8228",cancel:"#e0553f",pinset:"#173A31",pinchg:"#AF8228",pinoff:"#8a998f",perm:"#6D5AE0",scope:"#0f6b57"};return m[t]||"#8a998f";}
 function viewActivity(){
   /* ==== بيانات حقيقية (منسوخة حرفياً من الدالة الحالية) ==== */
   var acts=(S._activity||[]);var flt=S._actFlt||{q:"",type:"",user:""};
@@ -3020,7 +3028,7 @@ function viewDashboard(){
   var chart=days.map(function(d){return{label:d.slice(8),value:computeDay(S.data[d],S.config).sales}});
   var byM={};S.config.methods.forEach(function(m){byM[m.id]=0});days.forEach(function(d){var c=computeDay(S.data[d],S.config);S.config.methods.forEach(function(m){byM[m.id]+=(c.byM[m.id]||0)})});
   var paySegs=[{l:"نقد",val:agg.cash,c:"#0f6b57"}].concat(S.config.methods.map(function(m,i){return {l:m.label,val:byM[m.id]||0,c:methodColor(m,i)}})).filter(function(s){return s.val>0});
-  var brAgg={};days.forEach(function(d){(S.data[d].rows||[]).forEach(function(rw){var b=branchById(rw.branchId);var nm=(b&&b.name)||rw.branch||"—";brAgg[nm]=(brAgg[nm]||0)+num(rw.sales)})});
+  var brAgg={};days.forEach(function(d){(S.data[d].rows||[]).forEach(function(rw){if(!inScope(rowBranchId(rw)))return;var b=branchById(rw.branchId);var nm=(b&&b.name)||rw.branch||"—";brAgg[nm]=(brAgg[nm]||0)+num(rw.sales)})});
   var topBr=Object.keys(brAgg).filter(function(n){return brAgg[n]>0}).sort(function(a,b){return brAgg[b]-brAgg[a]}).slice(0,6);
 
   // ===== مخطط مركّب (أعمدة + خط اتجاه) بنفس نمط الموك-أب، ببيانات chart الحقيقية =====
@@ -3253,7 +3261,7 @@ function calHTML(kind){
 }
 function amtCell(r,key,val){
   var vk=r.id+"|"+key,vc=(S.day&&S.day.verify&&S.day.verify[vk])||"";
-  var LK=(S.day&&S.day.locked)?" disabled":"";
+  var LK=((S.day&&S.day.locked)||rowScopeRO(r))?" disabled":"";
   return "<td class='cell"+(vc?" v-"+vc:"")+"'><div class='box'><input class='amt' inputmode='decimal'"+LK+" data-r='"+r.id+"' data-f='"+key+"' value='"+(val==null?"":val)+"' oninput='App.cell(this)' onchange='App.cellDone(this)' onkeydown='App.rowKey(event,this)'><button class='vdot"+(vc?" v-"+vc:"")+"' tabindex='-1' title='تحقّق من هذا المبلغ (تم/خطأ)' onclick=\"App.vmark('"+r.id+"','"+key+"')\">"+(vc==="g"?"✓":vc==="r"?"✕":"")+"</button></div></td>";}
 function totCell(d,key,val){var col=(d.tmarks&&d.tmarks[key])||"";return "<td class='num tcell"+(col?" c-"+col:"")+"' id='tot-"+key+"' title='اضغط لتلوين التحقق' onclick=\"App.tmark('"+key+"')\">"+fmt(val)+"</td>";}
 function entryTable(d,cfg,c){
@@ -3264,12 +3272,16 @@ function entryTable(d,cfg,c){
     var rowCash=num(r.sales)-methods.reduce(function(a,m){return a+num((r.pays||{})[m.id])},0);
     var payCells=methods.map(function(m){return amtCell(r,"pay:"+m.id,((r.pays||{})[m.id]))}).join("");
     var cv=(d.verify&&d.verify[r.id+"|cash"])||"";
-    return "<tr"+(S._flashRow===r.id?" class='row-in'":"")+" data-id='"+r.id+"'"+">"+
-      "<td class='stick cell'><button class='branchbtn'"+(d.locked?" disabled":"")+" onclick=\"App.pickBranch('"+r.id+"')\">"+(r.branch?esc(r.branch):"<span class='ph'>اختر الفرع</span>")+IC.chevD+"</button></td>"+
+    var ro=rowScopeRO(r);   /* فرع خارج نطاق المستخدم — قراءة فقط (البند ٣) */
+    var act=ro
+      ? "<td class='rowact'><span class='ro-tag' title='فرع خارج نطاقك — للقراءة'>🔒</span></td>"
+      : "<td class='rowact'><span class='grip' title='اسحب لإعادة الترتيب'>"+IC.grip+"</span><button class='iconbtn brass' title='إدراج صف تحت' onclick=\"App.insertBelow('"+r.id+"')\">"+IC.plus+"</button><button class='iconbtn danger' title='حذف' onclick=\"App.delRow('"+r.id+"')\">"+IC.x+"</button></td>";
+    return "<tr"+(S._flashRow===r.id?" class='row-in'":"")+(ro?" class='ro-scope'":"")+" data-id='"+r.id+"'"+">"+
+      "<td class='stick cell'><button class='branchbtn'"+((d.locked||ro)?" disabled":"")+" onclick=\"App.pickBranch('"+r.id+"')\">"+(r.branch?esc(r.branch):"<span class='ph'>اختر الفرع</span>")+IC.chevD+"</button></td>"+
       amtCell(r,"sales",r.sales)+payCells+
       "<td class='num tcell"+(cv?" c-"+cv:"")+"' data-cash='"+r.id+"' title='اضغط لتلوين التحقق' onclick=\"App.vmarkCash('"+r.id+"')\" style='font-weight:700"+(cv?"":";color:"+(rowCash<0?"var(--neg)":"var(--pos)"))+"'>"+fmt(rowCash)+"</td>"+
-      "<td class='cell'><div class='box'><input class='amt txt'"+((d.locked)?" disabled":"")+" data-r='"+r.id+"' data-f='notes' value='"+esc(r.notes||"")+"' oninput='App.cell(this)' onkeydown='App.rowKey(event,this)'></div></td>"+
-      "<td class='rowact'><span class='grip' title='اسحب لإعادة الترتيب'>"+IC.grip+"</span><button class='iconbtn brass' title='إدراج صف تحت' onclick=\"App.insertBelow('"+r.id+"')\">"+IC.plus+"</button><button class='iconbtn danger' title='حذف' onclick=\"App.delRow('"+r.id+"')\">"+IC.x+"</button></td></tr>";
+      "<td class='cell'><div class='box'><input class='amt txt'"+((d.locked||ro)?" disabled":"")+" data-r='"+r.id+"' data-f='notes' value='"+esc(r.notes||"")+"' oninput='App.cell(this)' onkeydown='App.rowKey(event,this)'></div></td>"+
+      act+"</tr>";
   }).join("");
   var totRow="<tr class='total'><td class='stick'>الإجماليات</td>"+totCell(d,"sales",c.sales)+methods.map(function(m){return totCell(d,m.id,c.byM[m.id])}).join("")+totCell(d,"cash",c.cash)+"<td></td><td></td></tr>";
   var actions="<div style='display:flex;gap:8px;flex-wrap:wrap;margin-top:12px'>"+
@@ -3419,7 +3431,7 @@ function viewReports(){
     var mk=S._rMonth,days=Object.keys(S.data).filter(function(d){return ymOf(d)===mk;}).sort(),bal=balances();
     var t={sales:0,cash:0,exp:0,inc:0};var byM={};S.config.methods.forEach(function(m){byM[m.id]=0;});
     days.forEach(function(d){var c=computeDay(S.data[d],S.config);t.sales+=c.sales;t.cash+=c.cash;t.exp+=c.totalExpenses;t.inc+=c.totalIncome;S.config.methods.forEach(function(m){byM[m.id]+=c.byM[m.id];});});
-    var perBranch={};days.forEach(function(d){(S.data[d].rows||[]).forEach(function(r){if(r.branch)perBranch[r.branch]=(perBranch[r.branch]||0)+num(r.sales);});});
+    var perBranch={};days.forEach(function(d){(S.data[d].rows||[]).forEach(function(r){if(r.branch&&inScope(rowBranchId(r)))perBranch[r.branch]=(perBranch[r.branch]||0)+num(r.sales);});});
     var pb=Object.keys(perBranch).map(function(b){return{label:b,value:perBranch[b]};}).sort(function(a,b){return b.value-a.value;});
     var sel=ddBtn("rMonth",ms.map(function(k){return [k,prettyMonth(k)];}),mk);
     var rows=days.map(function(d){var c=computeDay(S.data[d],S.config);return "<tr class='clk' onclick=\"App.openDay('"+d+"')\"><td class='num muted'>"+dayNo(d)+"</td><td>"+prettyDate(d)+auditBadge(S.data[d])+draftBadge(S.data[d])+"</td><td class='num'>"+fmt(c.sales)+"</td><td class='num'>"+fmt(c.cash)+"</td><td class='num'>"+fmt(c.bankDeposit)+"</td><td class='num neg'>"+fmt(c.totalExpenses)+"</td><td class='num pos'>"+fmt(c.totalIncome)+"</td><td class='num'>"+fmt(c.cashTotal)+"</td><td class='num strong'>"+fmt(bal[d].carried)+"</td><td class='rowact' onclick='event.stopPropagation()'><button class='iconbtn' title='طباعة' onclick=\"App.printDay('"+d+"')\">"+IC.print+"</button><button class='iconbtn danger' title='حذف' onclick=\"App.delDay('"+d+"')\">"+IC.trash+"</button></td></tr>";}).join("");
@@ -3566,7 +3578,7 @@ function repMonthly(){
   var mk=S._rMonth,days=Object.keys(S.data).filter(function(d){return ymOf(d)===mk}).sort(),bal=balances();
   var t={sales:0,cash:0,exp:0,inc:0};var byM={};S.config.methods.forEach(function(m){byM[m.id]=0});
   days.forEach(function(d){var c=computeDay(S.data[d],S.config);t.sales+=c.sales;t.cash+=c.cash;t.exp+=c.totalExpenses;t.inc+=c.totalIncome;S.config.methods.forEach(function(m){byM[m.id]+=c.byM[m.id]})});
-  var perBranch={};days.forEach(function(d){(S.data[d].rows||[]).forEach(function(r){if(r.branch)perBranch[r.branch]=(perBranch[r.branch]||0)+num(r.sales)})});
+  var perBranch={};days.forEach(function(d){(S.data[d].rows||[]).forEach(function(r){if(r.branch&&inScope(rowBranchId(r)))perBranch[r.branch]=(perBranch[r.branch]||0)+num(r.sales)})});
   var pb=Object.keys(perBranch).map(function(b){return{label:b,value:perBranch[b]}}).sort(function(a,b){return b.value-a.value});
   var sel=ddBtn("rMonth",ms.map(function(k){return [k,prettyMonth(k)]}),mk);
   var rows=days.map(function(d){var c=computeDay(S.data[d],S.config);return "<tr class='clk' onclick=\"App.openDay('"+d+"')\"><td class='num' style='color:var(--muted)'>"+dayNo(d)+"</td><td>"+prettyDate(d)+auditBadge(S.data[d])+draftBadge(S.data[d])+"</td><td class='num'>"+fmt(c.sales)+"</td><td class='num'>"+fmt(c.cash)+"</td><td class='num'>"+fmt(c.bankDeposit)+"</td><td class='num' style='color:var(--neg)'>"+fmt(c.totalExpenses)+"</td><td class='num' style='color:var(--pos)'>"+fmt(c.totalIncome)+"</td><td class='num'>"+fmt(c.cashTotal)+"</td><td class='num' style='font-weight:700'>"+fmt(bal[d].carried)+"</td><td class='rowact' style='white-space:nowrap' onclick='event.stopPropagation()'><button class='iconbtn' title='طباعة' onclick=\"App.printDay('"+d+"')\">"+IC.print+"</button><button class='iconbtn danger' title='حذف' onclick=\"App.delDay('"+d+"')\">"+IC.trash+"</button></td></tr>"}).join("");
@@ -4105,7 +4117,7 @@ function fitPrint(root,methodCount,widthOnly){
 }
 
 /* ===== نافذة اختيار الفرع (احترافية) ===== */
-function branchItems(q){q=(q||"").trim();var list=branchList().filter(function(b){return !q||(b.name||"").indexOf(q)>=0});if(!list.length)return "<div class='emptyline' style='text-align:center'>لا نتائج</div>";return list.map(function(b){return "<button class='pick-item' onclick=\"App.chooseBranch('"+b.id+"')\">"+esc(b.name)+"</button>"}).join("");}
+function branchItems(q){q=(q||"").trim();var list=scopedBranchList().filter(function(b){return !q||(b.name||"").indexOf(q)>=0});if(!list.length)return "<div class='emptyline' style='text-align:center'>لا نتائج</div>";return list.map(function(b){return "<button class='pick-item' onclick=\"App.chooseBranch('"+b.id+"')\">"+esc(b.name)+"</button>"}).join("");}
 function openBranchModal(){_modalType="branch";document.getElementById("modalRoot").innerHTML="<div class='modal-bg' onclick='if(event.target===this)App.closeModal()'><div class='modal'><h3><span>اختر الفرع</span><button class='iconbtn' onclick='App.closeModal()'>"+IC.x+"</button></h3><input placeholder='بحث…' autofocus oninput='App.branchSearch(this.value)'><div class='pick-list' id='brList'>"+branchItems("")+"</div></div></div>";}
 
 /* ===== منتقي التاريخ (بدل حقول input) ===== */
@@ -4493,6 +4505,13 @@ window.App={
     toast("جارٍ إنشاء الحساب…");var sec=fbSecondary();sec.auth().createUserWithEmailAndPassword(em,pw).then(function(){return sec.auth().signOut()}).then(function(){roster()[em]={name:name,role:role,active:true,createdAt:nowStamp()};logEvent("add","أضاف مستخدم "+name+" ("+role+")",{target:em});saveConfig();render();toast("أُضيف المستخدم ✓")}).catch(function(ex){toast(authErrMsg(ex),"err")})},
   usrRole:function(em,role){var u=rosterGet(em);if(!u||em===OWNER_EMAIL)return;u.role=role;logEvent("role","غيّر دور "+(u.name||em)+" إلى "+role,{target:em});saveConfig();render();toast("تم تغيير الدور")},
   usrPermsToggle:function(em){if(!isOwner())return;S._openPerms=(S._openPerms===em?null:em);render();},
+  usrBranch:function(em,bid){if(!isOwner())return;if(em===OWNER_EMAIL){toast("المالك يملك كل الفروع","err");return}var u=rosterGet(em);if(!u)return;
+    var arr=Array.isArray(u.branches)?u.branches:[];var i=arr.indexOf(bid);var added=(i<0);
+    if(added)arr.push(bid);else arr.splice(i,1);
+    if(arr.length)u.branches=arr;else delete u.branches;
+    var nm=(branchById(bid)||{}).name||bid;
+    logEvent("scope","نطاق فروع "+(u.name||em)+": "+(added?"+ ":"− ")+nm,{target:em});
+    saveConfig();render();toast((added?"أُضيف ":"أُزيل ")+nm+" لنطاق "+(u.name||em));},
   usrPerm:function(em,action,val){if(!isOwner())return;if(em===OWNER_EMAIL){toast("المالك كامل الصلاحيات دائماً","err");return}var u=rosterGet(em);if(!u)return;
     u.perms=(u.perms&&typeof u.perms==="object")?u.perms:{};
     if(val==="inherit")delete u.perms[action];else if(val==="allow"||val==="deny")u.perms[action]=val;
@@ -4618,10 +4637,10 @@ window.App={
   setDateTo:function(v){if(eGuard())return;S.day.dateTo=v;scheduleSave();render()},
   addRow:function(){if(eGuard())return;histPushRaw();var nid=uuid();S.day.rows.push({id:nid,branchId:"",branch:"",sales:"",pays:{},notes:""});S._flashRow=nid;scheduleSave();refreshTable()},
   insertBelow:function(id){if(eGuard())return;histPushRaw();var i=S.day.rows.findIndex(function(r){return r.id===id});var nid=uuid();S.day.rows.splice(i+1,0,{id:nid,branchId:"",branch:"",sales:"",pays:{},notes:""});S._flashRow=nid;scheduleSave();refreshTable()},
-  addAllBranches:function(){if(eGuard())return;var present={};S.day.rows.forEach(function(r){var bid=rowBranchId(r);if(bid)present[bid]=1});var toAdd=branchList().filter(function(b){return !present[b.id]});if(!toAdd.length){toast("كل الفروع مضافة");return}histPushRaw();toAdd.forEach(function(b){S.day.rows.push({id:uuid(),branchId:b.id,branch:b.name,sales:"",pays:{},notes:""})});scheduleSave();refreshTable()},
+  addAllBranches:function(){if(eGuard())return;var present={};S.day.rows.forEach(function(r){var bid=rowBranchId(r);if(bid)present[bid]=1});var toAdd=scopedBranchList().filter(function(b){return !present[b.id]});if(!toAdd.length){toast("كل الفروع مضافة");return}histPushRaw();toAdd.forEach(function(b){S.day.rows.push({id:uuid(),branchId:b.id,branch:b.name,sales:"",pays:{},notes:""})});scheduleSave();refreshTable()},
   clearRows:function(){if(eGuard())return;openConfirm({title:"مسح كل الصفوف؟",body:"سيتم حذف جميع صفوف هذا اليوم. يمكنك التراجع بـ Ctrl+Z.",danger:true,confirm:"مسح",onOk:function(){histPushRaw();S.day.rows=[];scheduleSave();refreshTable()}})},
-  delRow:function(id){if(eGuard())return;histPushRaw();S.day.rows=S.day.rows.filter(function(r){return r.id!==id});scheduleSave();refreshTable()},
-  cell:function(el){if(eGuard())return;var id=el.getAttribute("data-r"),f=el.getAttribute("data-f");var r=S.day.rows.find(function(x){return x.id===id});if(!r)return;histMark("cell:"+id+":"+f);
+  delRow:function(id){if(eGuard())return;var _dr=S.day.rows.find(function(r){return r.id===id});if(_dr&&rowScopeRO(_dr)){toast("فرع خارج نطاقك","err");return}histPushRaw();S.day.rows=S.day.rows.filter(function(r){return r.id!==id});scheduleSave();refreshTable()},
+  cell:function(el){if(eGuard())return;var id=el.getAttribute("data-r"),f=el.getAttribute("data-f");var r=S.day.rows.find(function(x){return x.id===id});if(!r)return;if(rowScopeRO(r))return;histMark("cell:"+id+":"+f);
     if(f==="notes"){r.notes=el.value}
     else{var sv=amtRead(el);if(f==="sales")r.sales=sv;else if(f.indexOf("pay:")===0){r.pays=r.pays||{};r.pays[f.slice(4)]=sv}}
     if(f!=="notes"&&S.day.verify){var vk=id+"|"+f;if(S.day.verify[vk]){delete S.day.verify[vk];var td=el.closest("td");if(td){td.className="cell";var dot=td.querySelector(".vdot");if(dot){dot.className="vdot";dot.textContent=""}}}}
@@ -4660,9 +4679,9 @@ window.App={
   undo:function(){histApply(_hist.undo,_hist.redo)},
   redo:function(){histApply(_hist.redo,_hist.undo)},
   saveNow:function(){if(!S.day)return;if(S.saveTimer){clearTimeout(S.saveTimer);S.saveTimer=null}commitDay().then(function(){updateSaveBtn();var b=document.getElementById("btnSave");if(b){var l=b.querySelector(".slbl");if(l)l.textContent="تم الحفظ ✓"}toast("تم حفظ اليومية")})},
-  pickBranch:function(rid){S.pickRow=rid;openBranchModal()},
+  pickBranch:function(rid){var _pr=S.day.rows.find(function(r){return r.id===rid});if(_pr&&rowScopeRO(_pr)){toast("فرع خارج نطاقك","err");return}S.pickRow=rid;openBranchModal()},
   branchSearch:function(q){var el=document.getElementById("brList");if(el)el.innerHTML=branchItems(q)},
-  chooseBranch:function(id){if(eGuard())return;var b=branchById(id);var r=S.day.rows.find(function(x){return x.id===S.pickRow});if(r&&b){histPushRaw();r.branchId=b.id;r.branch=b.name}App.closeModal();scheduleSave();refreshTable()},
+  chooseBranch:function(id){if(eGuard())return;if(!inScope(id)){toast("هذا الفرع خارج نطاقك","err");App.closeModal();return}var b=branchById(id);var r=S.day.rows.find(function(x){return x.id===S.pickRow});if(r&&b){histPushRaw();r.branchId=b.id;r.branch=b.name}App.closeModal();scheduleSave();refreshTable()},
   closeModal:function(){var r=document.getElementById("modalRoot");_modalType=null;
     var bg=r&&r.firstChild;
     if(bg&&bg.classList){
@@ -4863,6 +4882,15 @@ function can(action){                                   /* للمستخدم ال
   var ov=userPermOverride(u,action);if(ov)return ov==="allow";
   return roleAllows(myRole(),action);}
 function canSee(view){if(view==="day")view="dashboard";if(!S.currentUser)return true;return can(view);}
+/* ===== نطاق الفروع لكل مستخدم (البند ٣) =====
+   user.branches = [ids] — قائمة الفروع المسموح بها (فارغة/غائبة = كل الفروع). المالك = كل الفروع.
+   الأمان: يبقى اليوم كاملاً في الذاكرة دائماً (كل الفروع) فلا فقدان عند الحفظ؛ النطاق يقيّد ما
+   يُحرّره/يراه المستخدم فقط: صفوف الفروع خارج نطاقه للقراءة فقط، والتقارير/الرئيسية تُرشَّح لفروعه. */
+function userBranches(email){var u=rosterGet(email)||{};return (u.branches&&Array.isArray(u.branches)&&u.branches.length)?u.branches.slice():[];}
+function myScope(){if(!S.currentUser||isOwner())return null;var b=userBranches(S.currentUser);return b.length?b:null;}
+function inScope(bid){var sc=myScope();return !sc||(!bid)||sc.indexOf(bid)>=0;}
+function scopedBranchList(){var sc=myScope();var l=branchList();return sc?l.filter(function(b){return sc.indexOf(b.id)>=0}):l;}
+function rowScopeRO(r){var sc=myScope();if(!sc)return false;var bid=rowBranchId(r);if(!bid)return false;return sc.indexOf(bid)<0;}
 function authErrMsg(ex){var c=(ex&&ex.code)||"";if(/wrong-password|invalid-credential|invalid-login-credentials/.test(c))return "البريد أو كلمة المرور غير صحيحة";if(/user-not-found/.test(c))return "لا يوجد حساب بهذا البريد";if(/too-many-requests/.test(c))return "محاولات كثيرة — انتظر قليلاً ثم أعد المحاولة";if(/network-request-failed/.test(c))return "تعذّر الاتصال بالإنترنت";if(/user-disabled/.test(c))return "هذا الحساب معطّل";if(/email-already-in-use/.test(c))return "هذا البريد مستخدم مسبقاً";if(/weak-password/.test(c))return "كلمة المرور ضعيفة (6 أحرف على الأقل)";if(/invalid-email/.test(c))return "صيغة البريد غير صحيحة";return "تعذّر إتمام العملية"+(c?" ("+c+")":"")}
 
 var FB2=null;
@@ -4897,9 +4925,9 @@ var FS_CFG_FIELDS=["businessName","openingBalance","branches","methods","company
 function jstr(x){try{return JSON.stringify(x)}catch(e){return ""}}
 function fsCanWrite(){return isOwner()||myRole()==="مُدخِل اليوميات";}   /* من يكتب وثائق الأيام */
 function fsCoreFields(cfg){var c={};FS_CFG_FIELDS.forEach(function(k){c[k]=(cfg&&cfg[k]!==undefined)?cfg[k]:null});return c;}
-function fsRoleDoc(u){return {name:(u&&u.name)||"",role:(u&&u.role)||"مُدخِل اليوميات",active:!(u&&u.active===false),lastLogin:(u&&u.lastLogin)||"",createdAt:(u&&u.createdAt)||nowStamp(),perms:(u&&u.perms&&typeof u.perms==="object")?u.perms:{},updatedTs:Date.now()};}
-function fsRoleToRoster(d){var o={name:(d&&d.name)||"",role:(d&&d.role)||"مُدخِل اليوميات",active:!(d&&d.active===false),lastLogin:(d&&d.lastLogin)||"",createdAt:(d&&d.createdAt)||""};if(d&&d.perms&&typeof d.perms==="object"&&Object.keys(d.perms).length)o.perms=d.perms;return o;}
-function fsRoleKey(u){return jstr({name:(u&&u.name)||"",role:(u&&u.role)||"",active:!(u&&u.active===false),perms:(u&&u.perms)||{}});}
+function fsRoleDoc(u){return {name:(u&&u.name)||"",role:(u&&u.role)||"مُدخِل اليوميات",active:!(u&&u.active===false),lastLogin:(u&&u.lastLogin)||"",createdAt:(u&&u.createdAt)||nowStamp(),perms:(u&&u.perms&&typeof u.perms==="object")?u.perms:{},branches:(u&&Array.isArray(u.branches))?u.branches:[],updatedTs:Date.now()};}
+function fsRoleToRoster(d){var o={name:(d&&d.name)||"",role:(d&&d.role)||"مُدخِل اليوميات",active:!(d&&d.active===false),lastLogin:(d&&d.lastLogin)||"",createdAt:(d&&d.createdAt)||""};if(d&&d.perms&&typeof d.perms==="object"&&Object.keys(d.perms).length)o.perms=d.perms;if(d&&Array.isArray(d.branches)&&d.branches.length)o.branches=d.branches;return o;}
+function fsRoleKey(u){return jstr({name:(u&&u.name)||"",role:(u&&u.role)||"",active:!(u&&u.active===false),perms:(u&&u.perms)||{},branches:(u&&u.branches)||[]});}
 function fsDayNorm(dt){var day=S.data[dt];if(day&&!day.updatedTs)day.updatedTs=Date.now();return day;}
 function fsSyncShadowDays(){FSY.shadowDays={};Object.keys(S.data).forEach(function(dt){FSY.shadowDays[dt]=jstr(fsDayNorm(dt))});}
 async function fsPersistQuiet(){S._noPush=true;try{await persistEverything()}catch(e){}S._noPush=false;}
@@ -5141,10 +5169,16 @@ function userPermsPanelHTML(em,u){
       "<span class='pp-eff "+(eff?"y":"n")+"' title='النتيجة الفعلية'>"+(eff?"يرى":"لا يرى")+"</span>"+
       "<span class='pp-seg'>"+b("inherit","يرث"+(ov==="inherit"?" ("+(rd?"مسموح":"ممنوع")+")":""),"inherit")+b("allow","✓ منح","allow")+b("deny","✗ منع","deny")+"</span></div>";
   }).join("");
+  var brs=branchList();
+  var scope=(u.branches&&Array.isArray(u.branches))?u.branches:[];
+  var brSection=brs.length?("<div class='pp-h' style='margin:16px 0 8px'>🏬 نطاق الفروع <span class='pp-role'>"+(scope.length?scope.length+" فرع محدَّد":"كل الفروع")+"</span></div>"+
+    "<div class='pp-branches'>"+brs.map(function(b){var on=scope.indexOf(b.id)>=0;return "<button type='button' class='pp-brchip"+(on?" on":"")+"' onclick=\"App.usrBranch('"+em+"','"+b.id+"')\">"+(on?"✓ ":"")+esc(b.name)+"</button>"}).join("")+"</div>"+
+    "<div class='note' style='margin:7px 0 0'>بلا تحديد = كل الفروع. عند التحديد يُدخِل/يرى فروعه المحدَّدة فقط (بقية فروع اليوم تظهر له للقراءة فقط، ولا تُفقد أي بيانات).</div>"):"";
   return "<div class='nu-perms-panel'>"+
     "<div class='pp-h'>🔐 صلاحيات الشاشات — <b>"+esc(u.name||em)+"</b> <span class='pp-role'>الدور: "+esc(u.role||"—")+"</span></div>"+
     "<div class='pp-grid'>"+grid+"</div>"+
     "<div class='note' style='margin:9px 0 0'>«يرث» = حسب الدور · «منح»/«منع» استثناء خاص لهذا المستخدم يتجاوز الدور. المالك دائماً كامل الصلاحيات.</div>"+
+    brSection+
   "</div>";
 }
 function viewUsers(){
