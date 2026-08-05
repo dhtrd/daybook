@@ -734,6 +734,13 @@ tr.dragging td.stick{background:#fbfaf6}
   /* بطاقات مالية الإدخال: صف واحد أوضح */
   .n-entry .ent-actions .btn{flex:1 1 46%;justify-content:center}
 }
+/* ===== سهولة القراءة: حجم الخط + التباين العالي (النقطة ١٣) ===== */
+html[data-fs="lg"] body{zoom:1.12}
+html[data-fs="xl"] body{zoom:1.25}
+html[data-contrast="high"]{--text:#0c1712;--muted:#39493f;--line:#a7b2aa;--line2:#bcc5be}
+html[data-contrast="high"] .note,html[data-contrast="high"] small,html[data-contrast="high"] .n-set .sd{color:#33413a}
+html[data-mode="dark"][data-contrast="high"]{--text:#f4faf6;--muted:#c5d3cb;--line:#465a50;--line2:#3a4a42}
+html[data-mode="dark"][data-contrast="high"] .note,html[data-mode="dark"][data-contrast="high"] small,html[data-mode="dark"][data-contrast="high"] .n-set .sd{color:#cad8d0}
 
 /* ==================== REDESIGN 1.6.0 (screens) ==================== */
 
@@ -1816,7 +1823,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.8.0";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.8.1";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -3699,6 +3706,28 @@ function viewSettings(){
       "</span>"+
     "</div></div></div>";
 
+  /* ==== سهولة القراءة: حجم الخط + التباين (النقطة ١٣) ==== */
+  var fs=curFs(),hc=curContrast();
+  var readability="<div class='sec'><div class='sechead'>🔎 سهولة القراءة</div><div class='scard'>"+
+    "<div class='srow'>"+
+      "<span class='sic' style='--si:var(--acc)'>🔠</span>"+
+      "<div class='sm'><div class='st'>حجم الخط</div><div class='sd'>تكبير كل عناصر الواجهة لقراءة أوضح — تفضيل لكل جهاز</div></div>"+
+      "<span class='seg'>"+
+        "<span class='"+(fs==="normal"?"on":"")+"' onclick=\"App.setFontSize('normal')\">عادي</span>"+
+        "<span class='"+(fs==="lg"?"on":"")+"' onclick=\"App.setFontSize('lg')\">كبير</span>"+
+        "<span class='"+(fs==="xl"?"on":"")+"' onclick=\"App.setFontSize('xl')\">أكبر</span>"+
+      "</span>"+
+    "</div>"+
+    "<div class='srow' style='border-bottom:none'>"+
+      "<span class='sic' style='--si:var(--ink)'>◐</span>"+
+      "<div class='sm'><div class='st'>تباين عالٍ</div><div class='sd'>ألوان نص وحدود أوضح — أسهل في الإضاءة القوية</div></div>"+
+      "<span class='seg'>"+
+        "<span class='"+(!hc?"on":"")+"' onclick=\"App.setContrast(0)\">عادي</span>"+
+        "<span class='"+(hc?"on":"")+"' onclick=\"App.setContrast(1)\">عالٍ</span>"+
+      "</span>"+
+    "</div>"+
+  "</div></div>";
+
   /* ==== الأمان — الجلسة والخمول ==== */
   var ss=cfg.session||{idleMin:10,warnSec:10};
   var session="<div class='sec'><div class='sechead'>🔒 الأمان — الجلسة والخمول</div><div class='scard'>"+
@@ -3754,7 +3783,7 @@ function viewSettings(){
 
   return "<div class='n-set'>"+
     "<div class='n-hd'><h1>الإعدادات</h1><p>ضبط النظام والمظهر والمزامنة والفروع وطرق الدفع</p></div>"+
-    acct+sync+general+branches+methods+theme+session+pinCard+remCard+tplCard+
+    acct+sync+general+branches+methods+theme+readability+session+pinCard+remCard+tplCard+
     "</div>";
 }
 
@@ -4387,6 +4416,8 @@ window.App={
   actSearch:function(v){S._actFlt=S._actFlt||{q:"",type:"",user:""};S._actFlt.q=v;var q=(v||"").toLowerCase();var els=document.querySelectorAll(".act-tl .act-item");Array.prototype.forEach.call(els,function(el){var t=(el.textContent||"").toLowerCase();el.style.display=(!q||t.indexOf(q)>=0)?"":"none"})},
   setTheme:function(m){m=(m==="dark")?"dark":"light";try{localStorage.setItem("dsr_mode",m);if(S.currentUser)localStorage.setItem("dsr_mode_"+String(S.currentUser).toLowerCase(),m);}catch(e){}document.documentElement.setAttribute("data-mode",m);render()},
   toggleTheme:function(){App.setTheme(curTheme()==="dark"?"light":"dark");},
+  setFontSize:function(v){v=(v==="lg"||v==="xl")?v:"normal";try{localStorage.setItem("dsr_fs",v)}catch(e){}applyReadability();render();toast("حجم الخط: "+({normal:"عادي",lg:"كبير",xl:"أكبر"}[v]||"عادي"));},
+  setContrast:function(v){v=(String(v)==="1")?"1":"0";try{localStorage.setItem("dsr_contrast",v)}catch(e){}applyReadability();render();toast(v==="1"?"التباين العالي مفعّل ✓":"التباين العادي");},
   pinKey:function(n){pinPush(n)},
   pinDel:function(){pinDel()},
   pinCancel:function(){if(PINUI.mode!=="lock")pinClose(false)},
@@ -5116,8 +5147,12 @@ function viewUsers(){
 function applyTheme(){try{var m=localStorage.getItem("dsr_mode")||"light";document.documentElement.setAttribute("data-mode",m==="dark"?"dark":"light");}catch(e){}}
 function applyUserTheme(email){var m="light";try{m=localStorage.getItem("dsr_mode_"+String(email||"").toLowerCase())||localStorage.getItem("dsr_mode")||"light";localStorage.setItem("dsr_mode",m);}catch(e){}document.documentElement.setAttribute("data-mode",m==="dark"?"dark":"light");}
 function curTheme(){try{return localStorage.getItem("dsr_mode")||"light"}catch(e){return "light"}}
+/* سهولة القراءة (النقطة ١٣): حجم الخط + التباين العالي — تفضيل لكل جهاز */
+function curFs(){try{var v=localStorage.getItem("dsr_fs")||"normal";return (v==="lg"||v==="xl")?v:"normal"}catch(e){return "normal"}}
+function curContrast(){try{return localStorage.getItem("dsr_contrast")==="1"}catch(e){return false}}
+function applyReadability(){try{document.documentElement.setAttribute("data-fs",curFs());document.documentElement.setAttribute("data-contrast",curContrast()?"high":"normal");}catch(e){}}
 (async function init(){
-  applyTheme();installIcons();setupDrag();setupKeys();setupKeys2();setupKeysUndo();setupColResize();setupDD();setupFxBar();scheduleDailyBackup();
+  applyTheme();applyReadability();installIcons();setupDrag();setupKeys();setupKeys2();setupKeysUndo();setupColResize();setupDD();setupFxBar();scheduleDailyBackup();
   await loadAll();
   try{var qp=new URLSearchParams(location.search);if(qp.get("code")){try{await dbxExchange(qp.get("code"));toast("تم الربط مع دروبوكس")}catch(e){toast("تعذّر الربط مع دروبوكس","err")}try{history.replaceState({},"",redirectUri())}catch(e){}}}catch(e){}
   startAuth();   /* بوابة تسجيل الدخول — لا يُعرض النظام إلا بعد الدخول */
