@@ -391,6 +391,8 @@ input.fx{border-color:var(--brass) !important;box-shadow:0 0 0 2px rgba(175,130,
 .dditem .ck{width:14px;flex:none;color:var(--brass);font-weight:700}
 .warnbar{background:#fdf6df;border:1px solid #ecd9a0;color:#7a5b12;border-radius:12px;padding:9px 14px;margin:0 0 10px;font-size:12.5px}
 .lockbar{background:#eef3f0;border:1px solid #cfe0d6;color:#1c5c44;border-radius:12px;padding:9px 14px;margin:0 0 10px;font-size:12.5px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rolockbar{background:#fdecea;border-color:#f5c6c0;color:#8a2c1e}
+.ro-lock{pointer-events:none;opacity:.6;filter:grayscale(.15);user-select:none}
 .abdg{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;font-size:10px;font-weight:900;margin-inline-start:5px;vertical-align:middle}
 .abdg.g{background:#bfe6d1;color:#12694b}.abdg.r{background:#f6cabb;color:#9e3418}
 .dbdg{display:inline-block;background:#f2e8cf;color:#7a5b12;border-radius:999px;font-size:10px;font-weight:800;padding:1.5px 8px;margin-inline-start:5px;vertical-align:middle}
@@ -1735,7 +1737,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.6.1";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.7.0";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -1852,14 +1854,14 @@ async function persistEverything(){
   var yk=await DB.keys("dsr_y_");for(var i=0;i<yk.length;i++)await DB.del(yk[i]);
   for(var y in years)await DB.set("dsr_y_"+y,years[y]);
   invalidateBal();scheduleDbx();}
-function scheduleSave(){S.dirty=true;updateSyncPill();updateSaveBtn();if(S.saveTimer)clearTimeout(S.saveTimer);S.saveTimer=setTimeout(commitDay,700)}
+function scheduleSave(){if(S.day&&lockedByOther(S.day))return;if(S.view==="entry"&&S.day)acquireLock(S.day.date);S.dirty=true;updateSyncPill();updateSaveBtn();if(S.saveTimer)clearTimeout(S.saveTimer);S.saveTimer=setTimeout(commitDay,700)}
 async function commitDay(){if(!S.day)return;var d=S.day;
   if(!d.uuid)d.uuid=uuid();
   if(!d.createdAt)d.createdAt=nowStamp();d.updatedAt=nowStamp();d.updatedBy=devLabel();d.updatedTs=Date.now();
   if(!S.data[d.date]&&!d.status)d.status="draft";
   var empty=(d.rows||[]).length===0&&(d.expenses||[]).length===0&&(d.incomes||[]).length===0&&num(d.bankDeposit)===0;
   if(empty){if(S.data[d.date])queueOp("day",d.date,null);delete S.data[d.date]}else{S.data[d.date]=d;queueOp("day",d.date,JSON.parse(JSON.stringify(d)))}
-  await persistDay(d.date);S.dirty=false;updateSyncPill();updateSaveBtn();}
+  await persistDay(d.date);if(S.view==="entry"&&S.data[d.date]&&!lockedByOther(S.data[d.date]))acquireLock(d.date);S.dirty=false;updateSyncPill();updateSaveBtn();}
 
 /* ===== مزامنة Dropbox (الاستضافة على GitHub، والبيانات على دروبوكس) ===== */
 var DBX={access:null,exp:0};
@@ -2671,6 +2673,7 @@ function viewActivity(){
 }
 function render(){
   if(typeof removeSplash==="function")removeSplash();
+  if(typeof releaseLock==="function"&&S._lastView==="entry"&&S.view!=="entry")releaseLock();
   if(KIOSK){kioskRender();return}
   _ddReg.length=0;
   var IC_USERS="<svg viewBox='0 0 24 24' width='20' height='20' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='9' cy='8' r='3'/><path d='M3.5 20c0-3 2.6-5 5.5-5s5.5 2 5.5 5'/><path d='M16 6a3 3 0 010 6'/><path d='M17.5 15c2 .5 3.5 2 3.5 5'/></svg>";
@@ -2822,6 +2825,43 @@ function loadDay(date){S.curDate=date;S.calMonth=ymOf(date);var d=S.data[date];S
     S.day.rows=(S.config.dayTemplate||[]).map(function(b){return {id:uuid(),branchId:b.id||"",branch:b.name||"",sales:"",pays:{},notes:""}});
   }
   S.dirty=false;histReset();}
+/* ===== قيد التحرير المتزامن (Edit Lock) — النقطة ١ =====
+   يمنع تعديل نفس اليومية من أكثر من مستخدم في آنٍ واحد. القفل مخزَّن داخل وثيقة اليوم
+   فيتوزّع عبر نفس المزامنة اللحظية (بلا مجموعة أو قواعد جديدة). ينتهي تلقائياً بعد
+   EDITLOCK_TTL دون نبض، فلا تتعلّق اليومية إن أُغلق الجهاز فجأة. وبعد الترحيل/الإقفال
+   تُعاد كمسودة عبر «فتح للتعديل» (unlockDay) أو «إعادة» (aprReturn) بسلاسة. */
+var EDITLOCK_TTL=240000, EDITLOCK_BEAT=90000, _lockBeat=null;
+function lockFresh(d){return !!(d&&d.editLock&&d.editLock.by&&(Date.now()-num(d.editLock.at)<EDITLOCK_TTL));}
+function lockedByOther(d){return lockFresh(d)&&String(d.editLock.by||"").toLowerCase()!==String(S.currentUser||"").toLowerCase();}
+function meName(){var u=(typeof rosterGet==="function"?(rosterGet(S.currentUser)||{}):{});return u.name||S.currentUser||"مستخدم";}
+function lockMine(d){return !!(d&&d.editLock&&String(d.editLock.by||"").toLowerCase()===String(S.currentUser||"").toLowerCase());}
+function lockPush(){try{if(fsMode())fsSchedulePush();}catch(e){}}
+function acquireLock(date){
+  var d=S.data[date];
+  if(d&&lockedByOther(d))return;                 /* يحرّرها غيري الآن → قراءة فقط (يُعرض عند render) */
+  S._lockDate=date;
+  if(!d){if(!_lockBeat)startLockBeat();return;}   /* يوم جديد لم يُحفظ — يُقفل عند أول حفظ */
+  if(!(lockMine(d)&&lockFresh(d))){
+    d.editLock={by:(S.currentUser||""),byName:meName(),at:Date.now()};
+    if(S.day&&S.day.date===date)S.day.editLock=d.editLock;
+    lockPush();
+  }
+  if(!_lockBeat)startLockBeat();
+}
+function startLockBeat(){ _lockBeat=setInterval(function(){
+  var date=S._lockDate; if(S.view!=="entry"||!date)return;
+  var d=S.data[date]; if(!d)return;
+  if(d.editLock&&!lockMine(d))return;            /* أخذها غيري — لا نُجدّد */
+  d.editLock={by:(S.currentUser||""),byName:meName(),at:Date.now()};
+  if(S.day&&S.day.date===date)S.day.editLock=d.editLock;
+  lockPush();
+}, EDITLOCK_BEAT); }
+function releaseLock(){
+  if(_lockBeat){clearInterval(_lockBeat);_lockBeat=null;}
+  var date=S._lockDate; S._lockDate=null;
+  if(!date)return; var d=S.data[date];
+  if(lockMine(d)){delete d.editLock; if(S.day&&S.day.date===date&&S.day.editLock)delete S.day.editLock; lockPush();}
+}
 function viewEntry(){
   if(!S.day||S.day.date!==S.curDate)loadDay(S.curDate);
   var d=S.day,cfg=S.config,c=computeDay(d,cfg);
@@ -2838,7 +2878,9 @@ function viewEntry(){
   var st2=(stt==="approved")?"on":((stt==="locked")?"dn":"");
   var st3=(stt==="locked")?"on":"";
   var stepper="<div class='stepper'><div class='s "+st1+"'><span class='c'>"+((stt==="draft")?"1":"✓")+"</span>مسودة</div><div class='ln'></div><div class='s "+st2+"'><span class='c'>"+((stt==="locked")?"✓":"2")+"</span>معتمد</div><div class='ln'></div><div class='s "+st3+"'><span class='c'>3</span>مقفل</div></div>";
-  return "<div class='n-entry'>"+
+  var other=lockedByOther(d);
+  var editLockBar=other?"<div class='lockbar rolockbar'>🔒 <b>"+esc((d.editLock&&(d.editLock.byName||d.editLock.by))||"مستخدم آخر")+"</b> يحرّر هذه اليومية الآن — التعديل معطّل حتى ينتهي أو خلال دقائق قليلة. <button class='btn ghost' style='padding:5px 12px' onclick=\"App.go('dashboard')\">عودة</button></div>":"";
+  return editLockBar+"<div class='n-entry"+(other?" ro-lock":"")+"'>"+
     h("div",{class:"ent-top"},secHead("تسجيل","إدخال يومي")+stepper)+
     dateNav()+
     lockbar+warnbar+copyBar+histbar+
@@ -3966,7 +4008,7 @@ window.App={
   authToggleRem:function(el){var on=el.classList.toggle("on");var b=el.querySelector(".b");if(b)b.textContent=on?"✓":""},
   authValid:function(which){if(which==="email"){var f=document.getElementById("emailF"),i=document.getElementById("authEmail");if(f&&i)f.classList.toggle("valid",/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i.value||""));var eh=document.getElementById("emailH");if(eh)eh.textContent=""}else{var pf=document.getElementById("pwF"),pi=document.getElementById("authPw");if(pf&&pi)pf.classList.toggle("valid",(pi.value||"").length>=6);var ph=document.getElementById("pwH");if(ph)ph.textContent=""}},
   authMode:function(){var d=document.documentElement.getAttribute("data-mode")==="dark";var t=d?"light":"dark";try{localStorage.setItem("dsr_mode",t)}catch(e){}document.documentElement.setAttribute("data-mode",t)},
-  logout:function(){openConfirm({title:"تسجيل الخروج؟",body:"سيُطلب منك تسجيل الدخول مرة أخرى.",confirm:"خروج",onOk:function(){try{firebase.auth().signOut()}catch(e){location.reload()}}})},
+  logout:function(){openConfirm({title:"تسجيل الخروج؟",body:"سيُطلب منك تسجيل الدخول مرة أخرى.",confirm:"خروج",onOk:function(){try{releaseLock()}catch(e){}try{firebase.auth().signOut()}catch(e){location.reload()}}})},
   usrCreate:function(){var name=(document.getElementById("uName").value||"").trim(),em=(document.getElementById("uEmail").value||"").trim().toLowerCase(),pw=document.getElementById("uPw").value,role=document.getElementById("uRole").value;
     if(!name||!em||!pw){toast("أكمل الاسم والبريد وكلمة المرور","err");return}if(pw.length<6){toast("كلمة المرور 6 أحرف على الأقل","err");return}if(rosterGet(em)){toast("هذا البريد مضاف مسبقاً","err");return}
     toast("جارٍ إنشاء الحساب…");var sec=fbSecondary();sec.auth().createUserWithEmailAndPassword(em,pw).then(function(){return sec.auth().signOut()}).then(function(){roster()[em]={name:name,role:role,active:true,createdAt:nowStamp()};logEvent("add","أضاف مستخدم "+name+" ("+role+")",{target:em});saveConfig();render();toast("أُضيف المستخدم ✓")}).catch(function(ex){toast(authErrMsg(ex),"err")})},
@@ -4068,8 +4110,8 @@ window.App={
   resetCols:function(){_colW={};saveColW();refreshTable();toast("أُعيدت الأعمدة للوضع التلقائي")},
   clearMarks:function(){var d=S.day;if(!d)return;var n=Object.keys(d.verify||{}).length+Object.keys(d.tmarks||{}).length;if(!n){toast("لا توجد ألوان تحقق في هذا اليوم");return}
     openConfirm({title:"إعادة ألوان التدقيق؟",body:"سيتم مسح جميع ألوان التحقق (الأخضر/الأحمر) في هذا اليوم وإرجاع الخلايا لمظهرها الأصلي.<br><b>لن تتأثر أي قيم أو حسابات.</b> يمكنك التراجع بـ Ctrl+Z.",confirm:"مسح الألوان",onOk:function(){histPushRaw();S.day.verify={};S.day.tmarks={};scheduleSave();render();toast("أُعيدت الألوان للوضع الافتراضي")}})},
-  editDay:function(iso){navPush();S.curDate=iso;loadDay(iso);S.view="entry";render()},
-  newDay:function(){flush(function(){loadDay(todayISO());S.view="entry";render()})},
+  editDay:function(iso){releaseLock();navPush();S.curDate=iso;loadDay(iso);acquireLock(iso);S.view="entry";render()},
+  newDay:function(){releaseLock();flush(function(){loadDay(todayISO());acquireLock(todayISO());S.view="entry";render()})},
   navDay:function(dl){flush(function(){loadDay(shiftDate(S.curDate,dl));render()})},
   navToday:function(){flush(function(){loadDay(todayISO());render()})},
   pick:function(iso){flush(function(){S.calOpen=true;loadDay(iso);render()})},
