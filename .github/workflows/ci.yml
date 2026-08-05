@@ -1,14 +1,85 @@
-name: فحص ما قبل النشر
+# خط واحد مُوحّد: فحص التطبيق ∥ اختبار قواعد الأمان (محاكي Firestore) ← ثم النشر.
+# سريع: الفحصان يعملان بالتوازي، والنشر بعد نجاحهما فقط.
+# رفع بملف واحد: النشر يقرأ الإصدار من index.html ويزامن sw.js و version.json تلقائياً.
+name: CI & Deploy
+
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches: ["main", "master"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "ci-deploy-${{ github.ref }}"
+  cancel-in-progress: true
+
 jobs:
-  check:
+  # 1) فحص التطبيق — تدقيق ثابت سريع (ثوانٍ، بلا متصفح): صياغة + معالجات + بنية
+  app-tests:
+    name: اختبارات التطبيق
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: {node-version: 20}
-      - name: تشغيل الفحوص
+        with:
+          node-version: "20"
+      - name: فحص ما قبل النشر
         run: node ci/check.mjs
+
+  # 2) اختبار قواعد الأمان على محاكي Firestore (يعمل بالتوازي مع فحص التطبيق)
+  rules-tests:
+    name: اختبارات قواعد الأمان (محاكي Firestore)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firestore-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: firestore-tests/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: npm ci
+      - run: npm test
+
+  # 3) النشر إلى GitHub Pages — بعد نجاح الفحصين فقط
+  deploy:
+    name: نشر GitHub Pages
+    needs: [app-tests, rules-tests]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: مزامنة الإصدار (sw.js + version.json من index.html)
+        run: |
+          VER=$(grep -oE 'APP_VERSION="[0-9]+\.[0-9]+\.[0-9]+"' index.html | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+          echo "الإصدار المكتشف: ${VER:-غير معروف}"
+          if [ -n "$VER" ]; then
+            if [ -f sw.js ]; then
+              sed -i -E "s/const APP_VERSION *= *\"[^\"]*\"/const APP_VERSION = \"$VER\"/" sw.js
+            fi
+            if [ -f version.json ]; then
+              SCHEMA=$(grep -oE '"schema"[[:space:]]*:[[:space:]]*[0-9]+' version.json | grep -oE '[0-9]+' | head -1)
+              SCHEMA=${SCHEMA:-5}
+              printf '{\n  "version": "%s",\n  "schema": %s,\n  "releasedAt": "%s"\n}\n' "$VER" "$SCHEMA" "$(date +%F)" > version.json
+            fi
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+      - id: deployment
+        uses: actions/deploy-pages@v4
