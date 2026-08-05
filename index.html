@@ -142,6 +142,19 @@ a{color:var(--brass)}
 .backbtn.refreshing{pointer-events:none;opacity:.85}
 .refreshing .rf-ic{animation:rfspin .7s linear infinite;transform-origin:50% 50%}
 @keyframes rfspin{to{transform:rotate(-360deg)}}
+/* تذكير اليوميات المتعثّرة في المزامنة (يبقى حتى تُزامَن) */
+.syncstuck{background:#fff4ec;border:1.5px solid #f0b98a;border-radius:14px;padding:14px 16px;margin:0 0 16px;box-shadow:0 2px 10px rgba(200,90,20,.08)}
+html[data-mode="dark"] .syncstuck{background:#3a2416;border-color:#7a4a24}
+.syncstuck .ssb-h{font-weight:800;color:#9a4a15;font-size:14px;line-height:1.8;margin-bottom:10px}
+html[data-mode="dark"] .syncstuck .ssb-h{color:#f0b98a}
+.syncstuck .ssb-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.syncstuck .ssb-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.syncstuck .ssb-d{font-weight:800;color:var(--ink);font-size:13.5px}
+.syncstuck .ssb-r{font-size:12px;color:var(--muted);font-weight:700;direction:ltr}
+.syncstuck .ssb-open{margin-inline-start:auto;background:var(--acc);color:#fff;border:none;border-radius:9px;padding:7px 14px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer}
+.syncstuck .ssb-open:hover{filter:brightness(1.06)}
+.syncstuck .ssb-fix{font-size:12.5px;color:#7a5410;line-height:1.9;background:#fef8ee;border-radius:9px;padding:9px 12px}
+html[data-mode="dark"] .syncstuck .ssb-fix{color:#e8c79a;background:#2e1e12}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:#c9c2b3;flex:none}
 .sync-dot.on{background:var(--pos)} .sync-dot.err{background:var(--neg)} .sync-dot.busy{background:var(--brass);animation:pulse 1s infinite}
 @keyframes pulse{50%{opacity:.35}}
@@ -1966,7 +1979,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.21";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.22";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -3161,7 +3174,7 @@ function render(){
   else if(S.view==="users")body=viewUsers();
   else if(S.view==="approvals")body=viewApprovals();
   else if(S.view==="activity")body=viewActivity();
-  document.getElementById("app").innerHTML="<div class='shell' id='shell'>"+head+h("main",{class:(S._lastView!==S.view?"view-in":"")},(S.view==="dashboard"?(reminderBar()+notifPromptBar()):"")+body)+drawer+"</div>";
+  document.getElementById("app").innerHTML="<div class='shell' id='shell'>"+head+h("main",{class:(S._lastView!==S.view?"view-in":"")},syncStuckBar()+(S.view==="dashboard"?(reminderBar()+notifPromptBar()):"")+body)+drawer+"</div>";
   updateSyncPill();formatAmts();
   if(S.view==="entry"){var c=document.getElementById("cal");if(c&&S.calOpen)c.classList.add("open");applyColWidths()}
   if(_navScroll!=null){var sc=_navScroll;_navScroll=null;setTimeout(function(){try{scrollTo(0,sc)}catch(e){}},20)}
@@ -5058,6 +5071,7 @@ window.App={
     openConfirm({title:"إعادة ألوان التدقيق؟",body:"سيتم مسح جميع ألوان التحقق (الأخضر/الأحمر) في هذا اليوم وإرجاع الخلايا لمظهرها الأصلي.<br><b>لن تتأثر أي قيم أو حسابات.</b> يمكنك التراجع بـ Ctrl+Z.",confirm:"مسح الألوان",onOk:function(){histPushRaw();S.day.verify={};S.day.tmarks={};scheduleSave();render();toast("أُعيدت الألوان للوضع الافتراضي")}})},
   editDay:function(iso){releaseLock();navPush();S.curDate=iso;loadDay(iso);acquireLock(iso);S.view="entry";render()},
   newDay:function(){releaseLock();flush(function(){loadDay(todayISO());acquireLock(todayISO());S.view="entry";render()})},
+  openStuck:function(id){if(!id)return;try{releaseLock()}catch(e){}flush(function(){loadDay(id);try{acquireLock(id)}catch(e){}S.view="entry";render();try{toast("افتح «إعادة كمسودة» لمزامنة تعديلات هذه اليومية، ثم أعِد قفلها")}catch(_){}});},
   navDay:function(dl){flush(function(){loadDay(shiftDate(S.curDate,dl));render()})},
   navToday:function(){flush(function(){loadDay(todayISO());render()})},
   pick:function(iso){flush(function(){S.calOpen=true;loadDay(iso);render()})},
@@ -5393,6 +5407,7 @@ async function fsPushDaysIsolated(db,dayOps,cur){
     try{
       if(o.t==="set")await ref.set(S.data[o.id]);else await ref.delete();
       if(o.t==="set")FSY.shadowDays[o.id]=cur[o.id];else delete FSY.shadowDays[o.id];
+      stuckClear(o.id);
     }catch(e2){
       var code=(e2&&e2.code)||"error";
       if(!_fsPermanent(code))throw e2;                 /* عابر → أعد المحاولة لاحقاً */
@@ -5407,15 +5422,33 @@ async function fsPushDaysIsolated(db,dayOps,cur){
   }
   return stuck;
 }
+/* خريطة اليوميات المتعثّرة (محفوظة محلياً) — تذكير مستمر يبقى حتى تُحَلّ (تُزامَن بنجاح) */
+function stuckMap(){if(!S._syncStuck||typeof S._syncStuck!=="object"||S._syncStuck.constructor===Array){S._syncStuck={};try{var raw=localStorage.getItem("dsr_syncstuck");if(raw){var o=JSON.parse(raw);if(o&&typeof o==="object"&&!Array.isArray(o))S._syncStuck=o;}}catch(e){}}return S._syncStuck;}
+function stuckSave(){try{localStorage.setItem("dsr_syncstuck",JSON.stringify(stuckMap()));}catch(e){}}
+function stuckClear(id){var m=stuckMap();if(m[id]){delete m[id];stuckSave();try{scheduleRender()}catch(e){}}}
+function stuckCount(){return Object.keys(stuckMap()).length;}
 function fsReportStuck(stuck){try{
-  S._syncStuck=stuck;
-  if(!S._stuckSeen)S._stuckSeen={};
-  var fresh=stuck.filter(function(s){var k=s.id+"|"+s.code;if(S._stuckSeen[k])return false;S._stuckSeen[k]=1;return true;});
-  if(!fresh.length)return;                                   /* لا تكرّر التنبيه لنفس اليومية/السبب */
-  var m=fresh.map(function(s){return prettyDate(s.id)+": "+s.from+"→"+s.to+(s.fin?" ⚠مالي":"")+" ["+s.code+"]";}).join(" · ");
-  try{toast("تعذّر حفظ تعديل على يومية على السحابة — "+m,"err");}catch(_t){}
-  try{if(typeof logEvent==="function")logEvent("info","تعذّرت مزامنة يومية: "+m);}catch(_l){}
+  var m=stuckMap(),fresh=[];
+  stuck.forEach(function(s){var had=m[s.id]&&m[s.id].code===s.code&&m[s.id].to===s.to;m[s.id]={id:s.id,from:s.from,to:s.to,fin:!!s.fin,code:s.code,ts:nowStamp()};if(!had)fresh.push(s);});
+  stuckSave();
+  if(fresh.length){
+    var msg=fresh.map(function(s){return prettyDate(s.id)+": "+s.from+"→"+s.to+(s.fin?" ⚠مالي":"")+" ["+s.code+"]";}).join(" · ");
+    try{toast("تعذّر حفظ تعديل على يومية على السحابة — "+msg,"err");}catch(_t){}
+    try{if(typeof logEvent==="function")logEvent("info","تعذّرت مزامنة يومية: "+msg);}catch(_l){}
+  }
+  try{scheduleRender();}catch(e){}
 }catch(e){}}
+/* تذكير مستمر بارز باليوميات المتعثّرة + طريقة الحلّ — يظهر في كل الشاشات حتى تُزامَن */
+function syncStuckBar(){
+  try{var m=stuckMap();var ids=Object.keys(m);if(!ids.length)return "";ids.sort();
+    var items=ids.map(function(id){var s=m[id];var finTxt=s.fin?" · تعديل مالي":"";
+      return "<div class='ssb-item'><span class='ssb-d'>"+prettyDate(id)+"</span><span class='ssb-r'>"+esc(String(s.from)+"→"+String(s.to))+finTxt+" ["+esc(String(s.code))+"]</span><button class='ssb-open' onclick=\"App.openStuck('"+id+"')\">افتح لحلّها</button></div>";
+    }).join("");
+    return "<div class='syncstuck'><div class='ssb-h'>⚠️ لم تُحفَظ تعديلات "+ids.length+" يومية على السحابة (رفضتها القواعد لأنها مقفلة/معتمدة) — تظهر لديك لكنها غير مُزامَنة:</div>"+
+      "<div class='ssb-list'>"+items+"</div>"+
+      "<div class='ssb-fix'>الحلّ: افتح اليومية ← «إعادة كمسودة» (تُزامَن تعديلاتها فوراً) ← ثم أعِد ترحيلها/قفلها. يختفي هذا التذكير تلقائياً عند نجاح المزامنة.</div></div>";
+  }catch(e){return "";}
+}
 async function fsPushNow(){
   if(!fsMode()||!FSY.on||FSY.applying)return;var db=fsInit();if(!db)return;
   setSync("busy");
@@ -5429,7 +5462,7 @@ async function fsPushNow(){
         for(var i=0;i<dayOps.length;i+=400){var chunk=dayOps.slice(i,i+400);var batch=db.batch();
           chunk.forEach(function(o){var ref=db.collection("days").doc(o.id);if(o.t==="set")batch.set(ref,S.data[o.id]);else batch.delete(ref)});
           await batch.commit();}
-        dayOps.forEach(function(o){if(o.t==="set")FSY.shadowDays[o.id]=cur[o.id];else delete FSY.shadowDays[o.id]});
+        dayOps.forEach(function(o){if(o.t==="set")FSY.shadowDays[o.id]=cur[o.id];else delete FSY.shadowDays[o.id];stuckClear(o.id);});
       }catch(_bErr){
         /* فشلت الدفعة: نعزل كل يومية لمعرفة المتعثّرة وسببها ووقف إعادة المحاولة اللانهائية (بلا حذف بيانات) */
         var _stuck=await fsPushDaysIsolated(db,dayOps,cur);
