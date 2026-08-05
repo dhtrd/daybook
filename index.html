@@ -1744,7 +1744,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.7.4";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.7.5";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2579,8 +2579,8 @@ function viewApprovals(){
   return "<div class='n-appr'>"+head+hint+"<div class='filters'>"+filters+"</div>"+(cards?"<div class='appr-list'>"+cards+"</div>":"<div class='empty'>لا يوميات في هذه الحالة</div>")+"</div>";
 }
 /* ===== سجل النشاط ===== */
-function actIcon(t){var m={login:"🔑",add:"➕",edit:"✏️",delete:"🗑️",approve:"✅",return:"↩️",role:"👤",export:"📤",send:"📨"};return m[t]||"•";}
-function actColor(t){var m={login:"#2C74D6",add:"#0f6b57",edit:"#AF8228",delete:"#e0553f",approve:"#0f6b57",return:"#e0553f",role:"#6D5AE0",export:"#2C74D6",send:"#AF8228"};return m[t]||"#8a998f";}
+function actIcon(t){var m={login:"🔑",newdevice:"🔐",add:"➕",edit:"✏️",delete:"🗑️",approve:"✅",return:"↩️",role:"👤",export:"📤",send:"📨",post:"📋",lock:"🔒",revert:"↩️",cancel:"🚫"};return m[t]||"•";}
+function actColor(t){var m={login:"#2C74D6",newdevice:"#C9931F",add:"#0f6b57",edit:"#AF8228",delete:"#e0553f",approve:"#0f6b57",return:"#e0553f",role:"#6D5AE0",export:"#2C74D6",send:"#AF8228",post:"#0f6b57",lock:"#173A31",revert:"#AF8228",cancel:"#e0553f"};return m[t]||"#8a998f";}
 function viewActivity(){
   /* ==== بيانات حقيقية (منسوخة حرفياً من الدالة الحالية) ==== */
   var acts=(S._activity||[]);var flt=S._actFlt||{q:"",type:"",user:""};
@@ -4553,9 +4553,11 @@ function fsAttach(db){
   },function(){}));
   /* د) سجل النشاط — لحظي */
   FSY.unsub.push(db.collection("activity").orderBy("ts","desc").limit(200).onSnapshot(function(snap){
-    if(FSY.applying)return;var ch=false;S._activity=S._activity||[];
-    snap.docChanges().forEach(function(c){if(c.doc.metadata&&c.doc.metadata.hasPendingWrites)return;if(c.type==="removed")return;var d=c.doc.data();if(!d||!d.id)return;if(!S._activity.some(function(x){return x.id===d.id})){S._activity.push(d);ch=true;}});
-    if(!ch)return;S._activity.sort(function(a,b){return (num(b.ts)||0)-(num(a.ts)||0)});if(S._activity.length>200)S._activity=S._activity.slice(0,200);if(!(S.view==="entry"&&S.dirty))render();
+    if(FSY.applying)return;var ch=false,_nd=null;S._activity=S._activity||[];
+    snap.docChanges().forEach(function(c){if(c.doc.metadata&&c.doc.metadata.hasPendingWrites)return;if(c.type==="removed")return;var d=c.doc.data();if(!d||!d.id)return;if(!S._activity.some(function(x){return x.id===d.id})){S._activity.push(d);ch=true;if(d.type==="newdevice"&&String(d.actor||"").toLowerCase()!==String(S.currentUser||"").toLowerCase())_nd=d;}});
+    if(!ch)return;
+    if(FSY._primed&&_nd&&isOwner()){try{if(typeof Notify!=="undefined")Notify.show("🔐 دخول من جهاز جديد",(_nd.actorName||_nd.actor||"")+" — "+(_nd.detail||""),"newdev-"+_nd.id);}catch(e){}toast("🔐 دخول من جهاز جديد: "+(_nd.actorName||_nd.actor||""));}
+    S._activity.sort(function(a,b){return (num(b.ts)||0)-(num(a.ts)||0)});if(S._activity.length>200)S._activity=S._activity.slice(0,200);if(!(S.view==="entry"&&S.dirty))render();
   },function(){}));
   /* هـ) الاعتمادات — لحظي */
   FSY.unsub.push(db.collection("approvals").onSnapshot(function(snap){
@@ -4632,7 +4634,10 @@ async function onSignedIn(user){
   applyUserTheme(email);                                          /* مظهر خاصّ بكل مستخدم حسب ذوقه */
   if(fsMode()){fsTouchLogin();}                                   /* تحديث آخر دخول ذاتياً (مسموح بقواعد الأمان) */
   else{try{var me=rosterGet(email);if(me){me.lastLogin=nowStamp();saveConfig()}}catch(e){}}
-  try{logEvent("login","سجّل الدخول")}catch(e){}
+  try{var _dk="dsr_seen_"+String(email).toLowerCase(),_newDev=false;try{_newDev=!localStorage.getItem(_dk)}catch(e){}
+    if(_newDev){try{localStorage.setItem(_dk,String(Date.now()))}catch(e){}logEvent("newdevice","تسجيل دخول من جهاز جديد — "+devLabel());toast("تم تسجيل دخولك من جهاز جديد");}
+    else logEvent("login","سجّل الدخول");
+  }catch(e){}
   hideLogin();
   if(!canSee(S.view))S.view="dashboard";
   loadDay(S.curDate);render();
