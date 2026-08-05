@@ -28,7 +28,15 @@ service cloud.firestore {
 
     // ===== قفل الحقول + انتقالات الحالة على مستوى الخادم (البند ٦) =====
     // حالة اليومية: مسودة → مرحّلة → مقفلة (+ ملغاة)، وإعادة كمسودة من أي حالة.
-    function dstatus(d) { return ('status' in d) ? d.status : 'draft'; }
+    // الحالة الفعّالة — تطابق تماماً منطق التطبيق dayStatus():
+    //   «approved» (طباعة/اعتماد اليومية) وأي حالة غير معروفة تُترجَم إلى مقفلة/مرحّلة/مسودة حسب علم القفل.
+    //   بدون هذا كان الخادم يرفض أي تغيير على يومية مطبوعة (approved) لأنه لا يعرف هذه الحالة ⇒ «تعذّرت المزامنة».
+    function dstatus(d) {
+      let s = ('status' in d) ? d.status : 'draft';
+      let lk = ('locked' in d) && d.locked == true;
+      return (s == 'draft' || s == 'posted' || s == 'locked' || s == 'cancelled') ? s
+           : (s == 'approved' ? (lk ? 'locked' : 'posted') : (lk ? 'locked' : 'draft'));
+    }
     // الحقول المالية التي لا يجوز تغييرها بعد الترحيل (إلا بإعادتها مسودة):
     function finKeys() { return ['rows','expenses','incomes','bankDeposit','carryIn']; }
     function noFinChange() {
