@@ -1770,6 +1770,17 @@ html[data-mode="dark"] .n-files .dt th{background:#1E7A5A}
 .n-users .nu-mk{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:11px;background:var(--field);color:var(--muted);flex:none}
 .n-users .nu-pchip.on .nu-mk{background:var(--acc);color:#fff}
 .n-users .nu-pi{font-size:12px}
+/* ===== إدارة الأدوار المخصّصة + أسماء العرض (البند ٩ / U3) ===== */
+.n-users .nu-panel.show{display:flex}
+.n-users .role-seg{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.n-users .nu-seg2{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;border-inline-start:3px solid var(--rc,var(--acc));transition:.12s}
+.n-users .nu-seg2:hover{background:var(--field)}
+.n-users .nu-seg2.on{background:var(--rc,var(--acc));color:#fff;border-color:var(--rc,var(--acc))}
+.n-users .nu-pchip.clk{cursor:pointer;font-family:inherit}
+.n-users .nu-pchip.clk:hover{border-color:var(--brass)}
+.n-users .role-act{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.n-users .role-add{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.n-users .role-add input{flex:1;min-width:180px;border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--ink)}
 
 @media(max-width:640px){
   .n-users .nu-form{grid-template-columns:1fr}
@@ -1857,7 +1868,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.1";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.2";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -4503,7 +4514,19 @@ window.App={
   usrCreate:function(){var name=(document.getElementById("uName").value||"").trim(),em=(document.getElementById("uEmail").value||"").trim().toLowerCase(),pw=document.getElementById("uPw").value,role=document.getElementById("uRole").value;
     if(!name||!em||!pw){toast("أكمل الاسم والبريد وكلمة المرور","err");return}if(pw.length<6){toast("كلمة المرور 6 أحرف على الأقل","err");return}if(rosterGet(em)){toast("هذا البريد مضاف مسبقاً","err");return}
     toast("جارٍ إنشاء الحساب…");var sec=fbSecondary();sec.auth().createUserWithEmailAndPassword(em,pw).then(function(){return sec.auth().signOut()}).then(function(){roster()[em]={name:name,role:role,active:true,createdAt:nowStamp()};logEvent("add","أضاف مستخدم "+name+" ("+role+")",{target:em});saveConfig();render();toast("أُضيف المستخدم ✓")}).catch(function(ex){toast(authErrMsg(ex),"err")})},
-  usrRole:function(em,role){var u=rosterGet(em);if(!u||em===OWNER_EMAIL)return;u.role=role;logEvent("role","غيّر دور "+(u.name||em)+" إلى "+role,{target:em});saveConfig();render();toast("تم تغيير الدور")},
+  usrRole:function(em,role){var u=rosterGet(em);if(!u||em===OWNER_EMAIL)return;u.role=role;logEvent("role","غيّر دور "+(u.name||em)+" إلى "+roleName(role),{target:em});saveConfig();render();toast("تم تغيير الدور")},
+  roleView:function(k){if(!isOwner())return;S._roleView=k;render();},
+  roleAdd:function(){if(!isOwner())return;var el=document.getElementById("newRoleName");var nm=(el&&el.value||"").trim();if(!nm){toast("اكتب اسم الدور","err");return}ensureRoles();
+    var dup=rolesAll().some(function(k){return roleName(k)===nm});if(dup){toast("هذا الاسم مستخدم","err");return}
+    var key="role_"+uuid().slice(0,8);S.config.customRoles.push({key:key,name:nm,screens:[],color:"#0f6b57"});S._roleView=key;
+    logEvent("role","أضاف دوراً مخصّصاً: "+nm);saveConfig();render();toast("أُضيف «"+nm+"» — امنحه الشاشات بالضغط");},
+  roleRename:function(k){if(!isOwner())return;openPrompt({title:"اسم عرض الدور",label:"الاسم الظاهر",value:roleName(k),onOk:function(v){v=(v||"").trim();if(!v)return;ensureRoles();
+    if(isBuiltinRole(k)){if(v===k)delete S.config.roleNames[k];else S.config.roleNames[k]=v;}else{var c=customRole(k);if(c)c.name=v;if(S.config.roleNames)delete S.config.roleNames[k];}
+    logEvent("role","سمّى دور «"+k+"» كـ «"+v+"»");saveConfig();render();toast("تم تغيير اسم العرض");}});},
+  roleDel:function(k){if(!isOwner()||isBuiltinRole(k))return;var n=Object.keys(roster()).filter(function(e){return (rosterGet(e)||{}).role===k}).length;if(n){toast("الدور مُسند لـ"+n+" مستخدم — غيّر أدوارهم أولاً","err");return}
+    var nm=roleName(k);openConfirm({title:"حذف الدور؟",body:"سيُحذف الدور المخصّص «<b>"+esc(nm)+"</b>» نهائياً.",danger:true,confirm:"حذف",onOk:function(){S.config.customRoles=customRolesArr().filter(function(r){return r.key!==k});if(S.config.roleNames)delete S.config.roleNames[k];if(S._roleView===k)S._roleView=null;logEvent("role","حذف الدور المخصّص «"+nm+"»");saveConfig();render();toast("حُذف الدور");}});},
+  roleScreen:function(k,screen){if(!isOwner()||isBuiltinRole(k))return;var c=customRole(k);if(!c)return;c.screens=Array.isArray(c.screens)?c.screens:[];var i=c.screens.indexOf(screen);if(i>=0)c.screens.splice(i,1);else c.screens.push(screen);
+    logEvent("role","صلاحية «"+roleName(k)+"» · "+screenLabel(screen)+" "+(i>=0?"سُحبت":"مُنحت"));saveConfig();render();toast(roleName(k)+": "+screenLabel(screen)+(i>=0?" ✗":" ✓"));},
   usrPermsToggle:function(em){if(!isOwner())return;S._openPerms=(S._openPerms===em?null:em);render();},
   usrBranch:function(em,bid){if(!isOwner())return;if(em===OWNER_EMAIL){toast("المالك يملك كل الفروع","err");return}var u=rosterGet(em);if(!u)return;
     var arr=Array.isArray(u.branches)?u.branches:[];var i=arr.indexOf(bid);var added=(i<0);
@@ -4859,6 +4882,19 @@ var ROLES=["المالك","مُدخِل اليوميات","المدير الما
 var ASSIGN_ROLES=["مُدخِل اليوميات","المدير المالي","المدير العام","المدير التنفيذي"];
 var RCOL={"المالك":"#0f6b57","مُدخِل اليوميات":"#AF8228","المدير المالي":"#2C74D6","المدير العام":"#6D5AE0","المدير التنفيذي":"#1E7A5A"};
 var PERM={"المالك":["dashboard","entry","reports","approvals","files","branches","data","users","activity"],"مُدخِل اليوميات":["dashboard","entry","reports","approvals","activity","files"],"المدير المالي":["dashboard","reports","approvals","activity","files","data"],"المدير العام":["dashboard","reports","activity","files"],"المدير التنفيذي":["dashboard","reports","activity"]};
+/* ===== أدوار مخصّصة + أسماء عرض (البند ٩) =====
+   الأدوار المبنية ثابتة المفاتيح والمنطق. الإضافات تُخزَّن وتُزامَن في الإعدادات:
+   config.customRoles = [{key,name,screens,color}] (تبدأ فارغة الصلاحيات)، و
+   config.roleNames = {roleKey: اسم عرض} لإعادة تسمية أي دور ظاهرياً دون تغيير مفتاحه/منطقه. */
+function ensureRoles(){if(!Array.isArray(S.config.customRoles))S.config.customRoles=[];if(!S.config.roleNames||typeof S.config.roleNames!=="object")S.config.roleNames={};}
+function customRolesArr(){ensureRoles();return S.config.customRoles;}
+function customRole(key){var a=customRolesArr();for(var i=0;i<a.length;i++)if(a[i]&&a[i].key===key)return a[i];return null;}
+function rolesAll(){return ROLES.concat(customRolesArr().map(function(r){return r.key}));}
+function assignRolesAll(){return rolesAll().filter(function(k){return k!=="المالك"});}
+function isBuiltinRole(key){return ROLES.indexOf(key)>=0;}
+function roleName(key){ensureRoles();if(S.config.roleNames[key])return S.config.roleNames[key];var c=customRole(key);if(c)return c.name||key;return key;}
+function roleScreens(key){var c=customRole(key);if(c)return Array.isArray(c.screens)?c.screens:[];return PERM[key]||[];}
+function roleColor(key){if(RCOL[key])return RCOL[key];var c=customRole(key);if(c&&c.color)return c.color;return "#0f6b57";}
 function roster(){if(!S.config.users||typeof S.config.users!=="object")S.config.users={};return S.config.users}
 function rosterGet(email){return roster()[(email||"").toLowerCase()]}
 function ensureOwner(){var r=roster();if(!r[OWNER_EMAIL])r[OWNER_EMAIL]={name:"المالك",role:"المالك",active:true,createdAt:nowStamp()};else{r[OWNER_EMAIL].role="المالك";r[OWNER_EMAIL].active=true}}
@@ -4869,7 +4905,7 @@ function isOwner(){return (S.currentUser||"")===OWNER_EMAIL||myRole()==="الم�
    استثناءات الفرد تُخزَّن في user.perms = {action:"allow"|"deny"} (غيابها = يرث الدور)، وتُزامَن. */
 var SCREENS_CAT=[["dashboard","الرئيسية","🏠"],["entry","إدخال يومي","✎"],["reports","التقارير","📊"],["approvals","الاعتمادات","✅"],["users","المستخدمون","👥"],["activity","سجل النشاط","🕘"],["files","الملفات","📁"],["branches","الإعدادات","⚙️"],["data","البيانات","🗄️"]];
 function screenLabel(a){for(var i=0;i<SCREENS_CAT.length;i++)if(SCREENS_CAT[i][0]===a)return SCREENS_CAT[i][1];return a;}
-function roleAllows(role,action){var p=PERM[role]||[];return p.indexOf(action)>=0;}
+function roleAllows(role,action){return roleScreens(role).indexOf(action)>=0;}
 function userPermOverride(u,action){if(!u||!u.perms||typeof u.perms!=="object")return null;var v=u.perms[action];return (v==="allow"||v==="deny")?v:null;}
 function canUser(email,action){var em=String(email||"").toLowerCase();var u=rosterGet(em)||{};
   if(em===OWNER_EMAIL||u.role==="المالك")return true;
@@ -4921,7 +4957,7 @@ async function fsSetDropbox(appKey,refreshToken){var db=fsInit();if(!db)return f
    ===================================================================== */
 var FSY={on:false,started:false,applying:false,pushTimer:null,retryTimer:null,unsub:[],
   shadowDays:{},shadowCfg:"",shadowRoles:{}};
-var FS_CFG_FIELDS=["businessName","openingBalance","branches","methods","companyLogo","dayTemplate","session"]; /* الحقول المشتركة بين الأجهزة فقط (لا تشمل السلة/سجل الملفات/تفضيلات محلية) */
+var FS_CFG_FIELDS=["businessName","openingBalance","branches","methods","companyLogo","dayTemplate","session","customRoles","roleNames"]; /* الحقول المشتركة بين الأجهزة فقط (لا تشمل السلة/سجل الملفات/تفضيلات محلية) */
 function jstr(x){try{return JSON.stringify(x)}catch(e){return ""}}
 function fsCanWrite(){return isOwner()||myRole()==="مُدخِل اليوميات";}   /* من يكتب وثائق الأيام */
 function fsCoreFields(cfg){var c={};FS_CFG_FIELDS.forEach(function(k){c[k]=(cfg&&cfg[k]!==undefined)?cfg[k]:null});return c;}
@@ -5189,7 +5225,7 @@ function viewUsers(){
 
   /* بطاقات المستخدمين */
   var rows=emails.map(function(em){
-    var u=r[em]||{};var col=RCOL[u.role]||"#0f6b57";var owner=(em===OWNER_EMAIL||u.role==="المالك");
+    var u=r[em]||{};var col=roleColor(u.role);var owner=(em===OWNER_EMAIL||u.role==="المالك");
     var off=(u.active===false);
     var av=esc((u.name||em||"?").slice(0,1));
     var meta=esc(em)+(u.lastLogin?" · آخر دخول "+esc(u.lastLogin):"");
@@ -5210,7 +5246,7 @@ function viewUsers(){
     }else{
       menu="<details class='nu-menu'><summary class='nu-dots'>⋮</summary><div class='nu-pop'>"+
         "<div class='nu-mrole'><label>الدور</label>"+
-          "<select onchange=\"App.usrRole('"+em+"',this.value)\">"+ASSIGN_ROLES.map(function(rr){return "<option"+(u.role===rr?" selected":"")+">"+esc(rr)+"</option>"}).join("")+"</select>"+
+          "<select onchange=\"App.usrRole('"+em+"',this.value)\">"+assignRolesAll().map(function(rr){return "<option value='"+esc(rr)+"'"+(u.role===rr?" selected":"")+">"+esc(roleName(rr))+"</option>"}).join("")+"</select>"+
         "</div>"+
         "<div class='nu-mi' onclick=\"App.usrReset('"+em+"')\">🔗 إرسال رابط إعادة تعيين</div>"+
         "<div class='nu-mi' onclick=\"App.usrToggle('"+em+"')\">"+(off?"▶ تفعيل المستخدم":"⏸ إيقاف المستخدم")+"</div>"+
@@ -5224,7 +5260,7 @@ function viewUsers(){
     return "<div class='nu-uw'><div class='nu-u"+(off?" nu-off":"")+"' style='--rc:"+col+"'>"+
       "<div class='nu-av'>"+av+"</div>"+
       "<div class='nu-id'><div class='nu-nm'>"+esc(u.name||"—")+"</div><div class='nu-em'>"+meta+"</div></div>"+
-      "<span class='nu-badge'>"+esc(u.role||"—")+"</span>"+
+      "<span class='nu-badge'>"+esc(roleName(u.role)||"—")+"</span>"+
       permBtn+sw+menu+
     "</div>"+panel+"</div>";
   }).join("");
@@ -5242,30 +5278,38 @@ function viewUsers(){
       "<div class='nu-fg'><label>الاسم</label><input id='uName' placeholder='اسم الموظف'></div>"+
       "<div class='nu-fg'><label>البريد الإلكتروني</label><input id='uEmail' type='email' placeholder='name@dhtrd.com'></div>"+
       "<div class='nu-fg'><label>كلمة مرور مؤقتة</label><input id='uPw' placeholder='6 أحرف على الأقل'></div>"+
-      "<div class='nu-fg'><label>الدور</label><select id='uRole'>"+ASSIGN_ROLES.map(function(rr){return "<option>"+esc(rr)+"</option>"}).join("")+"</select></div>"+
+      "<div class='nu-fg'><label>الدور</label><select id='uRole'>"+assignRolesAll().map(function(rr){return "<option value='"+esc(rr)+"'>"+esc(roleName(rr))+"</option>"}).join("")+"</select></div>"+
     "</div>"+
     "<div class='nu-form-act'><button class='btn' onclick='App.usrCreate()'>+ إنشاء الحساب</button><span class='note' style='margin:0'>يُنشأ حساب دخول ويُضاف للأدوار — يبقى دخولك أنت كما هو.</span></div>"
   );
 
-  /* ===== الأدوار والصلاحيات — عرض فقط من PERM الحقيقية (تبديل الدور عبر CSS بلا JS) ===== */
-  var VIEWS=[["dashboard","الرئيسية","🏠"],["entry","إدخال يومي","✎"],["reports","التقارير","📊"],["approvals","الاعتمادات","✅"],["users","المستخدمون","👥"],["activity","سجل النشاط","🕘"],["files","الملفات","📁"],["branches","الإعدادات","⚙️"],["data","البيانات","🗄️"]];
-  var defRole="مُدخِل اليوميات";
-  var seg=ROLES.map(function(role,ri){
-    return "<input type='radio' name='nuPermRole' class='nu-rad' id='nu-r"+ri+"'"+(role===defRole?" checked":"")+">"+
-      "<label class='nu-seg' for='nu-r"+ri+"' style='--rc:"+(RCOL[role]||"#0f6b57")+"'>"+esc(role)+"</label>";
+  /* ===== الأدوار والصلاحيات (البند ٩: أدوار مخصّصة + أسماء عرض) ===== */
+  var VIEWS=SCREENS_CAT;
+  var allRoles=rolesAll();
+  var rv=(S._roleView&&allRoles.indexOf(S._roleView)>=0)?S._roleView:"مُدخِل اليوميات";
+  var seg=allRoles.map(function(role){
+    return "<button type='button' class='nu-seg2"+(role===rv?" on":"")+"' style='--rc:"+roleColor(role)+"' onclick=\"App.roleView('"+esc(role)+"')\">"+esc(roleName(role))+(isBuiltinRole(role)?"":" •")+"</button>";
   }).join("");
-  var panels=ROLES.map(function(role,ri){
-    var allow=PERM[role]||[];
-    var chips=VIEWS.map(function(v){
-      var on=allow.indexOf(v[0])>=0;
-      return "<div class='nu-pchip"+(on?" on":"")+"'><span class='nu-mk'>"+(on?"✓":"—")+"</span><span class='nu-pi'>"+v[2]+"</span>"+esc(v[1])+"</div>";
-    }).join("");
-    return "<div class='nu-panel' id='nu-p"+ri+"'>"+chips+"</div>";
+  var editable=!isBuiltinRole(rv);
+  var allow=roleScreens(rv);
+  var chips=VIEWS.map(function(v){
+    var on=allow.indexOf(v[0])>=0;
+    if(!editable)return "<div class='nu-pchip"+(on?" on":"")+"'><span class='nu-mk'>"+(on?"✓":"—")+"</span><span class='nu-pi'>"+v[2]+"</span>"+esc(v[1])+"</div>";
+    return "<button type='button' class='nu-pchip clk"+(on?" on":"")+"' onclick=\"App.roleScreen('"+esc(rv)+"','"+v[0]+"')\"><span class='nu-mk'>"+(on?"✓":"+")+"</span><span class='nu-pi'>"+v[2]+"</span>"+esc(v[1])+"</button>";
   }).join("");
+  var usersWithRole=Object.keys(roster()).filter(function(e){return (rosterGet(e)||{}).role===rv}).length;
+  var roleActions="<div class='role-act'>"+
+    "<button class='nbtn ghost' onclick=\"App.roleRename('"+esc(rv)+"')\">✎ إعادة تسمية العرض</button>"+
+    (isBuiltinRole(rv)?"<span class='note' style='margin:0'>دور أساسي — صلاحياته ثابتة، يُعاد تسمية عرضه فقط.</span>":
+      "<button class='nbtn danger' onclick=\"App.roleDel('"+esc(rv)+"')\">🗑 حذف الدور</button><span class='note' style='margin:0'>اضغط الشاشات لمنحها/سحبها"+(usersWithRole?" · مُسند لـ"+usersWithRole+" مستخدم":"")+"</span>")+
+  "</div>";
   var permCard=h("div",{class:"card"},
-    "<div class='nu-ch'><h3>الأدوار والصلاحيات</h3><span class='nu-sp'></span><span class='note' style='margin:0'>اختر دوراً لعرض شاشاته</span></div>"+
-    "<div class='nu-permwrap'>"+seg+"<div class='nu-panels'>"+panels+"</div></div>"+
-    "<div class='note nu-hint'>هذه صلاحيات <b>الدور</b> الافتراضية (عرض فقط). لمنح مستخدم بعينه صلاحية أو منعها دون تغيير دوره، استخدم زر <b>🔐</b> بجانب اسمه في «المستخدمون» أعلاه — الاستثناء الفردي يتجاوز الدور.</div>"
+    "<div class='nu-ch'><h3>الأدوار والصلاحيات</h3><span class='nu-sp'></span><span class='note' style='margin:0'>اختر دوراً</span></div>"+
+    "<div class='role-seg'>"+seg+"</div>"+
+    "<div class='nu-panel show'>"+chips+"</div>"+
+    roleActions+
+    "<div class='role-add'><input id='newRoleName' placeholder='اسم دور جديد (يبدأ بلا صلاحيات)' maxlength='30'><button class='btn' onclick='App.roleAdd()'>+ إضافة دور</button></div>"+
+    "<div class='note nu-hint'>الأدوار الأساسية صلاحياتها ثابتة (تُعاد تسمية عرضها فقط). الدور المخصّص يبدأ فارغاً وتمنحه الشاشات بالضغط. لاستثناء مستخدم بعينه استخدم <b>🔐</b> بجانب اسمه.</div>"
   );
 
   return "<div class='n-users'>"+
