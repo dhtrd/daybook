@@ -113,8 +113,8 @@ a{color:var(--brass)}
 .brand{display:flex;align-items:center;gap:11px}
 .brand .logo{width:42px;height:42px;border-radius:12px;overflow:hidden;flex:none;display:block}
 .brand .logo svg{width:100%;height:100%;display:block}
-.brand h1{margin:0;font-size:17px;font-weight:800;line-height:1.15;color:var(--ink)}
-.brand small{color:var(--muted);font-size:12px}
+.brand h1{margin:0;font-size:17px;font-weight:800;line-height:1.15;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.brand small{color:var(--muted);font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .sync-pill{margin-inline-start:auto;display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;white-space:nowrap;color:var(--muted);background:var(--paper);border:1px solid var(--line);padding:6px 12px;border-radius:999px;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s,color .15s}
 .sync-pill:hover{border-color:var(--brass)}
 .sync-pill.s-on{background:#e7f3ec;border-color:#bfe0cd;color:#1c6b4d}
@@ -711,6 +711,29 @@ tr.dragging td.stick{background:#fbfaf6}
 }
 @media (max-width:560px){.brand h1{font-size:15px}.brand small{font-size:11px}.kpi .val{font-size:20px}.dpbtn{min-width:120px}}
 @media (max-width:400px){.kpis{grid-template-columns:1fr 1fr}.tab{padding:8px 12px}}
+/* ===== تحسين تجربة الجوال (النقطة ٩) ===== */
+.etw-hint{display:none;align-items:center;gap:7px;justify-content:center;font-size:12px;font-weight:700;color:var(--brass);background:var(--field);border:1px dashed var(--line);border-radius:9px;padding:7px 10px;margin:0 0 8px}
+.etw-hint .a{animation:hintSwipe 1.4s var(--ease) infinite}
+@keyframes hintSwipe{0%,100%{transform:translateX(0)}50%{transform:translateX(-6px)}}
+@media (max-width:560px){
+  .appbar-in{padding:9px 10px;gap:8px}
+  .brand{gap:8px}
+  .brand .logo{width:36px;height:36px;border-radius:10px}
+  .backbtn{width:36px;height:36px}                      /* أهداف لمس أكبر */
+  .burger{width:36px;height:36px}
+  .abhide{display:none!important}                        /* إخفاء زر «؟» على الجوال — متاح داخل القائمة */
+  #syncPill{padding:7px 8px}
+  #syncPill span:last-child{display:none}                /* نقطة الحالة فقط لتوفير المساحة */
+  /* لوحة الإدخال: منع تكبير iOS عند التركيز + أهداف لمس مريحة */
+  .n-entry .box .amt{font-size:16px;padding:9px 10px;width:76px}
+  .n-entry .box .amt.txt{font-size:16px;width:118px}
+  .n-entry .branchbtn{min-width:132px;font-size:14px}
+  .n-entry .iconbtn{width:34px;height:34px}
+  .n-entry .datenav input,.n-entry select{font-size:16px}
+  .etw-hint{display:flex}
+  /* بطاقات مالية الإدخال: صف واحد أوضح */
+  .n-entry .ent-actions .btn{flex:1 1 46%;justify-content:center}
+}
 
 /* ==================== REDESIGN 1.6.0 (screens) ==================== */
 
@@ -1216,7 +1239,7 @@ html[data-mode="dark"] .n-entry .etw thead th{background:#1E7A5A;color:#fff;bord
 /* صفوف مخطّطة + حدود خفيفة */
 .n-entry #entryTbl td{border:1px solid var(--line);text-align:center;padding:0}
 .n-entry #entryTbl td.num{text-align:center}
-.n-entry #entryTbl td.stick{text-align:right;font-weight:700;color:var(--ink);padding:1px 6px}
+.n-entry #entryTbl td.stick{text-align:right;font-weight:700;color:var(--ink);padding:1px 6px;position:sticky;right:0;z-index:3;background:var(--surface)}  /* عمود الفرع يبقى ظاهراً أثناء التمرير الأفقي — النقطة ٩ */
 .n-entry #entryTbl tbody tr:not(.total):nth-child(even) td{background:var(--field)}
 .n-entry #entryTbl tbody tr:not(.total):nth-child(even) td.stick{background:var(--field)}
 
@@ -1247,9 +1270,9 @@ html[data-mode="dark"] .n-entry .etw thead th{background:#1E7A5A;color:#fff;bord
   border-color:var(--ink2);padding:12px 9px;font-size:14px;
   -webkit-print-color-adjust:exact;print-color-adjust:exact;
 }
-.n-entry .etw .total td.stick{background:var(--ink);color:#fff}
+.n-entry #entryTbl .total td.stick{background:var(--ink);color:#fff}   /* أولوية أعلى ليبقى شريط الإجماليات أخضر مع لصق العمود */
 html[data-mode="dark"] .n-entry .etw .total td,
-html[data-mode="dark"] .n-entry .etw .total td.stick{background:#1E7A5A;color:#fff;border-color:#1E7A5A}
+html[data-mode="dark"] .n-entry #entryTbl .total td.stick{background:#1E7A5A;color:#fff;border-color:#1E7A5A}
 
 /* تلميحة التحقق وأزرار الجدول تبقى بستايلها العام */
 .n-entry .mkhint{margin-top:8px}
@@ -1793,7 +1816,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.7.9";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.8.0";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2872,7 +2895,7 @@ function render(){
       backBtn+h("div",{class:"logo"},LOGO_SVG)+
       h("div",{style:"min-width:0"},h("h1",{},esc(S.config.businessName))+h("small",{},subTitle))+
       (pinEnabled(S.currentUser)?h("button",{class:"backbtn",title:"قفل الجهاز برمز سريع",onclick:"App.pinLockNow()",style:"min-width:36px;font-size:15px"},"🔒"):"")+
-      h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn",title:"دليل الاستخدام",onclick:"App.help()",style:"min-width:36px;font-weight:900;font-size:15px"},"؟")+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
+      h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn abhide",title:"دليل الاستخدام",onclick:"App.help()",style:"min-width:36px;font-weight:900;font-size:15px"},"؟")+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
   var _u=rosterGet(S.currentUser)||{};var uname=_u.name||S.currentUser||"مستخدم";var urole=myRole();
   var drawer="<div class='bd' onclick='App.closeDrawer()'></div><aside class='drawer'>"+
     "<div class='dhead'><div class='dhrow'><div class='dlg'>"+LOGO_SVG+"</div><div style='min-width:0'><div class='dhn'>"+esc(S.config.businessName)+"</div><div class='dhs'>نظام تقارير اليومية</div></div><button class='dclose' title='إغلاق' onclick='App.closeDrawer()'>✕</button></div>"+
@@ -3196,8 +3219,9 @@ function entryTable(d,cfg,c){
   var hint="<div class='mkhint'><span>التحقق من المبالغ: اضغط الدائرة الصغيرة في زاوية أي خلية دفع (تحويل/تابي/تمارا…) بعد مطابقتها فعلياً:</span><span><i style='background:var(--pos)'></i>تم التحقق</span><span><i style='background:var(--neg)'></i>خطأ/غير مطابق</span><span style='color:var(--muted)'>· يمكن أيضاً تلوين خلايا «النقد» و«الإجماليات» و«باقي الرصيد» بالضغط عليها · اسحب المقبض لإعادة الترتيب</span></div>";
   var empty=(d.rows||[]).length?"":"<div class='emptyline'>لا صفوف. أضف صفاً أو «إضافة الفروع».</div>";
   S._flashRow=null;
+  var swipeHint="<div class='etw-hint'><span class='a'>↔</span><span>اسحب الجدول أفقياً لعرض بقية الأعمدة (النقد والملاحظات)</span></div>";
   return h("div",{class:"card"},cardHead("مبيعات الفروع","النقد يُحسب تلقائياً · يمكن تكرار الفرع")+
-    "<div class='tw etw'><table id='entryTbl'><thead><tr>"+th+"</tr></thead><tbody id='entryBody'>"+rows+totRow+"</tbody></table></div>"+empty+hint+actions);
+    swipeHint+"<div class='tw etw'><table id='entryTbl'><thead><tr>"+th+"</tr></thead><tbody id='entryBody'>"+rows+totRow+"</tbody></table></div>"+empty+hint+actions);
 }
 function balanceBeforeCard(d,c,prev,carried){
   var manual=(d.carryIn!=null&&d.carryIn!=="");
