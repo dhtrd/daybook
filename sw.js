@@ -1,19 +1,16 @@
 /* ===== Service Worker — نظام تقارير اليومية =====
    عند إصدار تحديث جديد: غيّر الرقم في APP_VERSION فقط (هنا وفي index.html/version.json).
    الكاش يتجدّد تلقائياً، ولا يمسّ بيانات المستخدم إطلاقاً (البيانات في IndexedDB/localStorage). */
-const APP_VERSION = "1.8.2";
+const APP_VERSION = "1.8.3";
 const CACHE = "dsr-cache-v" + APP_VERSION;
 
 /* ملفات الواجهة الأساسية (App Shell) — مسارات نسبية لتعمل على أي نطاق أو مجلد فرعي */
+/* الأيقونات والمانيفست مضمّنة داخل index.html (data URIs) — لا حاجة لملفات منفصلة.
+   نخزّن الأساسيات فقط، وكل عنصر على حدة كي لا يُفشل غيابُ ملفٍ اختياري التخزينَ المسبق كلّه. */
 const SHELL = [
   "./",
   "./index.html",
-  "./config.js",
-  "./manifest.webmanifest",
-  "./icon.svg",
-  "./icon-192.png",
-  "./icon-512.png",
-  "./icon-180.png"
+  "./config.js"
 ];
 
 /* المضيفات الخارجية المسموح تخزينها مؤقتاً (خطوط + مكتبة الإكسل فقط) */
@@ -21,7 +18,7 @@ const CACHEABLE_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com", "cdnjs.clo
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {})
+    caches.open(CACHE).then((c) => Promise.all(SHELL.map((u) => c.add(u).catch(() => {})))).catch(() => {})
   );
   // لا نستدعي skipWaiting تلقائياً — ننتظر موافقة المستخدم من داخل التطبيق
 });
