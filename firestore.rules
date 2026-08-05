@@ -83,11 +83,13 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
-    // ===== سجل النشاط: إلحاقي — إنشاء لكل فعّال، لا تعديل/حذف إلا للمالك =====
+    // ===== سجل النشاط: إلحاقي بختم الفاعل (البند ٨) =====
+    // إنشاء لكل فعّال؛ لا يُعدَّل أي حدثٍ أبداً (غير قابل للتغيير)؛ الحذف (للصيانة/الاحتفاظ) للمالك فقط.
     match /activity/{id} {
-      allow read:            if active();
-      allow create:          if active();
-      allow update, delete:  if isOwner();
+      allow read:    if active();
+      allow create:  if active();
+      allow update:  if false;
+      allow delete:  if isOwner();
     }
 
     // ===== الاعتمادات: المالك أو المدير المالي (اعتماد/إعادة) أو مُدخِل اليوميات (إرسال) =====

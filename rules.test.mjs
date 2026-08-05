@@ -162,7 +162,12 @@ test('activity: كل فعّال يقرأ وينشئ؛ الموقوف ممنوع'
   await assertSucceeds(setDoc(doc(asUser('fin@dhtrd.com'), 'activity', 'f1'), { id: 'f1', ts: 3, type: 'approve', actor: 'fin@dhtrd.com' }));
   await assertFails(setDoc(doc(asUser('off@dhtrd.com'), 'activity', 'o1'), { id: 'o1', ts: 4, type: 'x', actor: 'off@dhtrd.com' }));
 });
-test('activity: غير المالك لا يعدّل/يحذف حدثاً', async () => {
+test('activity: سجل إلحاقي — لا يُعدَّل حدثٌ مسجّل (حتى المالك)', async () => {
+  // تحريف حدثٍ قائم ممنوع للجميع بمن فيهم المالك (منع إعادة كتابة التاريخ)
+  await assertFails(setDoc(doc(asUser(OWNER), 'activity', 'seed1'), { detail: 'مُحرَّف' }, { merge: true }));
+  await assertFails(setDoc(doc(asUser('entry@dhtrd.com'), 'activity', 'seed1'), { detail: 'x' }, { merge: true }));
+});
+test('activity: غير المالك لا يحذف؛ المالك يحذف (للاحتفاظ/الصيانة)', async () => {
   await assertFails(deleteDoc(doc(asUser('entry@dhtrd.com'), 'activity', 'seed1')));
   await assertSucceeds(deleteDoc(doc(asUser(OWNER), 'activity', 'seed1')));
 });
