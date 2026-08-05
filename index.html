@@ -1966,7 +1966,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.19";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.20";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -5346,7 +5346,7 @@ function fsInit(){if(FS)return FS;if(!fsReady())return null;
   try{FS=firebase.firestore()}catch(e){FS=null;return null;}
   /* الحفظ دون اتصال (أوفلاين): يجب تفعيله قبل أي قراءة/كتابة — يجعل التطبيق يعمل بلا إنترنت ويطابق عند العودة،
      ويقلّل قراءات Firestore عبر استئناف المستمعات من الكاش المحلي. */
-  if(!_fsPersist){_fsPersist=true;try{FS.enablePersistence({synchronizeTabs:true}).catch(function(){});}catch(e){}}
+  if(!_fsPersist){_fsPersist=true;try{FS._persistReady=FS.enablePersistence({synchronizeTabs:true}).then(function(){return true;},function(){return false;});}catch(e){FS._persistReady=Promise.resolve(false);}}
   return FS;}
 async function fsGetDropbox(){var db=fsInit();if(!db)return null;try{var d=await db.collection("appConfig").doc("dropbox").get();return (d&&d.exists)?d.data():null;}catch(e){return null;}}
 async function fsSetDropbox(appKey,refreshToken){var db=fsInit();if(!db)return false;try{await db.collection("appConfig").doc("dropbox").set({appKey:appKey||"",refreshToken:refreshToken||"",updatedAt:Date.now(),updatedBy:(S.currentUser||"")});return true;}catch(e){return false;}}
@@ -5420,7 +5420,13 @@ async function fsStart(){
   if(FSY.started)return true;var db=fsInit();if(!db)return false;
   setSync("busy");
   try{
-    var daysSnap=await db.collection("days").get();
+    /* انتظر جاهزية الكاش المحلي (أوفلاين) حتى ~1.5ث كي نقرأ الأيام منه بدل تنزيلها كلّها من الخادم في كل فتح */
+    try{if(FS&&FS._persistReady)await Promise.race([FS._persistReady,new Promise(function(r){setTimeout(r,1500)})]);}catch(e){}
+    /* الأيام: من الكاش المحلي أولاً (فوري وخفيف على الإنترنت). أول تشغيل/بلا كاش → من الخادم مرة واحدة.
+       تحديثات بقية الأجهزة تصل تلقائياً «بالفرق» عبر مستمع onSnapshot بعد الإقلاع (لا تنزيل كامل متكرّر). */
+    var daysSnap=null;
+    try{daysSnap=await db.collection("days").get({source:"cache"});}catch(e){daysSnap=null;}
+    if(!daysSnap||daysSnap.size===0){daysSnap=await db.collection("days").get();}
     var remoteDays={};daysSnap.forEach(function(d){remoteDays[d.id]=d.data()});
     var cfgDoc=await db.collection("meta").doc("config").get();
     var remoteCfg=(cfgDoc&&cfgDoc.exists)?cfgDoc.data():null;
@@ -5448,7 +5454,7 @@ async function fsStart(){
 
     /* (3.5) سجل النشاط + الاعتمادات (مجموعات منفصلة) */
     try{var actSnap=await db.collection("activity").orderBy("ts","desc").limit(200).get();S._activity=[];actSnap.forEach(function(d){S._activity.push(d.data())});S._activity.sort(function(a,b){return (num(b.ts)||0)-(num(a.ts)||0)});if(S._activity.length>200)S._activity=S._activity.slice(0,200);}catch(e){}
-    try{var apprSnap=await db.collection("approvals").get();S._approvals={};apprSnap.forEach(function(d){S._approvals[d.id]=d.data()});}catch(e){}
+    try{var apprSnap=null;try{apprSnap=await db.collection("approvals").get({source:"cache"});}catch(_ae){apprSnap=null;}if(!apprSnap||apprSnap.size===0){apprSnap=await db.collection("approvals").get();}S._approvals={};apprSnap.forEach(function(d){S._approvals[d.id]=d.data()});}catch(e){}
 
     invalidateBal();await fsPersistQuiet();
     FSY.on=true;
