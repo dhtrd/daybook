@@ -200,6 +200,14 @@ a{color:var(--brass)}
 .pin-card.shake{animation:pinshake .4s}
 @keyframes pinshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
 html.pinned{overflow:hidden}
+/* ===== لوحة تغييرات بعد الترحيل (النقطة ٦) ===== */
+.chg-card{border-inline-start:4px solid var(--amber);padding:12px 16px;margin-bottom:12px;animation:v2up .25s var(--ease)}
+.chg-h{display:flex;align-items:center;gap:8px;font-weight:900;color:var(--ink);font-size:14px;margin-bottom:8px}
+.chg-h .chg-n{margin-inline-start:auto;background:var(--amber);color:#fff;min-width:22px;height:22px;border-radius:11px;display:inline-grid;place-items:center;font-size:12px;font-weight:800;padding:0 7px}
+.chg-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+.chg-list li{font-size:12.5px;color:var(--text);background:var(--field);border-radius:8px;padding:6px 10px;border:1px solid var(--line2);line-height:1.6}
+.chg-list li.chg-more{background:none;border:none;color:var(--muted);font-weight:700;padding:2px 4px}
+.chg-note{font-size:11.5px;color:var(--muted);margin-top:8px}
 /* ===== الإشعارات ===== */
 .notifwrap{position:relative;display:inline-flex}
 .nbadge{position:absolute;top:-4px;inset-inline-start:-4px;background:var(--neg);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:grid;place-items:center;padding:0 3px}
@@ -1768,7 +1776,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.7.6";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.7.7";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2909,8 +2917,55 @@ function releaseLock(){
 function dayStatus(d){if(!d)return "draft";var s=d.status;if(s==="draft"||s==="posted"||s==="locked"||s==="cancelled")return s;if(s==="approved")return d.locked?"locked":"posted";if(d.locked)return "locked";return "draft";}
 function isFrozen(d){return dayStatus(d)!=="draft";}
 function statusLabel(st){return ({draft:"مسودة",posted:"مرحّلة",locked:"مقفلة",cancelled:"ملغاة"})[st]||"مسودة";}
-function postSnap(d){var c=computeDay(d,S.config);return {sales:c.sales,cash:c.cash,exp:c.totalExpenses,inc:c.totalIncome,bank:num(d.bankDeposit),rows:(d.rows||[]).length};}
-function diffSnap(a,b){if(!a||!b)return "";var L={sales:"المبيعات",cash:"النقد",exp:"المصروفات",inc:"الإيرادات",bank:"الإيداع البنكي",rows:"عدد الفروع"};var out=[];for(var k in L){if(num(a[k])!==num(b[k]))out.push(L[k]+": "+fmt(a[k])+"←"+fmt(b[k]));}return out.join("، ");}
+/* ===== سجل التغييرات على مستوى الحقل (النقطة ٦) =====
+   لقطة تفصيلية عند كل ترحيل (postSnap v2): مبيعات كل فرع وكل طريقة دفع، المصروفات والإيرادات
+   (بالمعرّف)، الإيداع البنكي، ورصيد أول المدة اليدوي. diffFields يقارن لقطتين ويُخرج تغييرات
+   مقروءة (من ماذا إلى ماذا / أُضيف / حُذف) — تُعرض حيّاً في لوحة الإدخال وتُسجَّل في النشاط عند
+   إعادة الترحيل. لقطة واحدة لكل يوم (لا سجل متنامٍ) فلا تُثقل المزامنة (يحترم النقطة ٢). */
+function postSnap(d){
+  var meth=(S.config.methods||[]);
+  var br={};(d.rows||[]).forEach(function(r,i){var pays={};meth.forEach(function(m){pays[m.id]=num((r.pays||{})[m.id])});br[r.id||("#"+i)]={name:(r.branch||"—"),sales:num(r.sales),pays:pays};});
+  var ex={};(d.expenses||[]).forEach(function(e,i){ex[e.id||("#"+i)]={desc:(e.desc||"مصروف"),amount:num(e.amount)};});
+  var inc={};(d.incomes||[]).forEach(function(e,i){inc[e.id||("#"+i)]={desc:(e.desc||"إيراد"),amount:num(e.amount)};});
+  return {v:2,br:br,ex:ex,inc:inc,bank:num(d.bankDeposit),carryIn:(d.carryIn!=null&&d.carryIn!==""?num(d.carryIn):null)};
+}
+function diffAmtList(a,b,label,out){
+  var keys={},k;for(k in a)keys[k]=1;for(k in b)keys[k]=1;
+  Object.keys(keys).forEach(function(k){var oa=a[k],ob=b[k];
+    if(oa&&!ob){out.push("حُذف "+label+" «"+oa.desc+"» ("+fmt(oa.amount)+")");return;}
+    if(!oa&&ob){out.push("أُضيف "+label+" «"+ob.desc+"» ("+fmt(ob.amount)+")");return;}
+    if(num(oa.amount)!==num(ob.amount))out.push(label+" «"+ob.desc+"»: "+fmt(ob.amount)+" (كان "+fmt(oa.amount)+")");
+    else if(oa.desc!==ob.desc)out.push("اسم "+label+": «"+ob.desc+"» (كان «"+oa.desc+"»)");
+  });
+}
+function diffFields(a,b){
+  if(!a||!b||a.v!==2||b.v!==2)return [];
+  var out=[],meth=(S.config.methods||[]),keys={},k;
+  for(k in a.br)keys[k]=1;for(k in b.br)keys[k]=1;
+  Object.keys(keys).forEach(function(k){var oa=a.br[k],ob=b.br[k];
+    if(oa&&!ob){out.push("حُذف فرع «"+oa.name+"»");return;}
+    if(!oa&&ob){out.push("أُضيف فرع «"+ob.name+"» (مبيعات "+fmt(ob.sales)+")");return;}
+    if(num(oa.sales)!==num(ob.sales))out.push("مبيعات «"+ob.name+"»: "+fmt(ob.sales)+" (كان "+fmt(oa.sales)+")");
+    meth.forEach(function(m){var va=num((oa.pays||{})[m.id]),vb=num((ob.pays||{})[m.id]);if(va!==vb)out.push(m.label+" «"+ob.name+"»: "+fmt(vb)+" (كان "+fmt(va)+")");});
+  });
+  diffAmtList(a.ex,b.ex,"مصروف",out);
+  diffAmtList(a.inc,b.inc,"إيراد",out);
+  if(num(a.bank)!==num(b.bank))out.push("الإيداع البنكي: "+fmt(b.bank)+" (كان "+fmt(a.bank)+")");
+  var ca=(a.carryIn==null?null:num(a.carryIn)),cb=(b.carryIn==null?null:num(b.carryIn));
+  if(ca!==cb)out.push("رصيد أول المدة (يدوي): "+(cb==null?"—":fmt(cb))+" (كان "+(ca==null?"—":fmt(ca))+")");
+  return out;
+}
+/* تغييرات لم تُرحَّل بعد مقارنةً بآخر ترحيل (تُحسب حيّاً — بلا تخزين) */
+function pendingChanges(d){return (d&&d.firstPostedAt&&d._postSnap&&d._postSnap.v===2)?diffFields(d._postSnap,postSnap(d)):[];}
+function chgPanelHTML(d){
+  var pend=pendingChanges(d);if(!pend.length)return "";
+  var st=dayStatus(d);
+  return "<div class='card chg-card'><div class='chg-h'><span>📝 تغييرات بعد آخر ترحيل</span><span class='chg-n'>"+pend.length+"</span></div><ul class='chg-list'>"+
+    pend.slice(0,20).map(function(x){return "<li>"+esc(x)+"</li>"}).join("")+
+    (pend.length>20?"<li class='chg-more'>…و"+(pend.length-20)+" تغييراً آخر</li>":"")+
+    "</ul><div class='chg-note'>"+(st==="draft"?"ستُسجَّل هذه التغييرات في سجل النشاط عند إعادة الترحيل.":"مقارنةً بآخر ترحيل.")+"</div></div>";
+}
+function refreshChangePanel(){var el=document.getElementById("chgPanel");if(el&&S.day)el.innerHTML=chgPanelHTML(S.day);}
 function applyStatus(d){d.locked=!!(d.status&&d.status!=="draft");if(S.data[d.date]){S.data[d.date].status=d.status;S.data[d.date].locked=d.locked;S.data[d.date].firstPostedAt=d.firstPostedAt;S.data[d.date].postedBy=d.postedBy;S.data[d.date]._postSnap=d._postSnap;}scheduleSave();render();}
 function viewEntry(){
   if(!S.day||S.day.date!==S.curDate)loadDay(S.curDate);
@@ -2933,10 +2988,11 @@ function viewEntry(){
   var stepper="<div class='stepper'><div class='s "+st1+"'><span class='c'>"+((st==="draft")?"1":"✓")+"</span>مسودة</div><div class='ln'></div><div class='s "+st2+"'><span class='c'>"+((st==="locked")?"✓":"2")+"</span>مرحّلة</div><div class='ln'></div><div class='s "+st3+"'><span class='c'>3</span>مقفلة</div>"+(st==="cancelled"?"<span class='cancel-badge'>🚫 ملغاة</span>":"")+"</div>";
   var other=lockedByOther(d);
   var editLockBar=other?"<div class='lockbar rolockbar'>🔒 <b>"+esc((d.editLock&&(d.editLock.byName||d.editLock.by))||"مستخدم آخر")+"</b> يحرّر هذه اليومية الآن — التعديل معطّل حتى ينتهي أو خلال دقائق قليلة. <button class='btn ghost' style='padding:5px 12px' onclick=\"App.go('dashboard')\">عودة</button></div>":"";
+  /* لوحة «تغييرات بعد آخر ترحيل» (النقطة ٦) — حاوية ثابتة تُحدَّث حيّاً مع كل تعديل خليّة (refreshChangePanel) وتُسجَّل عند إعادة الترحيل */
   return editLockBar+"<div class='n-entry"+(other?" ro-lock":"")+"'>"+
     h("div",{class:"ent-top"},secHead("تسجيل","إدخال يومي")+stepper)+
     dateNav()+
-    lockbar+warnbar+copyBar+histbar+
+    lockbar+"<div id='chgPanel'>"+chgPanelHTML(d)+"</div>"+warnbar+copyBar+histbar+
     entryTable(d,cfg,c)+
     h("div",{class:"grid fin-grid"},balanceBeforeCard(d,c,prev,carried)+finalTotalCard(d,c)+expensesCard(d,c)+incomesCard(d,c))+
     h("div",{class:"card audit-card",style:"padding:11px 16px"},h("div",{class:"audit"},auditText(d)))+
@@ -3054,6 +3110,7 @@ function recompute(){
   set("cc-cash",fmt(c.cash));var ccc=document.getElementById("cc-carried");if(ccc)ccc.textContent=fmt(carried)+" ر.س";
   set("cc-exp",fmt(c.totalExpenses));set("cc-net",fmt(c.netCash));set("cc-inc",fmt(c.totalIncome));var cct=document.getElementById("cc-total");if(cct)cct.textContent=fmt(c.cashTotal)+" ر.س";
   set("expTot",fmt(c.totalExpenses)+" ر.س");set("incTot",fmt(c.totalIncome)+" ر.س");
+  refreshChangePanel();   /* تحديث لوحة «تغييرات بعد آخر ترحيل» حيّاً (النقطة ٦) */
 }
 function refreshTable(){var card=document.getElementById("entryTbl");if(!card){render();return}card.closest(".card").outerHTML=entryTable(S.day,S.config,computeDay(S.day,S.config));applyColWidths();}
 
@@ -4252,7 +4309,11 @@ window.App={
   unlockDay:function(){App.reopenDraft();},
   postDay:function(){var d=S.day;if(!d)return;if(dayStatus(d)!=="draft"){toast("اليومية ليست مسودة");return;}histMark("status");d.status="posted";
     if(!d.firstPostedAt){d.firstPostedAt=nowStamp();d.postedBy=meName();d._postSnap=postSnap(d);logEvent("post","رحّل يومية "+prettyDate(d.date),{date:d.date});toast("رُحّلت اليومية ✓");}
-    else{var ch=diffSnap(d._postSnap,postSnap(d));d._postSnap=postSnap(d);logEvent("post","أعاد ترحيل يومية "+prettyDate(d.date)+(ch?" — عُدّل بعد الترحيل: "+ch:" (بلا تغيير في القيم)"),{date:d.date});toast("أُعيد الترحيل ✓");}
+    else{var wasV2=d._postSnap&&d._postSnap.v===2,newSnap=postSnap(d),chArr=wasV2?diffFields(d._postSnap,newSnap):[];
+      var detail="أعاد ترحيل يومية "+prettyDate(d.date);
+      if(chArr.length){detail+=" — عُدّل بعد الترحيل ("+chArr.length+"): "+chArr.slice(0,6).join("؛ ")+(chArr.length>6?" …و"+(chArr.length-6)+" تغييراً آخر":"");}
+      else if(wasV2){detail+=" (بلا تغيير في القيم)";}
+      d._postSnap=newSnap;logEvent("post",detail,{date:d.date});toast("أُعيد الترحيل ✓");}
     applyStatus(d);},
   lockDay2:function(){var d=S.day;if(!d)return;if(dayStatus(d)!=="posted"){toast("رحّل اليومية أولاً");return;}histMark("status");d.status="locked";logEvent("lock","أقفل يومية "+prettyDate(d.date),{date:d.date});applyStatus(d);toast("أُقفلت اليومية 🔒");},
   cancelDay:function(){var d=S.day;if(!d)return;openConfirm({title:"وسم اليومية كملغاة؟",body:"لا تُحذف بياناتها، ويمكن إعادتها كمسودة لاحقاً.",danger:true,confirm:"وسم ملغاة",onOk:function(){histMark("status");d.status="cancelled";logEvent("cancel","ألغى يومية "+prettyDate(d.date),{date:d.date});applyStatus(d);toast("وُسِمت ملغاة");}});},
