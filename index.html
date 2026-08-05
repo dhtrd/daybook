@@ -189,6 +189,12 @@ a{color:var(--brass)}
 .npsw b{position:absolute;top:2px;inset-inline-start:2px;width:17px;height:17px;border-radius:50%;background:#fff;transition:.2s var(--ease);box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .npsw.on{background:var(--acc)}
 .npsw.on b{inset-inline-start:19px}
+.notifprompt{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(120deg,#123328,#1c4b3c);color:#fff;border-radius:14px;padding:12px 16px;margin:0 0 14px;box-shadow:0 6px 18px rgba(21,92,67,.22)}
+.notifprompt .np-ic{font-size:20px;flex:none}
+.notifprompt .np-tx{flex:1;min-width:180px;font-size:13.5px;line-height:1.6}
+.notifprompt .np-act{display:flex;gap:8px;flex-wrap:wrap}
+.notifprompt .np-on{background:var(--brass);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-weight:800;cursor:pointer;font-family:inherit;font-size:13px}
+.notifprompt .np-x{background:transparent;color:#cfe0d6;border:1px solid rgba(255,255,255,.3);border-radius:9px;padding:9px 12px;cursor:pointer;font-family:inherit;font-size:13px}
 .nitem:last-child{border:none}.nitem:hover{background:var(--field)}
 .nitem .ni{font-size:15px;flex:none}
 .nitem.n-warn{background:color-mix(in srgb,var(--brass) 9%,transparent)}
@@ -1738,7 +1744,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.7.3";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.7.4";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2465,6 +2471,16 @@ var Notify={
     }catch(e){}
   }
 };
+/* تنبيه بارز لتفعيل الإشعارات (النقطة ٥): يظهر في الرئيسية إن لم تُفعّل بعد، بزر تفعيل مباشر */
+function notifPromptBar(){
+  if(!S.currentUser)return "";
+  var N; try{N=(typeof Notify!=="undefined")?Notify:null;}catch(e){N=null;}
+  if(!N||!N.supported()||N.enabled())return "";
+  try{if(Notification.permission==="denied")return "";}catch(e){return "";}
+  try{if(localStorage.getItem("dsr_notify")==="0")return "";}catch(e){}
+  try{if(localStorage.getItem("dsr_notifprompt")==="off")return "";}catch(e){}
+  return "<div class='notifprompt'><span class='np-ic'>🔔</span><span class='np-tx'><b>فعّل الإشعارات</b> — لتصلك التحديثات الجديدة (يوميات واعتمادات) فوراً حتى خارج الصفحة.</span><span class='np-act'><button class='np-on' onclick='App.notifPromptEnable()'>تفعيل الإشعارات</button><button class='np-x' onclick='App.notifPromptDismiss()'>لاحقاً</button></span></div>";
+}
 function notifList(){
   var out=[],role=myRole(),owner=isOwner();
   var pending=Object.keys(S.data).filter(function(d){return apprStatus(d)==="pending"});
@@ -2717,7 +2733,7 @@ function render(){
   else if(S.view==="users")body=viewUsers();
   else if(S.view==="approvals")body=viewApprovals();
   else if(S.view==="activity")body=viewActivity();
-  document.getElementById("app").innerHTML="<div class='shell' id='shell'>"+head+h("main",{class:(S._lastView!==S.view?"view-in":"")},body)+drawer+"</div>";
+  document.getElementById("app").innerHTML="<div class='shell' id='shell'>"+head+h("main",{class:(S._lastView!==S.view?"view-in":"")},(S.view==="dashboard"?notifPromptBar():"")+body)+drawer+"</div>";
   updateSyncPill();
   if(S.view==="entry"){var c=document.getElementById("cal");if(c&&S.calOpen)c.classList.add("open");applyColWidths()}
   if(_navScroll!=null){var sc=_navScroll;_navScroll=null;setTimeout(function(){try{scrollTo(0,sc)}catch(e){}},20)}
@@ -4005,6 +4021,8 @@ window.App={
   idleStay:function(){idleReset()},
   toggleNotif:function(e){if(e&&e.stopPropagation)e.stopPropagation();var w=document.querySelector(".notifwrap");if(w)w.classList.toggle("open")},
   notifToggleExt:function(e){if(e&&e.stopPropagation)e.stopPropagation();if(Notify.enabled()){Notify.disable();}else{Notify.request();}},
+  notifPromptEnable:function(){if(typeof Notify!=="undefined")Notify.request();},
+  notifPromptDismiss:function(){try{localStorage.setItem("dsr_notifprompt","off")}catch(e){}render();},
   closeNotif:function(){var w=document.querySelector(".notifwrap.open");if(w)w.classList.remove("open")},
   notifGo:function(v){App.closeNotif();App.go(v)},
   aprFlt:function(f){S._aprFlt=f;render()},
