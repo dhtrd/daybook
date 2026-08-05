@@ -21,45 +21,45 @@
 <style id="authCSS">
 .authing{overflow:hidden}
 .authgate{position:fixed;inset:0;z-index:99999;background:radial-gradient(circle at 78% 12%,rgba(30,122,90,.28),transparent 42%),linear-gradient(135deg,#0f3f34,#0d1512);display:grid;place-items:center;padding:20px;font-family:'Tajawal',sans-serif}
-#authGate .screen{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 26px 64px rgba(0,0,0,.42);animation:authup .42s cubic-bezier(.34,1.4,.64,1)}
+.authgate .screen{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 26px 64px rgba(0,0,0,.42);animation:authup .42s cubic-bezier(.34,1.4,.64,1)}
 @keyframes authup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-#authGate .head{background:linear-gradient(125deg,#0f3f34,#1E7A5A 70%,#12b886);height:132px;position:relative;display:grid;place-items:center}
-#authGate .head:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 82% 20%,rgba(255,255,255,.16),transparent 45%)}
-#authGate .tile{width:66px;height:66px;border-radius:18px;overflow:hidden;box-shadow:0 10px 24px rgba(0,0,0,.28);position:relative;z-index:2}
-#authGate .tile svg{width:100%;height:100%;display:block}
-#authGate .modebtn{position:absolute;top:14px;inset-inline-start:14px;z-index:3;width:52px;height:27px;border-radius:999px;background:rgba(255,255,255,.22);cursor:pointer;transition:.2s;border:none;padding:0}
-#authGate .modebtn b{position:absolute;top:3px;inset-inline-start:3px;width:21px;height:21px;border-radius:50%;background:var(--brass2,#E8B84B);display:grid;place-items:center;font-size:11px;font-style:normal;transition:.25s cubic-bezier(.4,0,.2,1)}
-html[data-mode="dark"] #authGate .modebtn b{inset-inline-start:28px;background:#0d1512;color:#cfe8dd}
-#authGate .abody{padding:26px 26px 24px;margin-top:-20px}
-#authGate .acard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 8px 22px rgba(20,40,30,.08)}
-#authGate .attl{font-size:20px;font-weight:800;color:var(--ink);text-align:center}
-#authGate .asub{font-size:12px;color:var(--muted);text-align:center;margin:2px 0 18px}
-#authGate .fields>*{margin-bottom:14px}
-#authGate .field{position:relative}
-#authGate .field input{width:100%;background:var(--field);border:1.6px solid var(--line);border-radius:12px;padding:13px;font-size:14px;font-family:inherit;color:var(--text);outline:none;transition:border-color .16s,box-shadow .16s,background .3s}
-#authGate .field input:focus{border-color:#1E7A5A;box-shadow:0 0 0 4px color-mix(in srgb,#1E7A5A 15%,transparent);background:var(--surface)}
-#authGate .field.valid input{border-color:#1E7A5A}
-#authGate .field .vok{position:absolute;inset-inline-end:12px;top:13px;color:#1E7A5A;font-weight:800;opacity:0;transform:scale(.5);transition:.2s cubic-bezier(.4,0,.2,1)}
-#authGate .field.valid .vok{opacity:1;transform:scale(1)}
-#authGate .field.bad input{border-color:var(--neg);animation:authshake .35s}
+.authgate .head{background:linear-gradient(125deg,#0f3f34,#1E7A5A 70%,#12b886);height:132px;position:relative;display:grid;place-items:center}
+.authgate .head:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 82% 20%,rgba(255,255,255,.16),transparent 45%)}
+.authgate .tile{width:66px;height:66px;border-radius:18px;overflow:hidden;box-shadow:0 10px 24px rgba(0,0,0,.28);position:relative;z-index:2}
+.authgate .tile svg{width:100%;height:100%;display:block}
+.authgate .modebtn{position:absolute;top:14px;inset-inline-start:14px;z-index:3;width:52px;height:27px;border-radius:999px;background:rgba(255,255,255,.22);cursor:pointer;transition:.2s;border:none;padding:0}
+.authgate .modebtn b{position:absolute;top:3px;inset-inline-start:3px;width:21px;height:21px;border-radius:50%;background:var(--brass2,#E8B84B);display:grid;place-items:center;font-size:11px;font-style:normal;transition:.25s cubic-bezier(.4,0,.2,1)}
+html[data-mode="dark"] .authgate .modebtn b{inset-inline-start:28px;background:#0d1512;color:#cfe8dd}
+.authgate .abody{padding:26px 26px 24px;margin-top:-20px}
+.authgate .acard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 8px 22px rgba(20,40,30,.08)}
+.authgate .attl{font-size:20px;font-weight:800;color:var(--ink);text-align:center}
+.authgate .asub{font-size:12px;color:var(--muted);text-align:center;margin:2px 0 18px}
+.authgate .fields>*{margin-bottom:14px}
+.authgate .field{position:relative}
+.authgate .field input{width:100%;background:var(--field);border:1.6px solid var(--line);border-radius:12px;padding:13px;font-size:14px;font-family:inherit;color:var(--text);outline:none;transition:border-color .16s,box-shadow .16s,background .3s}
+.authgate .field input:focus{border-color:#1E7A5A;box-shadow:0 0 0 4px color-mix(in srgb,#1E7A5A 15%,transparent);background:var(--surface)}
+.authgate .field.valid input{border-color:#1E7A5A}
+.authgate .field .vok{position:absolute;inset-inline-end:12px;top:13px;color:#1E7A5A;font-weight:800;opacity:0;transform:scale(.5);transition:.2s cubic-bezier(.4,0,.2,1)}
+.authgate .field.valid .vok{opacity:1;transform:scale(1)}
+.authgate .field.bad input{border-color:var(--neg);animation:authshake .35s}
 @keyframes authshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
-#authGate .hint{font-size:11px;color:var(--neg);margin-top:5px;min-height:13px}
-#authGate #authPw.reveal{animation:unblur .5s cubic-bezier(.4,0,.2,1)}
+.authgate .hint{font-size:11px;color:var(--neg);margin-top:5px;min-height:13px}
+.authgate #authPw.reveal{animation:unblur .5s cubic-bezier(.4,0,.2,1)}
 @keyframes unblur{from{filter:blur(7px);opacity:.5}to{filter:blur(0);opacity:1}}
-#authGate .pwchk,#authGate .rem{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none}
-#authGate .pwchk .b,#authGate .rem .b{width:18px;height:18px;border:2px solid var(--line);border-radius:6px;display:grid;place-items:center;color:#fff;font-size:12px;flex:none;transition:.15s}
-#authGate .pwchk.on .b,#authGate .rem.on .b{background:#1E7A5A;border-color:#1E7A5A}
-#authGate .go{position:relative;overflow:hidden;width:100%;border:2px solid #1E7A5A;color:#1E7A5A;background:transparent;border-radius:12px;padding:14px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;transition:.2s cubic-bezier(.4,0,.2,1);margin-top:2px}
-#authGate .go:hover{background:#1E7A5A;color:#fff}
-#authGate .go.load{background:#1E7A5A;color:transparent;pointer-events:none}
-#authGate .go.load:after{content:"";position:absolute;inset:0;margin:auto;width:20px;height:20px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.authgate .pwchk,.authgate .rem{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none}
+.authgate .pwchk .b,.authgate .rem .b{width:18px;height:18px;border:2px solid var(--line);border-radius:6px;display:grid;place-items:center;color:#fff;font-size:12px;flex:none;transition:.15s}
+.authgate .pwchk.on .b,.authgate .rem.on .b{background:#1E7A5A;border-color:#1E7A5A}
+.authgate .go{position:relative;overflow:hidden;width:100%;border:2px solid #1E7A5A;color:#1E7A5A;background:transparent;border-radius:12px;padding:14px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;transition:.2s cubic-bezier(.4,0,.2,1);margin-top:2px}
+.authgate .go:hover{background:#1E7A5A;color:#fff}
+.authgate .go.load{background:#1E7A5A;color:transparent;pointer-events:none}
+.authgate .go.load:after{content:"";position:absolute;inset:0;margin:auto;width:20px;height:20px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-#authGate .autherr{display:none;background:color-mix(in srgb,var(--neg) 11%,transparent);color:var(--neg);border-radius:9px;padding:9px 11px;font-size:12.5px;font-weight:700;margin:0 0 14px;text-align:center}
-#authGate .autherr.show{display:block}
-#authGate .foot{font-size:11px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.7}
-#authGate .enter .fields>*,#authGate .enter .attl,#authGate .enter .asub,#authGate .enter .foot{animation:stag .5s cubic-bezier(.4,0,.2,1) backwards}
-#authGate .enter .attl{animation-delay:.05s}#authGate .enter .asub{animation-delay:.1s}
-#authGate .enter .fields>*:nth-child(1){animation-delay:.16s}#authGate .enter .fields>*:nth-child(2){animation-delay:.25s}#authGate .enter .fields>*:nth-child(3){animation-delay:.34s}#authGate .enter .fields>*:nth-child(4){animation-delay:.43s}#authGate .enter .foot{animation-delay:.52s}
+.authgate .autherr{display:none;background:color-mix(in srgb,var(--neg) 11%,transparent);color:var(--neg);border-radius:9px;padding:9px 11px;font-size:12.5px;font-weight:700;margin:0 0 14px;text-align:center}
+.authgate .autherr.show{display:block}
+.authgate .foot{font-size:11px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.7}
+.authgate .enter .fields>*,.authgate .enter .attl,.authgate .enter .asub,.authgate .enter .foot{animation:stag .5s cubic-bezier(.4,0,.2,1) backwards}
+.authgate .enter .attl{animation-delay:.05s}.authgate .enter .asub{animation-delay:.1s}
+.authgate .enter .fields>*:nth-child(1){animation-delay:.16s}.authgate .enter .fields>*:nth-child(2){animation-delay:.25s}.authgate .enter .fields>*:nth-child(3){animation-delay:.34s}.authgate .enter .fields>*:nth-child(4){animation-delay:.43s}.authgate .enter .foot{animation-delay:.52s}
 @keyframes stag{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .u-add{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
 .u-row{display:flex;align-items:center;gap:11px;background:var(--surface,#fff);border:1px solid var(--line,#e3ddce);border-inline-start:4px solid var(--rc,#0f6b57);border-radius:12px;padding:11px 13px;margin-bottom:9px;flex-wrap:wrap}
@@ -67,6 +67,20 @@ html[data-mode="dark"] #authGate .modebtn b{inset-inline-start:28px;background:#
 .u-nm{font-weight:800;color:var(--ink,#173A31);font-size:14px}.u-em{font-size:11.5px;color:var(--muted,#7c857f)}
 .u-badge{font-size:10.5px;font-weight:800;padding:3px 10px;border-radius:999px;background:color-mix(in srgb,var(--rc,#0f6b57) 15%,transparent);color:var(--rc,#0f6b57);white-space:nowrap}
 .u-off{opacity:.55}
+/* النقطة ٤ — مفتاح «إلزام كلمة مرور عند أول دخول» + رابط الخروج من بوابة كلمة المرور */
+.nu-mustpw{display:flex;gap:9px;align-items:flex-start;margin:6px 0 10px;padding:10px 12px;border:1px solid var(--line,#e3ddce);border-radius:11px;background:var(--field,#f4f1e8);font-size:12.5px;color:var(--text,#22302C);cursor:pointer;line-height:1.6}
+.nu-mustpw input{margin-top:3px;width:16px;height:16px;flex:none;accent-color:var(--acc,#0f6b57)}
+.nu-mustpw b{color:var(--ink,#173A31)}
+.pwgate-out{color:var(--acc,#0f6b57);font-weight:700;cursor:pointer;text-decoration:underline}
+/* النقطة ٥ — نافذة تغيير كلمة المرور */
+.pwch-fg{margin-bottom:10px}
+.pwch-fg label{display:block;font-size:11.5px;font-weight:700;color:var(--muted,#7c857f);margin-bottom:4px}
+.pwch-fg input{width:100%;background:var(--field,#f4f1e8);border:1.5px solid var(--line,#e3ddce);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;color:var(--ink,#173A31);outline:none}
+.pwch-fg input:focus{border-color:var(--acc,#0f6b57)}
+.pwch-forgot{color:var(--acc,#0f6b57);font-weight:700;cursor:pointer;text-decoration:underline}
+/* النقطة ٦ — زر الفتح بالبصمة في شاشة القفل */
+.pin-bio{display:inline-flex;align-items:center;gap:8px;justify-content:center;margin:2px auto 8px;padding:12px 20px;border:1.5px solid var(--acc,#0f6b57);background:color-mix(in srgb,var(--acc,#0f6b57) 12%,transparent);color:var(--acc,#0f6b57);font-weight:800;font-size:14.5px;border-radius:13px;cursor:pointer;font-family:inherit}
+.pin-bio.load{opacity:.6;pointer-events:none}
 /* الوضع الليلي لشاشة الدخول يُدار عبر متغيّرات data-mode أعلاه */
 </style>
 <meta name="description" content="نظام إدارة تقارير المبيعات والنقد اليومية للفروع مع مزامنة سحابية." />
@@ -224,6 +238,9 @@ html.pinned{overflow:hidden}
 .chg-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
 .chg-list li{font-size:12.5px;color:var(--text);background:var(--field);border-radius:8px;padding:6px 10px;border:1px solid var(--line2);line-height:1.6}
 .chg-list li.chg-more{background:none;border:none;color:var(--muted);font-weight:700;padding:2px 4px}
+/* النقطة ٩ — عرض ٥ عناصر ثم تمرير للباقي */
+.chg-list.chg-scroll{max-height:196px;overflow-y:auto;padding-inline-end:5px;-webkit-overflow-scrolling:touch}
+.chg-scrollhint{font-size:11px;color:var(--muted);font-weight:700;text-align:center;padding:6px 0 2px}
 .chg-note{font-size:11.5px;color:var(--muted);margin-top:8px}
 /* ===== النسخ الاحتياطي على الجهاز (النقطة ٧) ===== */
 .bk-status{margin:2px 0 10px}
@@ -252,6 +269,43 @@ html.pinned{overflow:hidden}
 .npsw b{position:absolute;top:2px;inset-inline-start:2px;width:17px;height:17px;border-radius:50%;background:#fff;transition:.2s var(--ease);box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .npsw.on{background:var(--acc)}
 .npsw.on b{inset-inline-start:19px}
+/* ===== نظام الإشعارات من سجل النشاط (النقطة ٢): رأس ملوّن + تبويبات + تجميع زمني + عناصر مضغوطة بخط جانبي ملوّن + جرس نابض مهتزّ ===== */
+.notifpanel.np2{width:346px;padding:0}
+.np-bell{position:relative}
+.np-bell.ring{animation:npring .8s cubic-bezier(.36,.07,.19,.97)}
+@keyframes npring{0%,100%{transform:rotate(0)}15%{transform:rotate(15deg)}30%{transform:rotate(-12deg)}45%{transform:rotate(9deg)}60%{transform:rotate(-6deg)}75%{transform:rotate(3deg)}}
+.np-pulse{position:absolute;top:-4px;inset-inline-start:-4px;width:16px;height:16px;border-radius:8px;background:var(--neg);opacity:.5;animation:nppulse 1.8s ease-out infinite;pointer-events:none}
+@keyframes nppulse{0%{transform:scale(1);opacity:.5}70%{transform:scale(2.2);opacity:0}100%{opacity:0}}
+.np2-head{display:flex;align-items:center;gap:8px;padding:12px 14px;background:linear-gradient(120deg,var(--acc),var(--ink2))}
+.np2-ttl{font-weight:800;color:#fff;font-size:14.5px;display:flex;align-items:center;gap:7px}
+.np2-cnt{background:rgba(255,255,255,.25);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 8px;min-width:20px;text-align:center}
+.np2-mkall{margin-inline-start:auto;border:none;background:rgba(255,255,255,.16);color:#fff;font-weight:700;font-size:11.5px;padding:6px 10px;border-radius:8px;cursor:pointer;font-family:inherit}
+.np2-mkall:disabled{opacity:.5;cursor:default}
+.np2-tabs{display:flex;gap:4px;padding:0 10px;border-bottom:1px solid var(--line)}
+.np2-tab{flex:1;border:none;background:transparent;color:var(--muted);font-weight:700;font-size:12.5px;padding:9px 6px;cursor:pointer;position:relative;font-family:inherit}
+.np2-tab .c{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--field);color:var(--muted);font-size:10px;font-weight:800;margin-inline-start:5px;vertical-align:middle}
+.np2-tab.on{color:var(--ink)}.np2-tab.on .c{background:var(--neg);color:#fff}
+.np2-tab.on:after{content:'';position:absolute;bottom:-1px;inset-inline:8px;height:3px;border-radius:3px;background:var(--acc)}
+.np2-body{max-height:min(58vh,392px);overflow-y:auto;padding:4px 8px 6px}
+.np2-gh{display:flex;align-items:center;gap:7px;padding:9px 8px 4px;font-size:10.5px;font-weight:800;color:var(--muted)}
+.np2-gh .gt{font-weight:900;color:var(--ink)}.np2-gh .gc{background:var(--field);border-radius:999px;padding:1px 7px;font-size:9.5px}.np2-gh .gl{flex:1;height:1px;background:var(--line)}
+.np2-list{display:flex;flex-direction:column;gap:3px}
+.np2-item{display:flex;gap:9px;align-items:flex-start;padding:8px 9px;border-radius:10px;border-inline-start:4px solid var(--tc,var(--acc));cursor:pointer;position:relative;transition:background .15s,max-height .3s ease,opacity .3s ease,transform .3s ease,padding .3s ease;overflow:hidden;animation:np2in .35s var(--ease) backwards}
+@keyframes np2in{from{opacity:0;transform:translateY(7px)}to{opacity:1}}
+.np2-item:hover{background:var(--field)}
+.np2-item.unread{background:color-mix(in srgb,var(--tc) 8%,transparent)}
+.np2-item.leaving{max-height:0!important;opacity:0;transform:translateX(-45px);padding-top:0;padding-bottom:0}
+.np2-ic{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;font-size:16px;background:color-mix(in srgb,var(--tc,#0f6b57) 15%,transparent);color:var(--tc,#0f6b57);border:1px solid color-mix(in srgb,var(--tc,#0f6b57) 25%,transparent)}
+.np2-b{flex:1;min-width:0}
+.np2-t{font-weight:800;color:var(--ink);font-size:12.8px;line-height:1.4}
+.np2-m{display:flex;align-items:center;gap:7px;margin-top:2px;flex-wrap:wrap}
+.np2-time{font-size:10.5px;color:var(--muted)}
+.np2-tag{font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:999px;background:color-mix(in srgb,var(--tc,#0f6b57) 13%,transparent);color:var(--tc,#0f6b57)}
+.np2-dot{width:10px;height:10px;border-radius:50%;background:var(--acc);border:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 16%,transparent);cursor:pointer;flex:none;margin-top:5px;transition:.15s}
+.np2-dot.read{background:transparent;box-shadow:none;border:1.5px solid var(--line)}
+.np2-empty{text-align:center;color:var(--muted);padding:28px 14px;font-weight:600;font-size:12.5px}
+.np2-foot .npext{border-bottom:none}
+.np2-all{width:100%;border:none;border-top:1px solid var(--line);background:transparent;color:var(--acc);font-weight:800;font-size:12px;padding:9px;cursor:pointer;font-family:inherit}
 .notifprompt{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(120deg,#123328,#1c4b3c);color:#fff;border-radius:14px;padding:12px 16px;margin:0 0 14px;box-shadow:0 6px 18px rgba(21,92,67,.22)}
 .notifprompt .np-ic{font-size:20px;flex:none}
 .notifprompt .np-tx{flex:1;min-width:180px;font-size:13.5px;line-height:1.6}
@@ -1881,7 +1935,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.5";     /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.12";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2261,9 +2315,17 @@ function _injectEmbeddedIcons(){try{
 }catch(e){}}
 function installIcons(){try{
   var tc=document.querySelector("meta[name='theme-color']");if(!tc){tc=document.createElement("meta");tc.name="theme-color";document.head.appendChild(tc);}tc.setAttribute("content","#173A31");
-  APP_ICON_PNG="./icon-192.png";                 /* الملف الفعلي (الشعار الجديد) — للإشعارات */
+  /* النقطة ٣ — تحديث الأيقونة على الأجهزة دون إعادة تثبيت:
+     نوسم مسارات الأيقونة والمانيفست بمعرّف الإصدار (?v=…). فعند تغيير ملفات الأيقونة ورفع الإصدار
+     تتغيّر المسارات، فيلتقط المتصفح (أندرويد/سطح المكتب) الأيقونة الجديدة تلقائياً على الشاشة الرئيسية.
+     (ملاحظة: iOS يخزّن أيقونة الـPWA وقت الإضافة ولا يُحدّثها تلقائياً — قيدٌ من Apple.) */
+  var v="?v="+APP_VERSION;
+  APP_ICON_PNG="./icon-192.png"+v;               /* الملف الفعلي (الشعار الجديد) — للإشعارات */
+  _setLink("manifest",{href:"./manifest.webmanifest"+v});
+  _setLink("icon",{type:"image/svg+xml",href:"./icon.svg"+v});
+  _setLink("apple-touch-icon",{href:"./icon-180.png"+v});
   /* نتحقّق من وجود ملفات الأيقونات؛ إن غابت (رفع ناقص) نحقن نسخة مضمّنة تلقائياً */
-  try{var probe=new Image();probe.onerror=function(){_injectEmbeddedIcons();};probe.onload=function(){};probe.src="./icon-192.png";}catch(e){_injectEmbeddedIcons();}
+  try{var probe=new Image();probe.onerror=function(){_injectEmbeddedIcons();};probe.onload=function(){};probe.src="./icon-192.png"+v;}catch(e){_injectEmbeddedIcons();}
 }catch(e){_injectEmbeddedIcons();}}
 var IC={
   dash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
@@ -2772,12 +2834,68 @@ function notifList(){
   else if(fsMode())out.push({i:"⚠️",t:"المزامنة غير مفعّلة حالياً",k:"warn",go:(canSee("data")?"data":null)});
   return out;
 }
+/* ===== نظام الإشعارات من سجل النشاط (النقطة ٢) =====
+   حالة «مقروء» تُخزَّن في تفضيلات المستخدم (prefs.notif) وتُزامَن عبر أجهزته:
+   readAllTs = تعيين الكل كمقروء حتى هذا الوقت · read = معرّفات قُرئت فردياً · unread = أُعيدت كغير مقروء.
+   أفعال المستخدم نفسه لا تُحسب إشعارات غير مقروءة. */
+var _NR=null,_notifShake=false;
+function nrLoad(){
+  var u=rosterGet(S.currentUser)||{};var p=(u.prefs&&u.prefs.notif&&typeof u.prefs.notif==="object")?u.prefs.notif:null;
+  if(p){_NR={readAllTs:num(p.readAllTs)||0,read:(p.read&&typeof p.read==="object")?p.read:{},unread:(p.unread&&typeof p.unread==="object")?p.unread:{}};}
+  else{var mx=0;(S._activity||[]).forEach(function(a){var t=num(a.ts)||0;if(t>mx)mx=t;});_NR={readAllTs:mx||Date.now(),read:{},unread:{}};nrSave();}
+}
+function nr(){if(!_NR)nrLoad();return _NR;}
+function findAct(id){var A=S._activity||[];for(var i=0;i<A.length;i++)if(A[i].id===id)return A[i];return null;}
+function actIsOwn(a){return String(a.actor||"").toLowerCase()===String(S.currentUser||"").toLowerCase();}
+function actUnread(a){if(!a||actIsOwn(a))return false;var R=nr();if(R.unread[a.id])return true;if(R.read[a.id])return false;if((num(a.ts)||0)<=R.readAllTs)return false;return true;}
+function actUnreadCount(){return (S._activity||[]).filter(actUnread).length;}
+function nrPrune(){var R=nr(),ids={};(S._activity||[]).forEach(function(a){ids[a.id]=1;});["read","unread"].forEach(function(k){Object.keys(R[k]).forEach(function(id){if(!ids[id])delete R[k][id];});});Object.keys(R.read).forEach(function(id){var a=findAct(id);if(a&&(num(a.ts)||0)<=R.readAllTs)delete R.read[id];});}
+function nrSave(){if(!S.currentUser)return;var u=rosterGet(S.currentUser);if(!u)return;nrPrune();u.prefs=Object.assign({},u.prefs,{notif:{readAllTs:nr().readAllTs,read:nr().read,unread:nr().unread}});try{DB.set("dsr_config",S.config);}catch(e){}if(fsMode())fsSavePrefs(u.prefs);}
+function markActRead(a){if(!a)return;var R=nr();if(R.unread[a.id])delete R.unread[a.id];if((num(a.ts)||0)>R.readAllTs)R.read[a.id]=1;nrSave();}
+function markActUnread(a){if(!a)return;var R=nr();if(R.read[a.id])delete R.read[a.id];if((num(a.ts)||0)<=R.readAllTs)R.unread[a.id]=1;nrSave();}
+function markAllActRead(){var R=nr(),mx=R.readAllTs;(S._activity||[]).forEach(function(a){var t=num(a.ts)||0;if(t>mx)mx=t;});R.readAllTs=mx||Date.now();R.read={};R.unread={};nrSave();}
+/* تصنيف الإشعار (وسم النوع) حسب الوجهة/النوع */
+function actTagFor(a){var t=a.type;if(t==="send"||t==="approve"||t==="return")return "اعتمادات";if(a.date)return "يوميات";if(t==="perm"||t==="scope"||t==="role"||a.target)return "مستخدمون";if(t==="login"||t==="newdevice"||t==="pinset"||t==="pinchg"||t==="pinoff"||t==="pwset")return "أمان";if(t==="export")return "تصدير";return "نشاط";}
+/* وقت مختصر نسبي */
+function relTime(a){var ts=num(a.ts)||0;if(!ts)return a.at||"";var diff=Date.now()-ts;var m=Math.floor(diff/60000);if(m<1)return "الآن";if(m<60)return "قبل "+m+" د";var h=Math.floor(m/60);if(h<24)return "قبل "+h+" س";var dd=Math.floor(h/24);if(dd<7)return "قبل "+dd+" يوم";return a.at||("قبل "+dd+" يوم");}
+/* تجميع زمني: اليوم / أمس / أقدم */
+function actGroupKey(a){var ts=num(a.ts)||0;if(!ts)return "older";var now=new Date();var sd=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime(),day=86400000;if(ts>=sd)return "today";if(ts>=sd-day)return "yday";return "older";}
+function notifItemHTML(a){var col=actColor(a.type),ic=actIcon(a.type),tag=actTagFor(a),un=actUnread(a);
+  var title=esc(((a.actorName||a.actor||"")+" "+(a.detail||"نشاط")).trim());
+  return "<div class='np2-item"+(un?" unread":"")+"' style='--tc:"+col+"' onclick=\"App.notifOpenItem('"+a.id+"')\">"+
+    "<span class='np2-ic'>"+ic+"</span>"+
+    "<div class='np2-b'><div class='np2-t'>"+title+"</div><div class='np2-m'><span class='np2-time'>🕘 "+esc(relTime(a))+"</span><span class='np2-tag'>"+tag+"</span></div></div>"+
+    "<button class='np2-dot"+(un?"":" read")+"' title='"+(un?"تعليم كمقروء":"مقروء")+"' onclick=\"App.notifDot(event,'"+a.id+"')\"></button>"+
+  "</div>";}
+function notifBodyHTML(tab){
+  var items=(S._activity||[]).filter(function(a){return tab==="read"?!actUnread(a):actUnread(a);});
+  if(!items.length)return "<div class='np2-empty'>🌿 "+(tab==="read"?"لا إشعارات مقروءة":"لا إشعارات جديدة — كل شيء تحت السيطرة")+"</div>";
+  var by={today:[],yday:[],older:[]};items.forEach(function(a){by[actGroupKey(a)].push(a);});
+  var gl=[["today","اليوم"],["yday","أمس"],["older","أقدم"]],html="";
+  gl.forEach(function(g){var arr=by[g[0]];if(!arr.length)return;html+="<div class='np2-gh'><span class='gt'>"+g[1]+"</span><span class='gc'>"+arr.length+"</span><span class='gl'></span></div><div class='np2-list'>"+arr.map(notifItemHTML).join("")+"</div>";});
+  return html;}
 function notifBell(){
-  var ns=notifList();var warn=ns.filter(function(n){return n.k==="warn"}).length;
-  return "<div class='notifwrap'><button class='backbtn' title='الإشعارات' onclick='App.toggleNotif(event)' style='min-width:36px;position:relative;font-size:15px'>🔔"+(warn?"<span class='nbadge'>"+warn+"</span>":"")+"</button>"+
-    "<div class='notifpanel'><div class='nphead'>الإشعارات"+(ns.length?" ("+ns.length+")":"")+"</div>"+
-    "<div class='npext' onclick=\"App.notifToggleExt(event)\" title='إظهار التحديثات الجديدة كإشعار خارج الصفحة'><span>🔔 الإشعارات الخارجية</span><span class='npsw"+(Notify.enabled()?" on":"")+"'><b></b></span></div>"+
-    (ns.length?ns.map(function(n){return "<div class='nitem n-"+(n.k||"info")+"'"+(n.go?" onclick=\"App.notifGo('"+n.go+"')\" style='cursor:pointer'":"")+"><span class='ni'>"+(n.i||"•")+"</span><span>"+esc(n.t)+"</span></div>"}).join(""):"<div class='nitem'>لا إشعارات جديدة</div>")+"</div></div>";
+  var u=actUnreadCount(),tab=S._notifTab||"new",shake=_notifShake;_notifShake=false;
+  return "<div class='notifwrap'><button class='backbtn np-bell"+(shake?" ring":"")+"' title='الإشعارات' onclick='App.toggleNotif(event)' style='min-width:36px;position:relative;font-size:15px'>🔔"+
+      (u?"<span class='nbadge'>"+u+"</span><span class='np-pulse'></span>":"")+"</button>"+
+    "<div class='notifpanel np2'>"+
+      "<div class='np2-head'><span class='np2-ttl'>الإشعارات"+(u?" <span class='np2-cnt'>"+u+"</span>":"")+"</span><button class='np2-mkall'"+(u?"":" disabled")+" onclick='App.notifMarkAll(event)'>تعيين الكل كمقروء</button></div>"+
+      "<div class='np2-tabs'><button class='np2-tab"+(tab==="new"?" on":"")+"' onclick=\"App.notifTab(event,'new')\">الجديدة <span class='c'>"+u+"</span></button><button class='np2-tab"+(tab==="read"?" on":"")+"' onclick=\"App.notifTab(event,'read')\">المقروءة</button></div>"+
+      "<div class='np2-body'>"+notifBodyHTML(tab)+"</div>"+
+      "<div class='np2-foot'><div class='npext' onclick=\"App.notifToggleExt(event)\" title='إظهار التحديثات كإشعار خارج الصفحة'><span>🔔 الإشعارات الخارجية</span><span class='npsw"+(Notify.enabled()?" on":"")+"'><b></b></span></div>"+
+        (canSee("activity")?"<button class='np2-all' onclick=\"App.notifGo('activity')\">كل النشاط ↩</button>":"")+"</div>"+
+    "</div></div>";
+}
+/* تحديث النافذة في مكانها دون إعادة رسم كامل (يبقي النافذة مفتوحة) */
+function notifRefresh(){
+  var wrap=document.querySelector(".notifwrap");if(!wrap)return;var u=actUnreadCount(),tab=S._notifTab||"new";
+  var p=wrap.querySelector(".notifpanel");
+  if(p){var tabs=p.querySelectorAll(".np2-tab");if(tabs[0]){tabs[0].classList.toggle("on",tab==="new");var c0=tabs[0].querySelector(".c");if(c0)c0.textContent=u;}if(tabs[1])tabs[1].classList.toggle("on",tab==="read");
+    var cnt=p.querySelector(".np2-cnt");if(cnt)cnt.textContent=u;var mk=p.querySelector(".np2-mkall");if(mk)mk.disabled=(u===0);
+    var body=p.querySelector(".np2-body");if(body)body.innerHTML=notifBodyHTML(tab);}
+  var bell=wrap.querySelector(".np-bell");if(bell){var bd=bell.querySelector(".nbadge"),pl=bell.querySelector(".np-pulse");
+    if(u){if(bd)bd.textContent=u;else bell.insertAdjacentHTML("beforeend","<span class='nbadge'>"+u+"</span><span class='np-pulse'></span>");}
+    else{if(bd)bd.remove();if(pl)pl.remove();}}
 }
 /* ===== الاعتمادات وسير العمل ===== */
 function apprBadge(st){var m={draft:["مسودة","#8a998f"],pending:["بانتظار الاعتماد","#C9931F"],approved:["معتمد","#1E7A5A"],returned:["مُعاد","#e0553f"],none:["غير مُرسل","#8a998f"]};var x=m[st]||m.none;return "<span class='apr-badge' style='--c:"+x[1]+"'>"+x[0]+"</span>";}
@@ -2851,8 +2969,8 @@ function viewApprovals(){
   return "<div class='n-appr'>"+head+hint+"<div class='filters'>"+filters+"</div>"+(cards?"<div class='appr-list'>"+cards+"</div>":"<div class='empty'>لا يوميات في هذه الحالة</div>")+"</div>";
 }
 /* ===== سجل النشاط ===== */
-function actIcon(t){var m={login:"🔑",newdevice:"🔐",add:"➕",edit:"✏️",delete:"🗑️",approve:"✅",return:"↩️",role:"👤",export:"📤",send:"📨",post:"📋",lock:"🔒",revert:"↩️",cancel:"🚫",pinset:"🔒",pinchg:"🔒",pinoff:"🔓",perm:"🔐",scope:"🏬"};return m[t]||"•";}
-function actColor(t){var m={login:"#2C74D6",newdevice:"#C9931F",add:"#0f6b57",edit:"#AF8228",delete:"#e0553f",approve:"#0f6b57",return:"#e0553f",role:"#6D5AE0",export:"#2C74D6",send:"#AF8228",post:"#0f6b57",lock:"#173A31",revert:"#AF8228",cancel:"#e0553f",pinset:"#173A31",pinchg:"#AF8228",pinoff:"#8a998f",perm:"#6D5AE0",scope:"#0f6b57"};return m[t]||"#8a998f";}
+function actIcon(t){var m={login:"🔑",newdevice:"🔐",add:"➕",edit:"✏️",delete:"🗑️",approve:"✅",return:"↩️",role:"👤",export:"📤",send:"📨",post:"📋",lock:"🔒",revert:"↩️",cancel:"🚫",pinset:"🔒",pinchg:"🔒",pinoff:"🔓",pwset:"🔑",perm:"🔐",scope:"🏬"};return m[t]||"•";}
+function actColor(t){var m={login:"#2C74D6",newdevice:"#C9931F",add:"#0f6b57",edit:"#AF8228",delete:"#e0553f",approve:"#0f6b57",return:"#e0553f",role:"#6D5AE0",export:"#2C74D6",send:"#AF8228",post:"#0f6b57",lock:"#173A31",revert:"#AF8228",cancel:"#e0553f",pinset:"#173A31",pinchg:"#AF8228",pinoff:"#8a998f",pwset:"#2C74D6",perm:"#6D5AE0",scope:"#0f6b57"};return m[t]||"#8a998f";}
 function viewActivity(){
   /* ==== بيانات حقيقية (منسوخة حرفياً من الدالة الحالية) ==== */
   var acts=(S._activity||[]);var flt=S._actFlt||{q:"",type:"",user:""};
@@ -2987,7 +3105,7 @@ function render(){
       "<button class='burger' title='القائمة' onclick='App.toggleDrawer()'>☰</button>"+
       backBtn+h("div",{class:"logo"},LOGO_SVG)+
       h("div",{style:"min-width:0"},h("h1",{},esc(S.config.businessName))+h("small",{},subTitle))+
-      (pinEnabled(S.currentUser)?h("button",{class:"backbtn",title:"قفل الجهاز برمز سريع",onclick:"App.pinLockNow()",style:"min-width:36px;font-size:15px"},"🔒"):"")+
+      (lockEnabled(S.currentUser)?h("button",{class:"backbtn",title:"قفل الجهاز (رمز/بصمة)",onclick:"App.pinLockNow()",style:"min-width:36px;font-size:15px"},"🔒"):"")+
       h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn abhide",title:"دليل الاستخدام",onclick:"App.help()",style:"min-width:36px;font-weight:900;font-size:15px"},"؟")+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
   var _u=rosterGet(S.currentUser)||{};var uname=_u.name||S.currentUser||"مستخدم";var urole=myRole();
   var drawer="<div class='bd' onclick='App.closeDrawer()'></div><aside class='drawer'>"+
@@ -3200,10 +3318,10 @@ function pendingChanges(d){return (d&&d.firstPostedAt&&d._postSnap&&d._postSnap.
 function chgPanelHTML(d){
   var pend=pendingChanges(d);if(!pend.length)return "";
   var st=dayStatus(d);
-  return "<div class='card chg-card'><div class='chg-h'><span>📝 تغييرات بعد آخر ترحيل</span><span class='chg-n'>"+pend.length+"</span></div><ul class='chg-list'>"+
-    pend.slice(0,20).map(function(x){return "<li>"+esc(x)+"</li>"}).join("")+
-    (pend.length>20?"<li class='chg-more'>…و"+(pend.length-20)+" تغييراً آخر</li>":"")+
-    "</ul><div class='chg-note'>"+(st==="draft"?"ستُسجَّل هذه التغييرات في سجل النشاط عند إعادة الترحيل.":"مقارنةً بآخر ترحيل.")+"</div></div>";
+  return "<div class='card chg-card'><div class='chg-h'><span>📝 تغييرات بعد آخر ترحيل</span><span class='chg-n'>"+pend.length+"</span></div><ul class='chg-list"+(pend.length>5?" chg-scroll":"")+"'>"+
+    pend.slice(0,300).map(function(x){return "<li>"+esc(x)+"</li>"}).join("")+
+    "</ul>"+(pend.length>5?"<div class='chg-scrollhint'>↕ مرّر لرؤية بقية التغييرات ("+pend.length+")</div>":"")+
+    "<div class='chg-note'>"+(st==="draft"?"ستُسجَّل هذه التغييرات في سجل النشاط عند إعادة الترحيل.":"مقارنةً بآخر ترحيل.")+"</div></div>";
 }
 function refreshChangePanel(){var el=document.getElementById("chgPanel");if(el&&S.day)el.innerHTML=chgPanelHTML(S.day);}
 function applyStatus(d){d.locked=!!(d.status&&d.status!=="draft");if(S.data[d.date]){S.data[d.date].status=d.status;S.data[d.date].locked=d.locked;S.data[d.date].firstPostedAt=d.firstPostedAt;S.data[d.date].postedBy=d.postedBy;S.data[d.date]._postSnap=d._postSnap;}scheduleSave();
@@ -3846,6 +3964,19 @@ function viewSettings(){
     "<p class='note'>عند القفل: يظهر رمز يُطلب لفتح الجهاز، بينما تبقى الجلسة والبيانات كما هي. للخروج الكامل استخدم «تسجيل الخروج».</p>"+
     "</div></div>";
 
+  /* ==== الدخول السريع بالبصمة/Face ID (النقطة ٦) — يظهر فقط على الأجهزة الداعمة ==== */
+  var hasBio=bioEnabled(S.currentUser);
+  var bioCard=BIO.supported()?("<div class='sec'><div class='sechead'>👤 الدخول السريع (بصمة / Face ID)</div><div class='scard'>"+
+    "<div class='cbody'>"+
+      "<p class='note' style='margin-top:0'>افتح القفل ببصمة الإصبع أو التعرّف على الوجه بدل كتابة الرمز/كلمة المرور — وتبقى جلستك قائمة. <b>يُفعّل على هذا الجهاز فقط ولا يُزامَن.</b> متاح على الأجهزة الداعمة (Face ID / بصمة / Windows Hello).</p>"+
+      "<div style='font-size:13px;font-weight:800;color:"+(hasBio?"var(--pos)":"var(--muted)")+";margin:2px 0 12px'>"+(hasBio?"✓ الدخول السريع مُفعّل على هذا الجهاز":"غير مُفعّل على هذا الجهاز")+"</div>"+
+      (hasBio
+        ? "<div class='btnline'><button class='nbtn' onclick='App.bioTest()'>👤 تجربة الفتح</button><button class='nbtn danger' onclick='App.bioDisable()'>إلغاء الدخول السريع</button></div>"
+        : "<div class='btnline'><button class='nbtn' onclick='App.bioEnable()'>+ تفعيل الدخول السريع</button></div>")+
+    "</div>"+
+    "<p class='note'>عند التفعيل: يظهر زر «افتح بالبصمة/الوجه» في شاشة القفل. يبقى الرمز/كلمة المرور بديلاً دائماً.</p>"+
+    "</div></div>"):"";
+
   /* ==== التذكير اليومي الذكي (النقطة ٨) ==== */
   var remEnabled=remOn(),remT=remTime(),remD=remDaysMode();
   var notifReady=(typeof Notify!=="undefined"&&Notify.enabled());
@@ -3878,7 +4009,7 @@ function viewSettings(){
 
   return "<div class='n-set'>"+
     "<div class='n-hd'><h1>الإعدادات</h1><p>ضبط النظام والمظهر والمزامنة والفروع وطرق الدفع</p></div>"+
-    acct+sync+general+branches+methods+theme+readability+session+pinCard+remCard+tplCard+
+    acct+sync+general+branches+methods+theme+readability+session+pinCard+bioCard+remCard+tplCard+
     "</div>";
 }
 
@@ -4163,7 +4294,23 @@ function openAccount(){try{App.closeDrawer()}catch(e){}
   "</div></div>";
   document.getElementById("modalRoot").innerHTML=body;_modalType="acct";
 }
-function refreshAccountModal(){if(document.querySelector(".acct-modal"))openAccount();}
+function refreshAccountModal(){if(_modalType==="acct"&&document.querySelector(".acct-modal"))openAccount();}
+/* النقطة ٥ — تغيير كلمة المرور داخل التطبيق: يتطلب كلمة المرور الحالية (reauthenticate) قبل التغيير */
+function openPwChange(){
+  var body="<div class='modal-bg' onclick='if(event.target===this)App.closeModal()'><div class='modal acct-modal'>"+
+    "<h3><span>🔑 تغيير كلمة المرور</span><button class='iconbtn' onclick='App.openAccountBack()'>"+IC.x+"</button></h3>"+
+    "<div id='pwchErr' class='autherr' style='margin-bottom:10px'></div>"+
+    "<form onsubmit='return App.acctPwSubmit(event)'>"+
+      "<div class='pwch-fg'><label>كلمة المرور الحالية</label><input id='pwCur' type='password' autocomplete='current-password' placeholder='كلمة مرورك الحالية'></div>"+
+      "<div class='pwch-fg'><label>كلمة المرور الجديدة</label><input id='pwNw' type='password' autocomplete='new-password' placeholder='6 أحرف على الأقل'></div>"+
+      "<div class='pwch-fg'><label>تأكيد كلمة المرور الجديدة</label><input id='pwNw2' type='password' autocomplete='new-password' placeholder='أعد كتابتها'></div>"+
+      "<button type='submit' class='btn' id='pwchBtn' style='width:100%;margin-top:4px'>حفظ كلمة المرور الجديدة</button>"+
+    "</form>"+
+    "<div class='note' style='margin-top:12px;text-align:center;line-height:1.7'>🔒 لن تُغيَّر كلمة المرور إلا بإدخال كلمة المرور الحالية الصحيحة.<br><span class='pwch-forgot' onclick='App.acctPwReset()'>نسيت كلمة المرور الحالية؟ أرسل رابطاً إلى بريدك</span></div>"+
+  "</div></div>";
+  document.getElementById("modalRoot").innerHTML=body;_modalType="pwch";
+  setTimeout(function(){var i=document.getElementById("pwCur");if(i)try{i.focus()}catch(e){}},50);
+}
 
 /* ===== منتقي التاريخ (بدل حقول input) ===== */
 function dateBtn(target,iso){return "<button class='dpbtn' onclick=\"App.openDP('"+target+"','"+(iso||"")+"')\"><span>"+(iso?prettyDate(iso):"اختر التاريخ")+"</span>"+IC.cal+"</button>";}
@@ -4326,12 +4473,37 @@ function pinVerify(email,pin){var hh=pinStored(email);return !!hh&&hh===pinHash(
 function pinLockKey(email){return "dsr_lock_"+String(email||S.currentUser||"").toLowerCase();}
 function pinIsLocked(email){try{return localStorage.getItem(pinLockKey(email))==="1"}catch(e){return false}}
 function pinSetLocked(email,on){try{if(on)localStorage.setItem(pinLockKey(email),"1");else localStorage.removeItem(pinLockKey(email));}catch(e){}}
+/* ===== الدخول السريع بالبصمة/Face ID (النقطة ٦) — WebAuthn، تفضيل محلي لكل جهاز (لا يُزامَن).
+   يفتح القفل مع بقاء جلسة Firebase قائمة — دخول سريع بلا كتابة كلمة المرور. يبقى الرمز/كلمة المرور بديلاً. */
+var BIO={
+  _key:function(email){return "dsr_bio_"+String(email||S.currentUser||"").toLowerCase();},
+  supported:function(){try{return !!(window.PublicKeyCredential&&navigator.credentials&&navigator.credentials.create&&navigator.credentials.get);}catch(e){return false;}},
+  available:function(cb){if(!this.supported()){cb(false);return;}try{PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(function(v){cb(!!v);}).catch(function(){cb(false);});}catch(e){cb(false);}},
+  enabled:function(email){try{return !!localStorage.getItem(this._key(email));}catch(e){return false;}},
+  _b64:function(buf){var b=new Uint8Array(buf),s="";for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s);},
+  _unb64:function(s){try{var bin=atob(s),a=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return a;}catch(e){return new Uint8Array(0);}},
+  _rand:function(){var a=new Uint8Array(32);try{crypto.getRandomValues(a);}catch(e){}return a;},
+  enable:function(email,cb){var self=this;if(!this.supported()){cb(false);return;}
+    try{var uid=new Uint8Array(16);try{crypto.getRandomValues(uid);}catch(e){}
+      navigator.credentials.create({publicKey:{challenge:self._rand(),rp:{name:"نظام تقارير اليومية",id:location.hostname||undefined},user:{id:uid,name:email,displayName:email},pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000,attestation:"none"}})
+      .then(function(cred){if(!cred||!cred.rawId){cb(false);return;}try{localStorage.setItem(self._key(email),self._b64(cred.rawId));}catch(e){}cb(true);})
+      .catch(function(){cb(false);});
+    }catch(e){cb(false);}},
+  disable:function(email){try{localStorage.removeItem(this._key(email));}catch(e){}},
+  verify:function(email,cb){var self=this;if(!this.enabled(email)){cb(false);return;}
+    try{var id=self._unb64(localStorage.getItem(self._key(email))||"");
+      navigator.credentials.get({publicKey:{challenge:self._rand(),allowCredentials:[{type:"public-key",id:id}],userVerification:"required",timeout:60000,rpId:location.hostname||undefined}})
+      .then(function(as){cb(!!as);}).catch(function(){cb(false);});
+    }catch(e){cb(false);}}
+};
+function bioEnabled(email){return BIO.enabled(email);}
+function lockEnabled(email){return pinEnabled(email)||bioEnabled(email);}
 var PINUI={el:null,mode:null,buf:"",step:"",first:""};
 function pinDotsHTML(){var s="";for(var i=0;i<4;i++)s+="<i"+(i<PINUI.buf.length?" class='on'":"")+"></i>";return s;}
 function pinRenderDots(){var w=document.getElementById("pinDots");if(w)w.innerHTML=pinDotsHTML();}
 function pinClearErr(){var e=document.getElementById("pinErr");if(e)e.textContent="";}
 function pinTitle(){
-  if(PINUI.mode==="lock")return {t:esc(meName()),s:"الجهاز مقفل — أدخل الرمز للمتابعة"};
+  if(PINUI.mode==="lock"){var hp=pinEnabled(S.currentUser),hb=bioEnabled(S.currentUser);var s=(hp&&hb)?"الجهاز مقفل — افتح بالبصمة أو أدخل الرمز":(hb?"الجهاز مقفل — افتح بالبصمة/الوجه":"الجهاز مقفل — أدخل الرمز للمتابعة");return {t:esc(meName()),s:s};}
   if(PINUI.step==="new")return {t:(pinEnabled(S.currentUser)?"تغيير رمز القفل":"تعيين رمز قفل"),s:"اختر رمزاً من ٤ أرقام"};
   return {t:"تأكيد الرمز",s:"أعد إدخال الرمز نفسه"};
 }
@@ -4344,14 +4516,18 @@ function pinRender(){
     : "<button type='button' class='pin-k pin-min' onclick='App.pinCancel()'>إلغاء</button>";
   var lastRow=blLeft+"<button type='button' class='pin-k' onclick='App.pinKey(0)'>0</button>"+
               "<button type='button' class='pin-k pin-del' onclick='App.pinDel()' title='حذف'>⌫</button>";
+  var isLock=(PINUI.mode==="lock"),hasPin=pinEnabled(S.currentUser),hasBio=bioEnabled(S.currentUser);
+  var showPad=(!isLock)||hasPin;                                 /* في القفل: لوحة الأرقام تظهر فقط إن وُجد رمز (وإلا فبصمة فقط) — النقطة ٦ */
+  var bioBtn=(isLock&&hasBio)?"<button type='button' class='pin-bio' onclick='App.bioUnlock()'>👤 افتح بالبصمة / Face ID</button>":"";
   PINUI.el.innerHTML="<div class='pin-card' tabindex='0'>"+
     "<div class='pin-lg'>"+LOGO_SVG+"</div>"+
     "<div class='pin-nm'>"+ti.t+"</div>"+
     "<div class='pin-sub'>"+ti.s+"</div>"+
-    "<div class='pin-dots' id='pinDots'>"+pinDotsHTML()+"</div>"+
+    bioBtn+
+    (showPad?("<div class='pin-dots' id='pinDots'>"+pinDotsHTML()+"</div>"):"")+
     "<div class='pin-err' id='pinErr'></div>"+
-    "<div class='pin-pad'>"+keys+lastRow+"</div>"+
-    (PINUI.mode==="lock"?"<button type='button' class='pin-lo' onclick='App.logout()'>تسجيل الخروج بدلاً من ذلك ⤶</button>":"")+
+    (showPad?("<div class='pin-pad'>"+keys+lastRow+"</div>"):"")+
+    (isLock?"<button type='button' class='pin-lo' onclick='App.logout()'>تسجيل الخروج بدلاً من ذلك ⤶</button>":"")+
   "</div>";
   var card=PINUI.el.querySelector(".pin-card");if(card&&card.focus){try{card.focus()}catch(e){}}
 }
@@ -4362,7 +4538,7 @@ function pinKeydown(e){
 }
 function pinOpen(mode){
   if(PINUI.el)return;
-  if(mode==="lock"&&!pinEnabled(S.currentUser))return;
+  if(mode==="lock"&&!lockEnabled(S.currentUser))return;
   PINUI.mode=mode;PINUI.buf="";PINUI.step=(mode==="lock"?"enter":"new");PINUI.first="";
   if(mode==="lock"){pinSetLocked(S.currentUser,true);try{releaseLock()}catch(e){}try{App.closeDrawer()}catch(e){}}
   var d=document.createElement("div");d.id="pinLock";d.className="pinlock";
@@ -4519,6 +4695,20 @@ window.App={
   remDismiss:function(){S._remActive=false;render();},
   closeNotif:function(){var w=document.querySelector(".notifwrap.open");if(w)w.classList.remove("open")},
   notifGo:function(v){App.closeNotif();App.go(v)},
+  notifTab:function(e,t){if(e&&e.stopPropagation)e.stopPropagation();S._notifTab=t;notifRefresh();},
+  notifMarkAll:function(e){if(e&&e.stopPropagation)e.stopPropagation();if(!actUnreadCount())return;markAllActRead();notifRefresh();toast("تم تعيين الكل كمقروءة");},
+  notifDot:function(e,id){if(e&&e.stopPropagation)e.stopPropagation();var a=findAct(id);if(!a)return;
+    if(actUnread(a)){var el=(e&&e.target&&e.target.closest)?e.target.closest(".np2-item"):null;
+      if(el&&(S._notifTab||"new")==="new"){el.style.maxHeight=el.offsetHeight+"px";requestAnimationFrame(function(){el.classList.add("leaving");});markActRead(a);setTimeout(notifRefresh,300);}
+      else{markActRead(a);notifRefresh();}}
+    else{markActUnread(a);notifRefresh();}},
+  notifOpenItem:function(id){var a=findAct(id);if(!a)return;markActRead(a);App.closeNotif();
+    var deny=function(){toast("ليست لديك صلاحية عرض هذا العنصر","err");};
+    if(a.type==="send"||a.type==="approve"||a.type==="return"){return canSee("approvals")?App.go("approvals"):deny();}
+    if(a.date){if(!S.data[a.date]){toast("اليومية غير متاحة");return;}return canSee("day")?App.openDay(a.date):deny();}
+    if(a.target||a.type==="perm"||a.type==="scope"||a.type==="role"){return canSee("users")?App.go("users"):deny();}
+    if(a.type==="export"){return canSee("data")?App.go("data"):deny();}
+    return canSee("activity")?App.go("activity"):deny();},
   aprFlt:function(f){S._aprFlt=f;render()},
   aprSubmit:function(dt){if(!(isOwner()||myRole()==="مُدخِل اليوميات")){toast("لا تملك صلاحية الإرسال","err");return}var me=rosterGet(S.currentUser)||{};fsSetApproval(dt,{status:"pending",submittedBy:S.currentUser,submittedByName:me.name||S.currentUser,submittedAt:nowStamp(),decidedBy:"",decidedByName:"",decidedAt:"",reason:""});logEvent("send","أرسل يومية "+prettyDate(dt)+" للاعتماد",{date:dt});toast("أُرسلت للاعتماد ✓")},
   aprApprove:function(dt){if(!(isOwner()||myRole()==="المدير المالي")){toast("لا تملك صلاحية الاعتماد","err");return}var me=rosterGet(S.currentUser)||{};fsSetApproval(dt,{status:"approved",decidedBy:S.currentUser,decidedByName:me.name||S.currentUser,decidedAt:nowStamp(),reason:""});logEvent("approve","اعتمد يومية "+prettyDate(dt),{date:dt});toast("تم الاعتماد ✓")},
@@ -4527,14 +4717,42 @@ window.App={
   actSearch:function(v){S._actFlt=S._actFlt||{q:"",type:"",user:""};S._actFlt.q=v;var q=(v||"").toLowerCase();var els=document.querySelectorAll(".act-tl .act-item");Array.prototype.forEach.call(els,function(el){var t=(el.textContent||"").toLowerCase();el.style.display=(!q||t.indexOf(q)>=0)?"":"none"})},
   setTheme:function(m){m=(m==="dark")?"dark":"light";try{localStorage.setItem("dsr_mode",m);if(S.currentUser)localStorage.setItem("dsr_mode_"+String(S.currentUser).toLowerCase(),m);}catch(e){}document.documentElement.setAttribute("data-mode",m);savePrefs();render();refreshAccountModal()},
   openAccount:function(){openAccount()},
-  acctPassword:function(){var em=S.currentUser;if(!em){toast("لا يوجد مستخدم","err");return}openConfirm({title:"تغيير كلمة المرور",body:"سيُرسَل رابط لتعيين كلمة مرور جديدة إلى بريدك:<br><b>"+esc(em)+"</b>",confirm:"إرسال الرابط",onOk:function(){try{firebase.auth().sendPasswordResetEmail(em).then(function(){toast("📧 أُرسل رابط تغيير كلمة المرور إلى بريدك")}).catch(function(ex){toast(authErrMsg(ex),"err")})}catch(e){toast("تعذّر الإرسال","err")}}})},
+  acctPassword:function(){var em=S.currentUser;if(!em){toast("لا يوجد مستخدم","err");return}openPwChange();},
+  openAccountBack:function(){openAccount();},
+  acctPwReset:function(){var em=S.currentUser;if(!em)return;openConfirm({title:"إرسال رابط إعادة تعيين؟",body:"سيُرسَل رابط لتعيين كلمة مرور جديدة إلى بريدك:<br><b>"+esc(em)+"</b><br><span style='color:var(--muted);font-size:12px'>استخدمه فقط إن نسيت كلمة المرور الحالية.</span>",confirm:"إرسال الرابط",onOk:function(){try{firebase.auth().sendPasswordResetEmail(em).then(function(){toast("📧 أُرسل رابط إلى بريدك")}).catch(function(ex){toast(authErrMsg(ex),"err")})}catch(e){toast("تعذّر الإرسال","err")}}});},
+  acctPwSubmit:function(e){if(e&&e.preventDefault)e.preventDefault();
+    var cur=(document.getElementById("pwCur")||{}).value||"",n1=(document.getElementById("pwNw")||{}).value||"",n2=(document.getElementById("pwNw2")||{}).value||"";
+    var err=document.getElementById("pwchErr");var showErr=function(m){if(err){err.textContent=m;err.classList.add("show");}else toast(m,"err");};
+    if(!cur){showErr("أدخل كلمة المرور الحالية");return false;}
+    if(n1.length<6){showErr("كلمة المرور الجديدة 6 أحرف على الأقل");return false;}
+    if(n1!==n2){showErr("كلمتا المرور الجديدتان غير متطابقتين");return false;}
+    if(n1===cur){showErr("اختر كلمة مرور مختلفة عن الحالية");return false;}
+    var user=null,em=S.currentUser;try{user=firebase.auth().currentUser;}catch(_e){}
+    if(!user){showErr("انتهت الجلسة — سجّل الدخول من جديد");return false;}
+    var btn=document.getElementById("pwchBtn");if(btn)btn.classList.add("load");
+    try{var cred=firebase.auth.EmailAuthProvider.credential(em,cur);
+      user.reauthenticateWithCredential(cred).then(function(){return user.updatePassword(n1);}).then(function(){
+        logEvent("pwset","غيّر كلمة مروره");try{App.closeModal()}catch(e){}toast("تم تغيير كلمة المرور ✓");
+      }).catch(function(ex){if(btn)btn.classList.remove("load");var c=ex&&ex.code;
+        if(c==="auth/wrong-password"||c==="auth/invalid-credential"||c==="auth/invalid-login-credentials")showErr("كلمة المرور الحالية غير صحيحة");
+        else if(c==="auth/too-many-requests")showErr("محاولات كثيرة — انتظر قليلاً ثم أعد المحاولة");
+        else if(c==="auth/requires-recent-login")showErr("انتهت الجلسة — سجّل الدخول من جديد");
+        else showErr(authErrMsg(ex));});
+    }catch(_e2){if(btn)btn.classList.remove("load");showErr("تعذّر تغيير كلمة المرور");}
+    return false;},
   toggleTheme:function(){App.setTheme(curTheme()==="dark"?"light":"dark");},
   setFontSize:function(v){v=(v==="lg"||v==="xl")?v:"normal";try{localStorage.setItem("dsr_fs",v)}catch(e){}applyReadability();savePrefs();render();refreshAccountModal();toast("حجم الخط: "+({normal:"عادي",lg:"كبير",xl:"أكبر"}[v]||"عادي"));},
   setContrast:function(v){v=(String(v)==="1")?"1":"0";try{localStorage.setItem("dsr_contrast",v)}catch(e){}applyReadability();savePrefs();render();refreshAccountModal();toast(v==="1"?"التباين العالي مفعّل ✓":"التباين العادي");},
   pinKey:function(n){pinPush(n)},
   pinDel:function(){pinDel()},
   pinCancel:function(){if(PINUI.mode!=="lock")pinClose(false)},
-  pinLockNow:function(){try{App.closeDrawer()}catch(e){}if(!pinEnabled(S.currentUser)){pinOpen("setup");return}pinOpen("lock")},
+  pinLockNow:function(){try{App.closeDrawer()}catch(e){}if(!lockEnabled(S.currentUser)){pinOpen("setup");return}pinOpen("lock")},
+  bioEnable:function(){var em=S.currentUser;if(!em)return;if(!BIO.supported()){toast("جهازك لا يدعم الدخول السريع","err");return;}toast("اتبع مطالبة البصمة/الوجه…");
+    BIO.enable(em,function(ok){if(ok){logEvent("pinset","فعّل الدخول السريع (بصمة/الوجه)");render();refreshAccountModal();toast("تم تفعيل الدخول السريع ✓");}else{toast("تعذّر التفعيل — قد لا يدعم جهازك البصمة/الوجه أو أُلغيت العملية","err");}});},
+  bioDisable:function(){var em=S.currentUser;if(!em)return;openConfirm({title:"إلغاء الدخول السريع؟",body:"لن تتمكن من الفتح بالبصمة/الوجه على هذا الجهاز بعد الآن.",danger:true,confirm:"إلغاء",onOk:function(){BIO.disable(em);logEvent("pinoff","ألغى الدخول السريع (بصمة/الوجه)");render();refreshAccountModal();toast("أُلغي الدخول السريع");}});},
+  bioTest:function(){var em=S.currentUser;if(!em)return;toast("اتبع مطالبة البصمة/الوجه…");BIO.verify(em,function(ok){if(ok)toast("نجح التحقق بالبصمة ✓");else toast("تعذّر التحقق بالبصمة","err");});},
+  bioUnlock:function(){if(!PINUI.el)return;var e=document.getElementById("pinErr");if(e)e.textContent="";var btn=document.querySelector(".pin-bio");if(btn)btn.classList.add("load");
+    BIO.verify(S.currentUser,function(ok){if(btn)btn.classList.remove("load");if(ok){pinClose(true);}else{if(e)e.textContent="تعذّر التحقق بالبصمة — أعد المحاولة"+(pinEnabled(S.currentUser)?" أو أدخل الرمز":"");}});},
   pinSetup:function(){try{App.closeDrawer()}catch(e){}pinOpen("setup")},
   pinDisable:function(){openConfirm({title:"إلغاء رمز القفل؟",body:"لن يُطلب رمز عند قفل هذا الجهاز بعد الآن.",danger:true,confirm:"إلغاء الرمز",onOk:function(){pinSet(S.currentUser,"");pinSetLocked(S.currentUser,false);logEvent("pinoff","ألغى قفل الجهاز السريع");render();toast("أُلغي رمز القفل")}})},
   setIdleMin:function(v){var n=Math.max(1,Math.min(240,Math.round(num(v))||10));S.config.session=S.config.session||{};S.config.session.idleMin=n;saveConfig();render();toast("مهلة الخمول: "+n+" دقيقة")},
@@ -4548,9 +4766,32 @@ window.App={
   authMode:function(){var d=document.documentElement.getAttribute("data-mode")==="dark";var t=d?"light":"dark";try{localStorage.setItem("dsr_mode",t)}catch(e){}document.documentElement.setAttribute("data-mode",t)},
   logout:function(){openConfirm({title:"تسجيل الخروج؟",body:"سيُطلب منك تسجيل الدخول مرة أخرى.",confirm:"خروج",onOk:function(){try{releaseLock()}catch(e){}try{firebase.auth().signOut()}catch(e){location.reload()}}})},
   usrCreate:function(){var name=(document.getElementById("uName").value||"").trim(),em=(document.getElementById("uEmail").value||"").trim().toLowerCase(),pw=document.getElementById("uPw").value,role=document.getElementById("uRole").value;
+    var mustPw=!!(document.getElementById("uMustPw")&&document.getElementById("uMustPw").checked);
     if(!name||!em||!pw){toast("أكمل الاسم والبريد وكلمة المرور","err");return}if(pw.length<6){toast("كلمة المرور 6 أحرف على الأقل","err");return}if(rosterGet(em)){toast("هذا البريد مضاف مسبقاً","err");return}
-    toast("جارٍ إنشاء الحساب…");var sec=fbSecondary();sec.auth().createUserWithEmailAndPassword(em,pw).then(function(){return sec.auth().signOut()}).then(function(){roster()[em]={name:name,role:role,active:true,createdAt:nowStamp()};logEvent("add","أضاف مستخدم "+name+" ("+role+")",{target:em});saveConfig();render();toast("أُضيف المستخدم ✓")}).catch(function(ex){toast(authErrMsg(ex),"err")})},
+    toast("جارٍ إنشاء الحساب…");var sec=fbSecondary();sec.auth().createUserWithEmailAndPassword(em,pw).then(function(){return sec.auth().signOut()}).then(function(){var mk={name:name,role:role,active:true,createdAt:nowStamp()};if(mustPw){mk.mustSetPw=true;mk.mustSetPwTs=Date.now();}roster()[em]=mk;logEvent("add","أضاف مستخدم "+name+" ("+role+")"+(mustPw?" — يعيّن كلمة مروره عند أول دخول":""),{target:em});saveConfig();render();toast("أُضيف المستخدم ✓")}).catch(function(ex){toast(authErrMsg(ex),"err")})},
+  usrForcePw:function(em){var u=rosterGet(em);if(!u||em===OWNER_EMAIL)return;var pend=!!u.mustSetPw&&(((u.prefs&&num(u.prefs.pwSetAt))||0)<(num(u.mustSetPwTs)||1));
+    if(pend){u.mustSetPw=false;logEvent("role","ألغى إلزام كلمة المرور لـ"+(u.name||em),{target:em});toast("أُلغي الإلزام");}
+    else{u.mustSetPw=true;u.mustSetPwTs=Date.now();logEvent("role","ألزم "+(u.name||em)+" بتعيين كلمة مرور عند أول دخول",{target:em});toast("سيُطلب منه تعيين كلمة مرور عند أول دخول");}
+    saveConfig();render();},
+  pwSetSubmit:function(e){if(e&&e.preventDefault)e.preventDefault();
+    var p1=(document.getElementById("pwNew")||{}).value||"",p2=(document.getElementById("pwNew2")||{}).value||"";var err=document.getElementById("pwGateErr");
+    var showErr=function(m){if(err){err.textContent=m;err.classList.add("show");}else toast(m,"err");};
+    if(p1.length<6){showErr("كلمة المرور 6 أحرف على الأقل");return false;}
+    if(p1!==p2){showErr("كلمتا المرور غير متطابقتين");return false;}
+    var btn=document.getElementById("pwGateBtn");if(btn)btn.classList.add("load");
+    var user=null;try{user=firebase.auth().currentUser;}catch(_e){}
+    if(!user){showLogin("انتهت الجلسة — سجّل الدخول من جديد");return false;}
+    user.updatePassword(p1).then(function(){
+      var u=rosterGet(S.currentUser);if(u){u.prefs=Object.assign({},u.prefs,{pwSetAt:Date.now()});try{DB.set("dsr_config",S.config);}catch(e){}if(fsMode())fsSavePrefs(u.prefs);}
+      logEvent("pwset","عيّن كلمة مروره الخاصة عند أول دخول");
+      toast("تم تعيين كلمة المرور ✓");enterApp(S.currentUser);
+    }).catch(function(ex){if(btn)btn.classList.remove("load");
+      if(ex&&ex.code==="auth/requires-recent-login"){showErr("انتهت الجلسة — سجّل الدخول من جديد");setTimeout(function(){try{firebase.auth().signOut()}catch(e){}},1600);}
+      else showErr(authErrMsg(ex));});
+    return false;},
+  pwGateLogout:function(){try{firebase.auth().signOut()}catch(e){location.reload()}},
   usrRole:function(em,role){var u=rosterGet(em);if(!u||em===OWNER_EMAIL)return;u.role=role;logEvent("role","غيّر دور "+(u.name||em)+" إلى "+roleName(role),{target:em});saveConfig();render();toast("تم تغيير الدور")},
+  usrRename:function(em){if(!isOwner())return;var u=rosterGet(em);if(!u)return;openPrompt({title:"تغيير الاسم",label:"الاسم المعروض",value:u.name||"",confirm:"حفظ",onOk:function(v){v=(v||"").trim();if(!v){toast("أدخل اسماً","err");return;}u.name=v;logEvent("edit","غيّر اسم "+(em===OWNER_EMAIL?"المالك":"المستخدم")+" إلى «"+v+"»",{target:em});saveConfig();render();refreshAccountModal();toast("تم تغيير الاسم ✓");}});},
   roleView:function(k){if(!isOwner())return;S._roleView=k;render();},
   roleAdd:function(){if(!isOwner())return;var el=document.getElementById("newRoleName");var nm=(el&&el.value||"").trim();if(!nm){toast("اكتب اسم الدور","err");return}ensureRoles();
     var dup=rolesAll().some(function(k){return roleName(k)===nm});if(dup){toast("هذا الاسم مستخدم","err");return}
@@ -4997,15 +5238,20 @@ var FS_CFG_FIELDS=["businessName","openingBalance","branches","methods","company
 function jstr(x){try{return JSON.stringify(x)}catch(e){return ""}}
 function fsCanWrite(){return isOwner()||myRole()==="مُدخِل اليوميات";}   /* من يكتب وثائق الأيام */
 function fsCoreFields(cfg){var c={};FS_CFG_FIELDS.forEach(function(k){c[k]=(cfg&&cfg[k]!==undefined)?cfg[k]:null});return c;}
-function fsRoleDoc(u){return {name:(u&&u.name)||"",role:(u&&u.role)||"مُدخِل اليوميات",active:!(u&&u.active===false),lastLogin:(u&&u.lastLogin)||"",createdAt:(u&&u.createdAt)||nowStamp(),perms:(u&&u.perms&&typeof u.perms==="object")?u.perms:{},branches:(u&&Array.isArray(u.branches))?u.branches:[],prefs:(u&&u.prefs&&typeof u.prefs==="object")?u.prefs:{},updatedTs:Date.now()};}
-function fsRoleToRoster(d){var o={name:(d&&d.name)||"",role:(d&&d.role)||"مُدخِل اليوميات",active:!(d&&d.active===false),lastLogin:(d&&d.lastLogin)||"",createdAt:(d&&d.createdAt)||""};if(d&&d.perms&&typeof d.perms==="object"&&Object.keys(d.perms).length)o.perms=d.perms;if(d&&Array.isArray(d.branches)&&d.branches.length)o.branches=d.branches;if(d&&d.prefs&&typeof d.prefs==="object"&&Object.keys(d.prefs).length)o.prefs=d.prefs;return o;}
+function fsRoleDoc(u){return {name:(u&&u.name)||"",role:(u&&u.role)||"مُدخِل اليوميات",active:!(u&&u.active===false),lastLogin:(u&&u.lastLogin)||"",createdAt:(u&&u.createdAt)||nowStamp(),perms:(u&&u.perms&&typeof u.perms==="object")?u.perms:{},branches:(u&&Array.isArray(u.branches))?u.branches:[],prefs:(u&&u.prefs&&typeof u.prefs==="object")?u.prefs:{},mustSetPw:!!(u&&u.mustSetPw),mustSetPwTs:num(u&&u.mustSetPwTs)||0,updatedTs:Date.now()};}
+function fsRoleToRoster(d){var o={name:(d&&d.name)||"",role:(d&&d.role)||"مُدخِل اليوميات",active:!(d&&d.active===false),lastLogin:(d&&d.lastLogin)||"",createdAt:(d&&d.createdAt)||""};if(d&&d.perms&&typeof d.perms==="object"&&Object.keys(d.perms).length)o.perms=d.perms;if(d&&Array.isArray(d.branches)&&d.branches.length)o.branches=d.branches;if(d&&d.prefs&&typeof d.prefs==="object"&&Object.keys(d.prefs).length)o.prefs=d.prefs;if(d&&d.mustSetPw){o.mustSetPw=true;o.mustSetPwTs=num(d.mustSetPwTs)||0;}return o;}
 /* prefs مُستثناة من مفتاح الفرق: يكتبها المستخدم لنفسه (self-write) فلا يدفعها المالك — البند ١٠ */
-function fsRoleKey(u){return jstr({name:(u&&u.name)||"",role:(u&&u.role)||"",active:!(u&&u.active===false),perms:(u&&u.perms)||{},branches:(u&&u.branches)||[]});}
+function fsRoleKey(u){return jstr({name:(u&&u.name)||"",role:(u&&u.role)||"",active:!(u&&u.active===false),perms:(u&&u.perms)||{},branches:(u&&u.branches)||[],mustSetPw:!!(u&&u.mustSetPw),mustSetPwTs:num(u&&u.mustSetPwTs)||0});}
 /* كتابة ذاتية لتفضيلات المستخدم في وثيقته (كـ fsTouchLogin) — تتبعه عبر أجهزته (البند ١٠) */
 function fsSavePrefs(prefs){var db=fsInit();if(!db||!S.currentUser)return Promise.resolve();try{return db.collection("roles").doc(S.currentUser).set({prefs:prefs||{},updatedTs:Date.now()},{merge:true}).catch(function(){});}catch(e){return Promise.resolve();}}
 function fsDayNorm(dt){var day=S.data[dt];if(day&&!day.updatedTs)day.updatedTs=Date.now();return day;}
 function fsSyncShadowDays(){FSY.shadowDays={};Object.keys(S.data).forEach(function(dt){FSY.shadowDays[dt]=jstr(fsDayNorm(dt))});}
 async function fsPersistQuiet(){S._noPush=true;try{await persistEverything()}catch(e){}S._noPush=false;}
+/* النقطة ٧ — تجميع إعادة الرسم القادم من المزامنة اللحظية: دفعةُ تغييراتٍ بعيدة (أيام/إعدادات/أدوار/نشاط/اعتمادات)
+   تُسبِّب إعادة رسمٍ واحدة بعد ~200مﻟﺚ بدل عدّة إعادات متتابعة تُظهر وميضاً يشبه «إعادة التحميل». البياناتُ تُزامَن فوراً
+   (تُحدَّث S.data لحظياً)؛ هذا يخصّ تحديث الواجهة فقط ولا يمسّ onSnapshot ولا fsPushNow ولا المعادلات. */
+var _syncRenderT=null;
+function scheduleRender(){if(S.view==="entry"&&S.dirty)return;if(_syncRenderT)return;_syncRenderT=setTimeout(function(){_syncRenderT=null;scheduleRender();},200);}
 
 function fsSchedulePush(){if(!fsMode()||!FSY.on)return;if(FSY.pushTimer)clearTimeout(FSY.pushTimer);FSY.pushTimer=setTimeout(fsPushNow,900);}
 async function fsPushNow(){
@@ -5110,7 +5356,7 @@ function fsAttach(db){
     invalidateBal();
     fsPersistQuiet().then(function(){
       if(reload&&S.day)loadDay(S.day.date);
-      if(S.view==="entry"&&S.dirty)updateSyncPill();else render();
+      if(S.view==="entry"&&S.dirty)updateSyncPill();else scheduleRender();
       setSync("on");S.sync.last=nowStamp();});
   },function(){setSync("err");}));
   /* ب) الإعدادات العامة */
@@ -5119,7 +5365,7 @@ function fsAttach(db){
     var cs=jstr(fsCoreFields(core));if(cs===FSY.shadowCfg)return;
     FS_CFG_FIELDS.forEach(function(k){if(core[k]!==undefined&&core[k]!==null)S.config[k]=core[k]});
     S.config.cfgUpdatedTs=num(core.cfgUpdatedTs)||Date.now();FSY.shadowCfg=cs;
-    invalidateBal();fsPersistQuiet().then(function(){if(!(S.view==="entry"&&S.dirty))render();});
+    invalidateBal();fsPersistQuiet().then(function(){scheduleRender();});
   },function(){}));
   /* ج) الأدوار — فرض الصلاحيات لحظياً (إيقاف/تغيير دور يُطبَّق فوراً) */
   FSY.unsub.push(db.collection("roles").onSnapshot(function(snap){
@@ -5131,15 +5377,18 @@ function fsAttach(db){
     if(S.currentUser&&S.currentUser!==OWNER_EMAIL){var me=r[S.currentUser];
       if(!me||me.active===false){try{firebase.auth().signOut()}catch(e){}showLogin("تم تحديث صلاحياتك. تواصل مع المالك.");return;}
       S.currentRole=me.role||S.currentRole;if(!canSee(S.view))S.view="dashboard";}
-    fsPersistQuiet().then(function(){if(!(S.view==="entry"&&S.dirty))render();});
+    fsPersistQuiet().then(function(){scheduleRender();});
   },function(){}));
   /* د) سجل النشاط — لحظي */
   FSY.unsub.push(db.collection("activity").orderBy("ts","desc").limit(200).onSnapshot(function(snap){
-    if(FSY.applying)return;var ch=false,_nd=null;S._activity=S._activity||[];
-    snap.docChanges().forEach(function(c){if(c.doc.metadata&&c.doc.metadata.hasPendingWrites)return;if(c.type==="removed")return;var d=c.doc.data();if(!d||!d.id)return;if(!S._activity.some(function(x){return x.id===d.id})){S._activity.push(d);ch=true;if(d.type==="newdevice"&&String(d.actor||"").toLowerCase()!==String(S.currentUser||"").toLowerCase())_nd=d;}});
+    if(FSY.applying)return;var ch=false,_nd=null,_newTop=null;S._activity=S._activity||[];
+    snap.docChanges().forEach(function(c){if(c.doc.metadata&&c.doc.metadata.hasPendingWrites)return;if(c.type==="removed")return;var d=c.doc.data();if(!d||!d.id)return;if(!S._activity.some(function(x){return x.id===d.id})){S._activity.push(d);ch=true;
+      if(String(d.actor||"").toLowerCase()!==String(S.currentUser||"").toLowerCase()){if(!_newTop||(num(d.ts)||0)>(num(_newTop.ts)||0))_newTop=d;if(d.type==="newdevice")_nd=d;}}});
     if(!ch)return;
-    if(FSY._primed&&_nd&&isOwner()){try{if(typeof Notify!=="undefined")Notify.show("🔐 دخول من جهاز جديد",(_nd.actorName||_nd.actor||"")+" — "+(_nd.detail||""),"newdev-"+_nd.id);}catch(e){}toast("🔐 دخول من جهاز جديد: "+(_nd.actorName||_nd.actor||""));}
-    S._activity.sort(function(a,b){return (num(b.ts)||0)-(num(a.ts)||0)});if(S._activity.length>200)S._activity=S._activity.slice(0,200);if(!(S.view==="entry"&&S.dirty))render();
+    /* إشعار خارجي + اهتزاز الجرس لأي نشاط جديد من غيرك (النقطة ٢) */
+    if(_newTop){_notifShake=true;if(FSY._primed&&typeof Notify!=="undefined"&&Notify.enabled()){try{Notify.show(_newTop.type==="newdevice"?"🔐 دخول من جهاز جديد":"🔔 نشاط جديد",((_newTop.actorName||_newTop.actor||"")+" "+(_newTop.detail||"")).trim(),"act-"+_newTop.id);}catch(e){}}}
+    if(FSY._primed&&_nd&&isOwner()){toast("🔐 دخول من جهاز جديد: "+(_nd.actorName||_nd.actor||""));}
+    S._activity.sort(function(a,b){return (num(b.ts)||0)-(num(a.ts)||0)});if(S._activity.length>200)S._activity=S._activity.slice(0,200);scheduleRender();
   },function(){}));
   /* هـ) الاعتمادات — لحظي */
   FSY.unsub.push(db.collection("approvals").onSnapshot(function(snap){
@@ -5151,7 +5400,7 @@ function fsAttach(db){
     if(FSY._primed&&Notify.enabled()&&notes.length){var AL={pending:"إرسال يومية للاعتماد",approved:"✅ اعتماد يومية",returned:"↩️ إعادة يومية للتعديل"};
       if(notes.length===1){var n1=notes[0];Notify.show(AL[n1.st]||"تحديث اعتماد",prettyDate(n1.id)+(n1.by?" — "+n1.by:""),"appr-"+n1.id);}
       else Notify.show("تحديث الاعتمادات","تغيّرت حالة "+notes.length+" يوميات","appr-bulk");}
-    if(!(S.view==="entry"&&S.dirty))render();
+    scheduleRender();
   },function(){}));
 }
 /* إعادة مزامنة يدوية (زر «تحديث الآن») — المستمعات تحدّث تلقائياً، وهذا للطمأنة/الإنعاش */
@@ -5220,19 +5469,41 @@ async function onSignedIn(user){
     if(_newDev){try{localStorage.setItem(_dk,String(Date.now()))}catch(e){}logEvent("newdevice","تسجيل دخول من جهاز جديد — "+devLabel());toast("تم تسجيل دخولك من جهاز جديد");}
     else logEvent("login","سجّل الدخول");
   }catch(e){}
-  hideLogin();
+  if(needsPwSet(email)){showPwGate();return;}                   /* أول دخول: إلزام تعيين كلمة مرور خاصة — النقطة ٤ */
+  enterApp(email);
+}
+/* النقطة ٤ — أول دخول: هل يجب على المستخدم تعيين كلمة مرور خاصة؟ (المالك يضبط mustSetPw، والمستخدم يسجّل pwSetAt في تفضيلاته بعد التعيين) */
+function needsPwSet(email){if(String(email||"").toLowerCase()===OWNER_EMAIL)return false;var u=rosterGet(email);if(!u||!u.mustSetPw)return false;var setAt=(u.prefs&&num(u.prefs.pwSetAt))||0;var reqTs=num(u.mustSetPwTs)||1;return setAt<reqTs;}
+function enterApp(email){
+  hideLogin();var g=document.getElementById("pwGate");if(g)g.remove();document.documentElement.classList.remove("authing");
   if(!canSee(S.view))S.view="dashboard";
   loadDay(S.curDate);render();
-  if(pinEnabled(email)&&pinIsLocked(email)){pinOpen("lock");}   /* بقي الجهاز مقفلاً قبل إعادة التحميل — النقطة ١٢ */
+  if(lockEnabled(email)&&pinIsLocked(email)){pinOpen("lock");}  /* بقي الجهاز مقفلاً قبل إعادة التحميل — رمز أو بصمة (النقطتان ١٢ و٦) */
   maybeDailyLocalBackup();                                       /* نسخة احتياطية يومية على الجهاز — النقطة ٧ */
   setTimeout(checkDailyReminder,2500);                           /* تذكير يومي ذكي — النقطة ٨ */
   if(!_authStarted){_authStarted=true;registerSW();setupAutoSync();setupInstall();setupIdle();setInterval(checkDailyReminder,60000);}
 }
+function showPwGate(){removeSplash();var ag=document.getElementById("authGate");if(ag)ag.remove();var old=document.getElementById("pwGate");if(old)old.remove();
+  var d=document.createElement("div");d.innerHTML=pwGateHTML();document.body.appendChild(d.firstChild);document.documentElement.classList.add("authing");
+  setTimeout(function(){var i=document.getElementById("pwNew");if(i)try{i.focus()}catch(e){}},60);}
+function pwGateHTML(){return "<div id='pwGate' class='authgate'><div class='screen enter'>"+
+  "<div class='head'><div class='tile'>"+LOGO_SVG+"</div></div>"+
+  "<div class='abody'><form class='acard' onsubmit='return App.pwSetSubmit(event)'>"+
+  "<div class='attl'>عيّن كلمة مرورك الخاصة</div><div class='asub'>لأمان حسابك، اختر كلمة مرور جديدة خاصة بك للمتابعة.</div>"+
+  "<div id='pwGateErr' class='autherr'></div>"+
+  "<div class='fields'>"+
+  "<div><div class='field'><input id='pwNew' type='password' autocomplete='new-password' placeholder='كلمة المرور الجديدة (6 أحرف على الأقل)'></div></div>"+
+  "<div><div class='field'><input id='pwNew2' type='password' autocomplete='new-password' placeholder='تأكيد كلمة المرور'></div></div>"+
+  "<button type='submit' class='go' id='pwGateBtn'>حفظ ومتابعة</button>"+
+  "</div>"+
+  "<div class='foot'>🔒 تُحفظ كلمة المرور بأمان في حسابك.<br><span class='pwgate-out' onclick='App.pwGateLogout()'>تسجيل الخروج</span></div>"+
+  "</form></div></div>";}
 function startAuth(){
   /* Firebase يُحمّل الآن مؤجّلاً (defer) كي لا يُبطئ ظهور الشاشة — ننتظر جاهزيته بهدوء (حتى ~7.5ث) */
   if(!fbReady()){startAuth._n=(startAuth._n||0)+1;if(startAuth._n<150){setTimeout(startAuth,50);return;}showLogin("تعذّر تحميل خدمة الدخول. تحقّق من اتصالك بالإنترنت ثم أعد فتح الصفحة.");return;}
   fbInit();
-  firebase.auth().onAuthStateChanged(function(user){if(user){onSignedIn(user);}else{if(_authStarted){location.reload();}else{showLogin();}}});
+  /* النقطة ٧ — منع «عاصفة» إعادة التحميل: إن تكرّر خروج المصادقة خلال ٤ ثوانٍ نعرض شاشة الدخول دون إعادة تحميل كاملة (نتفادى حلقة تحميل متكررة)، وإلا نُعيد التحميل مرة لتنظيف الحالة عند الخروج الفعلي. */
+  firebase.auth().onAuthStateChanged(function(user){if(user){onSignedIn(user);}else{if(_authStarted){var _t=0;try{_t=+sessionStorage.getItem("dsr_arl")||0}catch(e){}var _n=Date.now();if(_n-_t<4000){showLogin("تم تسجيل الخروج.");}else{try{sessionStorage.setItem("dsr_arl",String(_n))}catch(e){}location.reload();}}else{showLogin();}}});
 }
 
 /* لوحة صلاحيات الشاشات لكل مستخدم (استثناءات فردية — البند ٢) */
@@ -5266,8 +5537,9 @@ function viewUsers(){
   var rows=emails.map(function(em){
     var u=r[em]||{};var col=roleColor(u.role);var owner=(em===OWNER_EMAIL||u.role==="المالك");
     var off=(u.active===false);
+    var pwPend=(!owner&&!!u.mustSetPw&&(((u.prefs&&num(u.prefs.pwSetAt))||0)<(num(u.mustSetPwTs)||1)));
     var av=esc((u.name||em||"?").slice(0,1));
-    var meta=esc(em)+(u.lastLogin?" · آخر دخول "+esc(u.lastLogin):"");
+    var meta=esc(em)+(u.lastLogin?" · آخر دخول "+esc(u.lastLogin):"")+(pwPend?" · 🔑 يعيّن كلمة مرور عند أول دخول":"");
 
     /* مفتاح التفعيل/الإيقاف → App.usrToggle الحقيقية (المالك مقفل) */
     var sw=owner
@@ -5279,6 +5551,7 @@ function viewUsers(){
     if(owner){
       menu="<details class='nu-menu'><summary class='nu-dots'>⋮</summary><div class='nu-pop'>"+
         "<div class='nu-mi nu-static'>👑 حساب المالك — كامل الصلاحيات</div>"+
+        "<div class='nu-mi' onclick=\"App.usrRename('"+em+"')\">✎ تغيير الاسم</div>"+
         "<div class='nu-mi' onclick=\"App.usrReset('"+em+"')\">🔗 إرسال رابط إعادة تعيين</div>"+
         "<div class='nu-mi nu-static nu-dim'>لا يمكن تغيير الدور أو الإيقاف أو الحذف</div>"+
       "</div></details>";
@@ -5287,7 +5560,9 @@ function viewUsers(){
         "<div class='nu-mrole'><label>الدور</label>"+
           "<select onchange=\"App.usrRole('"+em+"',this.value)\">"+assignRolesAll().map(function(rr){return "<option value='"+esc(rr)+"'"+(u.role===rr?" selected":"")+">"+esc(roleName(rr))+"</option>"}).join("")+"</select>"+
         "</div>"+
+        "<div class='nu-mi' onclick=\"App.usrRename('"+em+"')\">✎ تغيير الاسم</div>"+
         "<div class='nu-mi' onclick=\"App.usrReset('"+em+"')\">🔗 إرسال رابط إعادة تعيين</div>"+
+        "<div class='nu-mi' onclick=\"App.usrForcePw('"+em+"')\">🔑 "+(pwPend?"إلغاء إلزام كلمة المرور":"إلزام كلمة مرور عند أول دخول")+"</div>"+
         "<div class='nu-mi' onclick=\"App.usrToggle('"+em+"')\">"+(off?"▶ تفعيل المستخدم":"⏸ إيقاف المستخدم")+"</div>"+
         "<div class='nu-mi nu-danger' onclick=\"App.usrDel('"+em+"')\">🗑 حذف المستخدم</div>"+
       "</div></details>";
@@ -5319,6 +5594,7 @@ function viewUsers(){
       "<div class='nu-fg'><label>كلمة مرور مؤقتة</label><input id='uPw' placeholder='6 أحرف على الأقل'></div>"+
       "<div class='nu-fg'><label>الدور</label><select id='uRole'>"+assignRolesAll().map(function(rr){return "<option value='"+esc(rr)+"'>"+esc(roleName(rr))+"</option>"}).join("")+"</select></div>"+
     "</div>"+
+    "<label class='nu-mustpw'><input type='checkbox' id='uMustPw'><span><b>إلزام بتعيين كلمة مرور خاصة عند أول دخول</b><br>يدخل بالكلمة المؤقتة أعلاه، ثم يُطلب منه تعيين كلمة مروره الخاصة قبل المتابعة.</span></label>"+
     "<div class='nu-form-act'><button class='btn' onclick='App.usrCreate()'>+ إنشاء الحساب</button><span class='note' style='margin:0'>يُنشأ حساب دخول ويُضاف للأدوار — يبقى دخولك أنت كما هو.</span></div>"
   );
 
@@ -5362,6 +5638,7 @@ function applyTheme(){try{var m=localStorage.getItem("dsr_mode")||"light";docume
 function applyUserTheme(email){var m="light";try{m=localStorage.getItem("dsr_mode_"+String(email||"").toLowerCase())||localStorage.getItem("dsr_mode")||"light";localStorage.setItem("dsr_mode",m);}catch(e){}document.documentElement.setAttribute("data-mode",m==="dark"?"dark":"light");}
 /* تفضيلات المستخدم من وثيقته (تتبعه عبر أجهزته) — البند ١٠ */
 function applyUserPrefs(email){
+  _NR=null;   /* أعد تحميل حالة قراءة الإشعارات لهذا المستخدم (النقطة ٢) */
   var em=String(email||"").toLowerCase();var u=rosterGet(em)||{};var p=(u.prefs&&typeof u.prefs==="object")?u.prefs:null;
   if(p){
     var m=(p.mode==="dark")?"dark":"light";try{localStorage.setItem("dsr_mode",m);localStorage.setItem("dsr_mode_"+em,m);}catch(e){}
@@ -5373,7 +5650,7 @@ function applyUserPrefs(email){
 /* حفظ تفضيلات المستخدم الحالي في وثيقته (كتابة ذاتية) + محلياً — البند ١٠ */
 function savePrefs(){
   if(!S.currentUser)return;var u=rosterGet(S.currentUser);if(!u)return;
-  u.prefs={mode:curTheme(),fs:curFs(),contrast:curContrast()?"1":"0"};
+  u.prefs=Object.assign({},u.prefs,{mode:curTheme(),fs:curFs(),contrast:curContrast()?"1":"0"});   /* يحافظ على prefs.notif (حالة قراءة الإشعارات المتزامنة) */
   try{DB.set("dsr_config",S.config);}catch(e){}
   if(fsMode()){fsSavePrefs(u.prefs);}
 }
