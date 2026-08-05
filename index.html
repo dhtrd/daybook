@@ -138,9 +138,9 @@ a{color:var(--brass)}
 .sync-pill.s-on{background:#e7f3ec;border-color:#bfe0cd;color:#1c6b4d}
 .sync-pill.s-busy{background:#f7f0dd;border-color:#e7d7ab;color:#8a6a1f}
 .sync-pill.s-err{background:#fbe9e2;border-color:#f0c6b6;color:#a03d1f}
-.sync-pill .rf-ic{display:inline-block;vertical-align:middle}
-.sync-pill.refreshing{pointer-events:none;opacity:.9}
-.sync-pill.refreshing .rf-ic{animation:rfspin .7s linear infinite;transform-origin:50% 50%}
+.rf-ic{display:inline-block;vertical-align:middle}
+.backbtn.refreshing{pointer-events:none;opacity:.85}
+.refreshing .rf-ic{animation:rfspin .7s linear infinite;transform-origin:50% 50%}
 @keyframes rfspin{to{transform:rotate(-360deg)}}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:#c9c2b3;flex:none}
 .sync-dot.on{background:var(--pos)} .sync-dot.err{background:var(--neg)} .sync-dot.busy{background:var(--brass);animation:pulse 1s infinite}
@@ -1966,7 +1966,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.16";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.17";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2317,11 +2317,9 @@ async function dbxBackup(){var g=dbxCfg();if(!g.refreshToken){toast("اربط د
   try{await dbxUpload("/DailyReport/backups/backup-"+todayISO()+"-"+Date.now()+".json",JSON.stringify(gatherPayload(),null,2));toast("تم حفظ نسخة في دروبوكس")}catch(e){toast("تعذّر الحفظ: "+e.message,"err")}}
 function setSync(st){S.sync.status=st;updateSyncPill()}
 function updateSyncPill(){var el=document.getElementById("syncPill");if(!el)return;
-  /* الزر صار «تحديث يدوي» (بدل مؤشّر الحالة) — نُبقي لون الحالة والعنوان فقط دون تغيير النص/الأيقونة */
-  var st=syncState();
-  el.classList.remove("s-on","s-busy","s-err");if(st.cls)el.classList.add(st.cls);
-  el.title="إعادة تحميل البيانات"+(st.text?" — "+st.text:"");
-  var dot=el.querySelector(".sync-dot");if(dot)dot.className="sync-dot"+(st.dot?" "+st.dot:"");}
+  var st=syncState();el.className="sync-pill"+(st.cls?" "+st.cls:"");
+  var dot=el.querySelector(".sync-dot");if(dot)dot.className="sync-dot"+(st.dot?" "+st.dot:"");
+  var txt=el.querySelector("span:last-child");if(txt)txt.textContent=st.text;}
 
 /* أيقونات */
 var LOGO_SVG='<svg viewBox="0 0 80 80" width="80" height="80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="شعار التطبيق"><rect width="80" height="80" rx="20" fill="#173A31"/><rect x="20" y="18" width="40" height="46" rx="5" fill="#fff"/><rect x="37" y="18" width="6" height="46" fill="#E7EFEA"/><rect x="26" y="28" width="10" height="3.4" rx="1.7" fill="#AF8228"/><rect x="26" y="37" width="10" height="3.4" rx="1.7" fill="#cdd6d0"/><rect x="44" y="28" width="10" height="3.4" rx="1.7" fill="#cdd6d0"/><rect x="44" y="37" width="10" height="3.4" rx="1.7" fill="#AF8228"/><path d="M26 49l4 4 8-9" fill="none" stroke="#1E7A5A" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -3139,13 +3137,13 @@ function render(){
       backBtn+h("div",{class:"logo"},LOGO_SVG)+
       h("div",{style:"min-width:0"},h("h1",{},esc(S.config.businessName))+h("small",{},subTitle))+
       (lockEnabled(S.currentUser)?h("button",{class:"backbtn",title:"قفل الجهاز (رمز/بصمة)",onclick:"App.pinLockNow()",style:"min-width:36px;font-size:15px"},"🔒"):"")+
-      h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn abhide",title:"دليل الاستخدام",onclick:"App.help()",style:"min-width:36px;font-weight:900;font-size:15px"},"؟")+h("button",{id:"syncPill",class:"sync-pill"+(S._refreshing?" refreshing":""),title:"إعادة تحميل البيانات",onclick:"App.dataRefresh()"},'<svg class="rf-ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg><span>تحديث</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
+      h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn"+(S._refreshing?" refreshing":""),id:"refreshBtn",title:"إعادة تحميل البيانات (تحديث)",onclick:"App.dataRefresh()",style:"min-width:36px"},'<svg class="rf-ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>')+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
   var _u=rosterGet(S.currentUser)||{};var uname=_u.name||S.currentUser||"مستخدم";var urole=myRole();
   var drawer="<div class='bd' onclick='App.closeDrawer()'></div><aside class='drawer'>"+
     "<div class='dhead'><div class='dhrow'><div class='dlg'>"+LOGO_SVG+"</div><div style='min-width:0'><div class='dhn'>"+esc(S.config.businessName)+"</div><div class='dhs'>نظام تقارير اليومية</div></div><button class='dclose' title='إغلاق' onclick='App.closeDrawer()'>✕</button></div>"+
     "<div class='dsearch'><input id='navSearch' placeholder='ابحث في القائمة...' oninput='App.navSearch(this.value)'></div></div>"+
     "<div class='dnav' id='dnav'>"+navItems+"</div><div class='noresult' id='noresult'>لا نتائج</div>"+
-    "<div class='dfoot'><div class='fuser'><div class='fav'>"+esc(String(uname).slice(0,1))+"</div><div style='min-width:0;flex:1'><div class='fn'>"+esc(uname)+"</div><div class='fmeta'>"+esc(roleName(urole))+"</div></div></div><div class='dfoot-act'><button class='acctbtn' onclick='App.openAccount()'>👤 حسابي</button><button class='lo' onclick='App.logout()'>خروج ⤶</button></div></div></aside>";
+    "<div class='dfoot'><div class='fuser'><div class='fav'>"+esc(String(uname).slice(0,1))+"</div><div style='min-width:0;flex:1'><div class='fn'>"+esc(uname)+"</div><div class='fmeta'>"+esc(roleName(urole))+"</div></div></div><button onclick='App.closeDrawer();App.help()' style='width:100%;margin-bottom:9px;background:var(--field);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer'>؟ دليل الاستخدام</button><div class='dfoot-act'><button class='acctbtn' onclick='App.openAccount()'>👤 حسابي</button><button class='lo' onclick='App.logout()'>خروج ⤶</button></div></div></aside>";
   var body="";
   if(S.view==="dashboard")body=viewDashboard();
   else if(S.view==="entry")body=viewEntry();
@@ -4773,9 +4771,9 @@ window.App={
   /* زر «تحديث» بجانب الإشعارات — إعادة تحميل البيانات يدوياً (سحب أحدث نسخة + إعادة عرض) دون إعادة تحميل الصفحة كاملة */
   dataRefresh:function(){
     if(S._refreshing)return;S._refreshing=true;
-    var el=document.getElementById("syncPill");if(el)el.classList.add("refreshing");
+    var el=document.getElementById("refreshBtn");if(el)el.classList.add("refreshing");
     var t0=Date.now();
-    var fin=function(){var wait=Math.max(0,650-(Date.now()-t0));setTimeout(function(){S._refreshing=false;var e=document.getElementById("syncPill");if(e)e.classList.remove("refreshing");},wait);};
+    var fin=function(){var wait=Math.max(0,650-(Date.now()-t0));setTimeout(function(){S._refreshing=false;var e=document.getElementById("refreshBtn");if(e)e.classList.remove("refreshing");},wait);};
     try{
       if(fsMode()){fsResync().then(fin,fin);}
       else if(typeof syncOn==="function"&&syncOn()){cloudPull(false).then(function(){try{render()}catch(e){}fin();},fin);}
