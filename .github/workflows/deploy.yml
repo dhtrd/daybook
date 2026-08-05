@@ -1,0 +1,57 @@
+# نشر تلقائي إلى GitHub Pages — بعد إعداده مرة واحدة يكفيك رفع index.html فقط.
+# يقرأ رقم الإصدار من index.html ويحدّث sw.js و version.json تلقائياً قبل النشر،
+# فتبقى الملفات الثلاثة متطابقة دائماً دون أن ترفع سوى ملف واحد.
+name: نشر الموقع (GitHub Pages)
+
+on:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: جلب الملفات
+        uses: actions/checkout@v4
+
+      - name: مزامنة رقم الإصدار (sw.js + version.json) من index.html
+        run: |
+          VER=$(grep -oE 'APP_VERSION="[0-9]+\.[0-9]+\.[0-9]+"' index.html | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+          echo "الإصدار المكتشف: ${VER:-غير معروف}"
+          if [ -n "$VER" ]; then
+            if [ -f sw.js ]; then
+              sed -i -E "s/const APP_VERSION *= *\"[^\"]*\"/const APP_VERSION = \"$VER\"/" sw.js
+            fi
+            if [ -f version.json ]; then
+              SCHEMA=$(grep -oE '"schema"[[:space:]]*:[[:space:]]*[0-9]+' version.json | grep -oE '[0-9]+' | head -1)
+              SCHEMA=${SCHEMA:-5}
+              printf '{\n  "version": "%s",\n  "schema": %s,\n  "releasedAt": "%s"\n}\n' "$VER" "$SCHEMA" "$(date +%F)" > version.json
+            fi
+            echo "--- sw.js ---"; grep APP_VERSION sw.js || true
+            echo "--- version.json ---"; cat version.json || true
+          fi
+
+      - name: تهيئة Pages
+        uses: actions/configure-pages@v5
+
+      - name: تجهيز ملفات الموقع
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+
+      - name: النشر إلى GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
