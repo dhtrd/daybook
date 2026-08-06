@@ -1979,7 +1979,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.22";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.23";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -4548,16 +4548,27 @@ var IDLE={last:0,timer:null,warnEl:null,origTitle:"",thr:0};
 function idleCfg(){var s=(S.config&&S.config.session)||{};var idleMs=Math.max(1,num(s.idleMin)||10)*60000;var warnMs=Math.max(1,num(s.warnSec)||10)*1000;if(warnMs>=idleMs)warnMs=Math.max(1000,Math.floor(idleMs*0.5));return {idleMs:idleMs,warnMs:warnMs};}
 function idleReset(){var now=Date.now();if(now-IDLE.thr<700)return;IDLE.thr=now;IDLE.last=now;if(IDLE.warnEl)idleHideWarn();}
 function idleHideWarn(){if(IDLE.warnEl){IDLE.warnEl.remove();IDLE.warnEl=null;}if(IDLE.origTitle){try{document.title=IDLE.origTitle}catch(e){}IDLE.origTitle="";}}
-function idleShowWarn(){if(IDLE.warnEl)return;var d=document.createElement("div");d.id="idleWarn";d.className="idle-warn";
-  d.innerHTML="<div class='idle-card'><div class='idle-ic'>⏳</div><h3>هل ما زلت هنا؟</h3><p>سيُسجَّل خروجك تلقائياً بعد <b id='idleSec'>?</b> ثانية بسبب عدم النشاط.</p><div class='idle-track'><div id='idleBar' class='idle-fill'></div></div><div style='display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px'><button class='btn' onclick='App.idleStay()'>البقاء متّصلاً</button><button class='btn ghost' onclick='App.logout()'>تسجيل الخروج الآن</button></div></div>";
+function idleShowWarn(){if(IDLE.warnEl)return;var lk=lockEnabled(S.currentUser);
+  /* الرسالة والزرّ يتبعان حالة الوصول السريع: إن كان مفعّلاً فالخمول يقفل الجهاز (يُفتح بالبصمة/الرمز) لا يسجّل الخروج. */
+  var msg=lk?"سيُقفل الجهاز تلقائياً بعد <b id='idleSec'>?</b> ثانية بسبب عدم النشاط — افتحه بالبصمة أو الرمز.":"سيُسجَّل خروجك تلقائياً بعد <b id='idleSec'>?</b> ثانية بسبب عدم النشاط.";
+  var actBtn=lk?"<button class='btn ghost' onclick='App.pinLockNow()'>قفل الآن</button>":"<button class='btn ghost' onclick='App.logout()'>تسجيل الخروج الآن</button>";
+  var d=document.createElement("div");d.id="idleWarn";d.className="idle-warn";
+  d.innerHTML="<div class='idle-card'><div class='idle-ic'>⏳</div><h3>هل ما زلت هنا؟</h3><p>"+msg+"</p><div class='idle-track'><div id='idleBar' class='idle-fill'></div></div><div style='display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px'><button class='btn' onclick='App.idleStay()'>البقاء متّصلاً</button>"+actBtn+"</div></div>";
   document.body.appendChild(d);IDLE.warnEl=d;}
 function idleTick(){
-  if(!S.currentUser)return;var cfg=idleCfg();var remain=cfg.idleMs-(Date.now()-IDLE.last);
-  if(remain<=0){idleHideWarn();try{firebase.auth().signOut()}catch(e){try{location.reload()}catch(_){}}return;}
+  if(!S.currentUser)return;
+  if(PINUI.el&&PINUI.mode==="lock")return;                 /* الجهاز مقفل بالفعل — نوقف عدّاد الخمول حتى الفتح */
+  var cfg=idleCfg();var remain=cfg.idleMs-(Date.now()-IDLE.last);
+  if(remain<=0){idleHideWarn();
+    /* انقضت مهلة السكون: إن كان الوصول السريع مفعّلاً (رمز/بصمة) نعرض شاشة القفل السريع مع بقاء الجلسة قائمة،
+       فيعود المستخدم بالبصمة/الرمز لا بكلمة المرور. وإلا نسجّل الخروج إلى شاشة الدخول كالسابق. */
+    if(lockEnabled(S.currentUser)){try{pinOpen("lock")}catch(e){try{firebase.auth().signOut()}catch(_){}}}
+    else{try{firebase.auth().signOut()}catch(e){try{location.reload()}catch(_){}}}
+    return;}
   if(remain<=cfg.warnMs){var sec=Math.max(0,Math.ceil(remain/1000));idleShowWarn();
     var el=document.getElementById("idleSec");if(el)el.textContent=sec;
     var bar=document.getElementById("idleBar");if(bar)bar.style.width=Math.max(0,Math.min(100,remain/cfg.warnMs*100))+"%";
-    if(document.hidden){if(!IDLE.origTitle)IDLE.origTitle=document.title||"نظام تقارير اليومية";try{document.title="⏳ "+sec+"ث — تسجيل الخروج"}catch(e){}}
+    if(document.hidden){if(!IDLE.origTitle)IDLE.origTitle=document.title||"نظام تقارير اليومية";try{document.title="⏳ "+sec+"ث — "+(lockEnabled(S.currentUser)?"قفل الجهاز":"تسجيل الخروج")}catch(e){}}
     else if(IDLE.origTitle){try{document.title=IDLE.origTitle}catch(e){}IDLE.origTitle="";}
   } else if(IDLE.warnEl){idleHideWarn();}
 }
