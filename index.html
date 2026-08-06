@@ -1979,7 +1979,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.23";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.24";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -3155,14 +3155,13 @@ function render(){
       "<button class='burger' title='القائمة' onclick='App.toggleDrawer()'>☰</button>"+
       backBtn+h("div",{class:"logo"},LOGO_SVG)+
       h("div",{style:"min-width:0"},h("h1",{},esc(S.config.businessName))+h("small",{},subTitle))+
-      (lockEnabled(S.currentUser)?h("button",{class:"backbtn",title:"قفل الجهاز (رمز/بصمة)",onclick:"App.pinLockNow()",style:"min-width:36px;font-size:15px"},"🔒"):"")+
-      h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn"+(S._refreshing?" refreshing":""),id:"refreshBtn",title:"تحديث التطبيق",onclick:"App.appUpdate()",style:"min-width:36px"},'<svg class="rf-ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>')+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:"تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""),onclick:"App.logout()",style:"min-width:36px;font-weight:900;font-size:16px"},"⤶"))));
+      h("button",{class:"backbtn",title:"المظهر (فاتح/داكن)",onclick:"App.toggleTheme()",style:"min-width:36px;font-size:16px"},curTheme()==="dark"?"☀":"🌙")+notifBell()+h("button",{class:"backbtn"+(S._refreshing?" refreshing":""),id:"refreshBtn",title:"تحديث التطبيق",onclick:"App.appUpdate()",style:"min-width:36px"},'<svg class="rf-ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>')+h("button",{id:"syncPill",class:"sync-pill",onclick:"App.syncPillGo()"},'<span class="sync-dot"></span><span>—</span>')+h("button",{class:"backbtn",title:(lockEnabled(S.currentUser)?"قفل الجهاز (رمز/بصمة)":("تسجيل الخروج"+(S.currentUser?" ("+esc(S.currentUser)+")":""))),onclick:"App.lockOrLogout()",style:"min-width:36px;font-weight:900;font-size:16px"},lockEnabled(S.currentUser)?"🔒":"⤶"))));
   var _u=rosterGet(S.currentUser)||{};var uname=_u.name||S.currentUser||"مستخدم";var urole=myRole();
   var drawer="<div class='bd' onclick='App.closeDrawer()'></div><aside class='drawer'>"+
     "<div class='dhead'><div class='dhrow'><div class='dlg'>"+LOGO_SVG+"</div><div style='min-width:0'><div class='dhn'>"+esc(S.config.businessName)+"</div><div class='dhs'>نظام تقارير اليومية</div></div><button class='dclose' title='إغلاق' onclick='App.closeDrawer()'>✕</button></div>"+
     "<div class='dsearch'><input id='navSearch' placeholder='ابحث في القائمة...' oninput='App.navSearch(this.value)'></div></div>"+
     "<div class='dnav' id='dnav'>"+navItems+"</div><div class='noresult' id='noresult'>لا نتائج</div>"+
-    "<div class='dfoot'><div class='fuser'><div class='fav'>"+esc(String(uname).slice(0,1))+"</div><div style='min-width:0;flex:1'><div class='fn'>"+esc(uname)+"</div><div class='fmeta'>"+esc(roleName(urole))+"</div></div></div><button onclick='App.closeDrawer();App.help()' style='width:100%;margin-bottom:9px;background:var(--field);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer'>؟ دليل الاستخدام</button><div class='dfoot-act'><button class='acctbtn' onclick='App.openAccount()'>👤 حسابي</button><button class='lo' onclick='App.logout()'>خروج ⤶</button></div></div></aside>";
+    "<div class='dfoot'><div class='fuser'><div class='fav'>"+esc(String(uname).slice(0,1))+"</div><div style='min-width:0;flex:1'><div class='fn'>"+esc(uname)+"</div><div class='fmeta'>"+esc(roleName(urole))+"</div></div></div><button onclick='App.closeDrawer();App.help()' style='width:100%;margin-bottom:9px;background:var(--field);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer'>؟ دليل الاستخدام</button><div class='dfoot-act'><button class='acctbtn' onclick='App.openAccount()'>👤 حسابي</button><button class='lo' onclick='App.lockOrLogout()'>"+(lockEnabled(S.currentUser)?"🔒 قفل":"خروج ⤶")+"</button></div></div></aside>";
   var body="";
   if(S.view==="dashboard")body=viewDashboard();
   else if(S.view==="entry")body=viewEntry();
@@ -4911,13 +4910,16 @@ window.App={
   setIdleMin:function(v){var n=Math.max(1,Math.min(240,Math.round(num(v))||10));S.config.session=S.config.session||{};S.config.session.idleMin=n;saveConfig();render();toast("مهلة الخمول: "+n+" دقيقة")},
   setWarnSec:function(v){var n=Math.max(3,Math.min(120,Math.round(num(v))||10));S.config.session=S.config.session||{};S.config.session.warnSec=n;saveConfig();render();toast("مدة التنبيه: "+n+" ثانية")},
   navSearch:function(q){q=(q||"").trim();var any=false;var items=document.querySelectorAll("#dnav .di");Array.prototype.forEach.call(items,function(el){var lbl=el.getAttribute("data-lbl")||"",dsc=el.getAttribute("data-dsc")||"";var hit=!q||lbl.indexOf(q)>=0||dsc.indexOf(q)>=0;el.style.display=hit?"":"none";if(hit)any=true});var nr=document.getElementById("noresult");if(nr)nr.style.display=any?"none":"block"},
-  login:function(e){if(e&&e.preventDefault)e.preventDefault();var em=(document.getElementById("authEmail").value||"").trim().toLowerCase();var pw=document.getElementById("authPw").value;var btn=document.getElementById("authBtn");var err=document.getElementById("authErr");if(err)err.classList.remove("show");var ok=true;var eF=document.getElementById("emailF"),pF=document.getElementById("pwF");if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){if(eF){eF.classList.add("bad");setTimeout(function(){eF.classList.remove("bad")},420)}var eh=document.getElementById("emailH");if(eh)eh.textContent="أدخل بريداً صحيحاً";ok=false}if((pw||"").length<6){if(pF){pF.classList.add("bad");setTimeout(function(){pF.classList.remove("bad")},420)}var ph=document.getElementById("pwH");if(ph)ph.textContent="كلمة المرور 6 أحرف على الأقل";ok=false}if(!ok)return false;if(btn){btn.classList.add("load")}var doSignIn=function(){firebase.auth().signInWithEmailAndPassword(em,pw).catch(function(ex){if(btn){btn.classList.remove("load")}if(err){err.textContent=authErrMsg(ex);err.classList.add("show")}})};try{var rem=document.getElementById("authRem");var keep=!rem||rem.classList.contains("on");var P=firebase.auth.Auth.Persistence;firebase.auth().setPersistence(keep?P.LOCAL:P.SESSION).then(doSignIn).catch(doSignIn);}catch(_e){doSignIn();}return false},
+  login:function(e){if(e&&e.preventDefault)e.preventDefault();var em=(document.getElementById("authEmail").value||"").trim().toLowerCase();var pw=document.getElementById("authPw").value;var btn=document.getElementById("authBtn");var err=document.getElementById("authErr");if(err)err.classList.remove("show");var ok=true;var eF=document.getElementById("emailF"),pF=document.getElementById("pwF");if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){if(eF){eF.classList.add("bad");setTimeout(function(){eF.classList.remove("bad")},420)}var eh=document.getElementById("emailH");if(eh)eh.textContent="أدخل بريداً صحيحاً";ok=false}if((pw||"").length<6){if(pF){pF.classList.add("bad");setTimeout(function(){pF.classList.remove("bad")},420)}var ph=document.getElementById("pwH");if(ph)ph.textContent="كلمة المرور 6 أحرف على الأقل";ok=false}if(!ok)return false;_freshLogin=true;if(btn){btn.classList.add("load")}var doSignIn=function(){firebase.auth().signInWithEmailAndPassword(em,pw).catch(function(ex){if(btn){btn.classList.remove("load")}if(err){err.textContent=authErrMsg(ex);err.classList.add("show")}})};try{var rem=document.getElementById("authRem");var keep=!rem||rem.classList.contains("on");var P=firebase.auth.Auth.Persistence;firebase.auth().setPersistence(keep?P.LOCAL:P.SESSION).then(doSignIn).catch(doSignIn);}catch(_e){doSignIn();}return false},
   pwReveal:function(b){var i=b.previousElementSibling;if(i){i.type=(i.type==="password"?"text":"password");b.textContent=(i.type==="password"?"👁":"🙈")}},
   authTogglePw:function(el){var on=el.classList.toggle("on");var b=el.querySelector(".b");if(b)b.textContent=on?"✓":"";var i=document.getElementById("authPw");if(i){i.type=on?"text":"password";i.classList.remove("reveal");void i.offsetWidth;if(on)i.classList.add("reveal")}},
   authToggleRem:function(el){var on=el.classList.toggle("on");var b=el.querySelector(".b");if(b)b.textContent=on?"✓":""},
   authValid:function(which){if(which==="email"){var f=document.getElementById("emailF"),i=document.getElementById("authEmail");if(f&&i)f.classList.toggle("valid",/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i.value||""));var eh=document.getElementById("emailH");if(eh)eh.textContent=""}else{var pf=document.getElementById("pwF"),pi=document.getElementById("authPw");if(pf&&pi)pf.classList.toggle("valid",(pi.value||"").length>=6);var ph=document.getElementById("pwH");if(ph)ph.textContent=""}},
   authMode:function(){var d=document.documentElement.getAttribute("data-mode")==="dark";var t=d?"light":"dark";try{localStorage.setItem("dsr_mode",t)}catch(e){}document.documentElement.setAttribute("data-mode",t)},
   logout:function(){openConfirm({title:"تسجيل الخروج؟",body:"سيُطلب منك تسجيل الدخول مرة أخرى.",confirm:"خروج",onOk:function(){try{releaseLock()}catch(e){}try{firebase.auth().signOut()}catch(e){location.reload()}}})},
+  /* عند تفعيل الوصول السريع: زر الخروج/الإغلاق يقفل الجهاز (رمز/بصمة) مع بقاء الجلسة بدل تسجيل الخروج الكامل.
+     تسجيل الخروج الكامل يبقى متاحاً من شاشة القفل («تسجيل الخروج بدلاً من ذلك»). */
+  lockOrLogout:function(){if(lockEnabled(S.currentUser)){pinOpen("lock");}else{App.logout();}},
   usrCreate:function(){var name=(document.getElementById("uName").value||"").trim(),em=(document.getElementById("uEmail").value||"").trim().toLowerCase(),pw=document.getElementById("uPw").value,role=document.getElementById("uRole").value;
     var mustPw=!!(document.getElementById("uMustPw")&&document.getElementById("uMustPw").checked);
     if(!name||!em||!pw){toast("أكمل الاسم والبريد وكلمة المرور","err");return}if(pw.length<6){toast("كلمة المرور 6 أحرف على الأقل","err");return}if(rosterGet(em)){toast("هذا البريد مضاف مسبقاً","err");return}
@@ -5669,6 +5671,7 @@ function showLogin(msg){removeSplash();var g=document.getElementById("authGate")
 function hideLogin(){var g=document.getElementById("authGate");if(g)g.remove();document.documentElement.classList.remove("authing");}
 
 var _authStarted=false;
+var _freshLogin=false;   /* صحيح فقط أثناء دخول طازج بالبريد وكلمة المرور — يمنع طلب القفل السريع فوق مصادقة تمّت للتوّ */
 async function onSignedIn(user){
   var email=(user.email||"").toLowerCase();
   ensureOwner();
@@ -5702,7 +5705,11 @@ function enterApp(email){
   hideLogin();var g=document.getElementById("pwGate");if(g)g.remove();document.documentElement.classList.remove("authing");
   if(!canSee(S.view))S.view="dashboard";
   loadDay(S.curDate);render();
-  if(lockEnabled(email)&&pinIsLocked(email)){pinOpen("lock");}  /* بقي الجهاز مقفلاً قبل إعادة التحميل — رمز أو بصمة (النقطتان ١٢ و٦) */
+  /* القفل عند العودة: أي فتح للتطبيق بجلسة قائمة (إعادة فتح/تحديث/انتهاء سكون) مع تفعيل الوصول السريع ⇐ شاشة القفل السريع (رمز/بصمة).
+     أمّا الدخول الطازج بالبريد وكلمة المرور فلا يُقفَل — المستخدم وثّق نفسه للتوّ. وتسجيل الخروج الكامل يبقى من شاشة القفل. */
+  if(_freshLogin){try{pinSetLocked(email,false)}catch(e){}}
+  else if(lockEnabled(email)){pinOpen("lock");}
+  _freshLogin=false;
   maybeSecurityPrompt(email);                                   /* أول دخول من جهاز: اقترح تفعيل القفل/الدخول السريع (يُعرض مرة واحدة لكل جهاز) */
   maybeDailyLocalBackup();                                       /* نسخة احتياطية يومية على الجهاز — النقطة ٧ */
   setTimeout(checkDailyReminder,2500);                           /* تذكير يومي ذكي — النقطة ٨ */
