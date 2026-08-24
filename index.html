@@ -1935,6 +1935,8 @@ function ensureBranch(name){name=String(name||"").trim();if(!name)return"";var b
 function rowBranchId(r){if(r.branchId)return r.branchId;var b=branchByName(r.branch||"");return b?b.id:"";}
 function num(v){if(v===""||v==null)return 0;var n=typeof v==="number"?v:parseFloat(String(v).replace(/,/g,"").replace(/[^\d.\-]/g,""));return isNaN(n)?0:n}
 function fmt(v){return num(v).toLocaleString("en-US",{maximumFractionDigits:2})}
+/* رمز العملة القابل للتغيير — الافتراضي رمز الريال السعودي الجديد (U+20C1). عرضٌ فقط، لا يمسّ الأرقام أو المعادلات. */
+function curSym(){var s=(S&&S.config&&S.config.currencySymbol);return (s==null||s==="")?"⃁":String(s);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function pad(n){return String(n).padStart(2,"0")}
 function todayISO(){var d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
@@ -1979,7 +1981,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.24";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.25";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -2025,7 +2027,7 @@ var S={config:null,data:{},view:"dashboard",prevView:"dashboard",curDate:todayIS
 
 function defaultConfig(){return{businessName:"تقرير اليومية",openingBalance:0,branches:DEFAULT_BRANCHES.map(function(n){return{id:uuid(),name:n}}),
   methods:DEFAULT_METHODS.map(function(m){return{id:m.id,label:m.label}}),companyLogo:"",imports:[],trash:[],users:{},
-  session:{idleMin:10,warnSec:10},
+  session:{idleMin:10,warnSec:10},currencySymbol:"⃁",
   dropbox:{appKey:"",refreshToken:"",enabled:false}}}
 function blankDay(date){return{uuid:uuid(),date:date,dateTo:"",rows:[],expenses:[],incomes:[],bankDeposit:0,createdAt:null,updatedAt:null,printedAt:null}}
 
@@ -2069,6 +2071,7 @@ async function loadAll(){
   if(!cfg.dropbox)cfg.dropbox={appKey:"",refreshToken:"",enabled:false};
   if(!cfg.users||typeof cfg.users!=="object")cfg.users={};
   if(!cfg.session||typeof cfg.session!=="object")cfg.session={idleMin:10,warnSec:10};
+  if(cfg.currencySymbol==null||cfg.currencySymbol==="")cfg.currencySymbol="⃁";
   if(cfg.companyLogo==null)cfg.companyLogo="";
   if(!Array.isArray(cfg.imports))cfg.imports=[];
   if(!Array.isArray(cfg.trash))cfg.trash=[];
@@ -2689,10 +2692,10 @@ function gsResults(q){
       if(r.sales!=null&&String(r.sales).indexOf(q)>=0)hit("مبلغ","",d,fmt(r.sales),"مبيعات "+(r.branch||""));
     });
     (day.expenses||[]).forEach(function(e){
-      if((e.details&&nrm(e.details).indexOf(q)>=0)||(e.amount!=null&&String(e.amount).indexOf(q)>=0))hit("مصروف","t-exp",d,e.details||fmt(e.amount),fmt(e.amount)+" ر.س");
+      if((e.details&&nrm(e.details).indexOf(q)>=0)||(e.amount!=null&&String(e.amount).indexOf(q)>=0))hit("مصروف","t-exp",d,e.details||fmt(e.amount),fmt(e.amount)+" "+curSym()+"");
     });
     (day.incomes||[]).forEach(function(e){
-      if((e.details&&nrm(e.details).indexOf(q)>=0)||(e.amount!=null&&String(e.amount).indexOf(q)>=0))hit("إيراد","t-inc",d,e.details||fmt(e.amount),fmt(e.amount)+" ر.س");
+      if((e.details&&nrm(e.details).indexOf(q)>=0)||(e.amount!=null&&String(e.amount).indexOf(q)>=0))hit("إيراد","t-inc",d,e.details||fmt(e.amount),fmt(e.amount)+" "+curSym()+"");
     });
     if(day.bankDeposit!=null&&String(day.bankDeposit).indexOf(q)>=0&&num(day.bankDeposit))hit("إيداع بنكي","",d,fmt(day.bankDeposit),"الإيداع البنكي");
   });
@@ -2725,7 +2728,7 @@ function repItems(){
     "<label class='fld'><span>من تاريخ</span>"+dateBtn("itFrom",cc.r.from)+"</label>"+
     "<label class='fld'><span>إلى تاريخ</span>"+dateBtn("itTo",cc.r.to)+"</label>"+
     "<button class='btn brass' onclick='App.printItems()'>"+IC.print+" طباعة (حسب الفلترة)</button>");
-  var kpis=h("div",{class:"grid kpis"},kpi("عدد البنود",cc.list.length,"","")+ (cc.type!=="inc"?kpi("المصروفات",fmt(cc.te),"ر.س","neg"):"")+(cc.type!=="exp"?kpi("الإيرادات",fmt(cc.ti),"ر.س","pos"):"")+(cc.type==="both"?kpi("الصافي",fmt(cc.ti-cc.te),"ر.س","brass"):""));
+  var kpis=h("div",{class:"grid kpis"},kpi("عدد البنود",cc.list.length,"","")+ (cc.type!=="inc"?kpi("المصروفات",fmt(cc.te),curSym(),"neg"):"")+(cc.type!=="exp"?kpi("الإيرادات",fmt(cc.ti),curSym(),"pos"):"")+(cc.type==="both"?kpi("الصافي",fmt(cc.ti-cc.te),curSym(),"brass"):""));
   return bar+kpis+h("div",{class:"card"},cardHead("بنود المصروفات والإيرادات","التصفية باليوم (اضغط أي بند لفتح تقرير يومه) · لا يُخزَّن وقت للبنود")+"<div class='tw'>"+itemsTableHTML(cc,false)+"</div>");
 }
 
@@ -2776,7 +2779,7 @@ function kioskRender(){
   else{var day=S.data[d],c=computeDay(day,S.config),bal=balances();
     var rows=(day.rows||[]).filter(function(r){return r.branch}).map(function(r){var non=S.config.methods.reduce(function(a,m){return a+num((r.pays||{})[m.id])},0);
       return "<tr><td style='font-weight:700'>"+esc(r.branch)+"</td><td class='num'>"+fmt(r.sales)+"</td><td class='num'>"+fmt(num(r.sales)-non)+"</td></tr>"}).join("");
-    body=h("div",{class:"grid kpis"},kpi("المبيعات",fmt(c.sales),"ر.س","brass")+kpi("النقد",fmt(c.cash),"ر.س","pos")+kpi("الإجمالي النقدي",fmt(c.cashTotal),"ر.س","")+kpi("باقي الرصيد",fmt(bal[d].carried),"ر.س",""))+
+    body=h("div",{class:"grid kpis"},kpi("المبيعات",fmt(c.sales),curSym(),"brass")+kpi("النقد",fmt(c.cash),curSym(),"pos")+kpi("الإجمالي النقدي",fmt(c.cashTotal),curSym(),"")+kpi("باقي الرصيد",fmt(bal[d].carried),curSym(),""))+
       h("div",{class:"card"},cardHead("يومية "+prettyDate(d)+" (رقم "+dayNo(d)+")","عرض فقط — يتحدّث تلقائياً")+"<div class='tw'><table><thead><tr><th>الفرع</th><th>المبيعات</th><th>النقد</th></tr></thead><tbody>"+(rows||"<tr><td colspan='3' class='emptyline'>لا صفوف</td></tr>")+"</tbody></table></div>");}
   var out="<div class='appbar'><div class='appbar-in'><div class='brand'><div class='logo'>"+LOGO_SVG+"</div><div><h1>"+esc(S.config.businessName)+"</h1><small>شاشة عرض — قراءة فقط</small></div></div></div></div>"+h("main",{},body);
   var ap=document.getElementById("app");if(ap)ap.innerHTML=out;
@@ -3198,7 +3201,7 @@ function weekGlance(){
   var top=Object.keys(a.br).sort(function(x,y){return a.br[y]-a.br[x]}).slice(0,5);
   var rows=top.map(function(n){return "<tr><td style='font-weight:700'>"+esc(n)+"</td><td class='num'>"+fmt(a.br[n])+arw(a.br[n],b.br[n]||0)+"</td></tr>"}).join("");
   return h("div",{class:"card"},cardHead("أسبوع في لمحة","آخر 7 أيام مقابل الأسبوع السابق")+
-    "<div class='grid kpis' style='margin-bottom:10px'>"+kpi("مبيعات الأسبوع",fmt(a.sales)+arw(a.sales,b.sales),"ر.س","brass")+kpi("نقد الأسبوع",fmt(a.cash)+arw(a.cash,b.cash),"ر.س","pos")+"</div>"+
+    "<div class='grid kpis' style='margin-bottom:10px'>"+kpi("مبيعات الأسبوع",fmt(a.sales)+arw(a.sales,b.sales),curSym(),"brass")+kpi("نقد الأسبوع",fmt(a.cash)+arw(a.cash,b.cash),curSym(),"pos")+"</div>"+
     (rows?"<div class='tw'><table><thead><tr><th>أعلى الفروع</th><th>مبيعات الأسبوع</th></tr></thead><tbody>"+rows+"</tbody></table></div>":""));
 }
 /* دائري طرق الدفع (conic) ببيانات حقيقية */
@@ -3249,12 +3252,12 @@ function viewDashboard(){
 
   // ===== بطاقات المؤشرات (kdefs حرفياً) — صنف .kpi ليعمل animateKpis =====
   var kdefs=[["المبيعات",agg.sales,"brass"],["النقد",agg.cash,"acc"],["المصروفات",agg.exp,""],["الإيرادات",agg.inc,"acc"],["الإجمالي النقدي",agg.total,"brass"],["باقي الرصيد",carriedNow,"acc"]];
-  var kpiRow="<div class='kpirow'>"+kdefs.map(function(k){return "<div class='card kpi "+k[2]+"'><div class='lbl'>"+k[0]+"</div><div class='val num'>"+fmt(k[1])+"<u> ر.س</u></div></div>"}).join("")+"</div>";
+  var kpiRow="<div class='kpirow'>"+kdefs.map(function(k){return "<div class='card kpi "+k[2]+"'><div class='lbl'>"+k[0]+"</div><div class='val num'>"+fmt(k[1])+"<u> "+curSym()+"</u></div></div>"}).join("")+"</div>";
 
   // ===== المخطط + الدائري + الفروع (بيانات حقيقية حرفية) =====
   var chartCard="<div class='card'><div class='ch'><h3>المبيعات اليومية</h3><span class='sp'></span><span class='t' style='cursor:default'>"+days.length+" يوم</span></div><div class='cwrap'>"+combo(chart)+"</div><div class='legend'><span><i style='background:var(--acc);opacity:.4'></i>مبيعات يومية</span><span><i style='background:var(--acc)'></i>الاتجاه</span></div></div>";
   var payCard=paySegs.length?"<div class='card'><div class='ch'><h3>توزيع طرق الدفع</h3></div>"+v2donut(paySegs)+"</div>":"";
-  var brCard=topBr.length?"<div class='card'><div class='ch'><h3>أعلى الفروع</h3><span class='sp'></span><span class='t' style='cursor:default'>هذه الفترة</span></div>"+topBr.map(function(nm){return "<div class='lrow'><span class='lav'>"+esc(String(nm).slice(0,1))+"</span><span style='flex:1'>"+esc(nm)+"</span><b class='num'>"+fmt(brAgg[nm])+" ر.س</b></div>"}).join("")+"</div>":"";
+  var brCard=topBr.length?"<div class='card'><div class='ch'><h3>أعلى الفروع</h3><span class='sp'></span><span class='t' style='cursor:default'>هذه الفترة</span></div>"+topBr.map(function(nm){return "<div class='lrow'><span class='lav'>"+esc(String(nm).slice(0,1))+"</span><span style='flex:1'>"+esc(nm)+"</span><b class='num'>"+fmt(brAgg[nm])+" "+curSym()+"</b></div>"}).join("")+"</div>":"";
 
   // ===== تنبيهات ذكية (من notifList الحقيقية) =====
   var alerts=notifList();var akind={warn:"w",info:"i",ok:"g"};
@@ -3498,7 +3501,7 @@ function balanceBeforeCard(d,c,prev,carried){
     "<label class='rowline'><span>رصيد سابق (تراكمي)"+(manual?" <b style='color:var(--brass);font-weight:700;font-size:11px'>مثبّت</b>":"")+" <button class='link' style='font-size:11px' onclick='App.carryAuto()'>تلقائي</button></span><input id='carryIn' inputmode='decimal'"+(d.locked?" disabled":"")+" value='"+(prev)+"' style='width:150px;text-align:left;font-weight:700' oninput='App.carry(this)' onchange='App.amtDone(this,\"carry\")'></label>"+
     "<div class='rowline'><span>+ نقد المبيعات</span><b id='cc-cash' style='color:var(--pos)'>"+fmt(c.cash)+"</b></div>"+
     "<label class='rowline'><span>− الإيداع البنكي</span><input id='bankDep' inputmode='decimal'"+(d.locked?" disabled":"")+" value='"+(d.bankDeposit||"")+"' placeholder='0' style='width:150px;text-align:left' oninput='App.bank(this)' onchange='App.amtDone(this,\"bank\")'></label>"+
-    "<div class='rowline big'><span>باقي الرصيد (يُرحّل)</span><b id='cc-carried' class='carval"+((d.tmarks&&d.tmarks.carried)?" c-"+d.tmarks.carried:"")+"' title='اضغط لتلوين التحقق' onclick='App.cmark()'>"+fmt(carried)+" ر.س</b></div>");
+    "<div class='rowline big'><span>باقي الرصيد (يُرحّل)</span><b id='cc-carried' class='carval"+((d.tmarks&&d.tmarks.carried)?" c-"+d.tmarks.carried:"")+"' title='اضغط لتلوين التحقق' onclick='App.cmark()'>"+fmt(carried)+" "+curSym()+"</b></div>");
 }
 function finalTotalCard(d,c){
   return h("div",{class:"card"},cardHead("الإجمالي النقدي","يُحسب أخيراً بعد المصروفات والإيرادات")+
@@ -3506,15 +3509,15 @@ function finalTotalCard(d,c){
     "<div class='rowline'><span>− المصروفات</span><b id='cc-exp' style='color:var(--neg)'>"+fmt(c.totalExpenses)+"</b></div>"+
     "<div class='rowline'><span>= صافي النقد</span><b id='cc-net'>"+fmt(c.netCash)+"</b></div>"+
     "<div class='rowline'><span>+ الإيرادات</span><b id='cc-inc' style='color:var(--pos)'>"+fmt(c.totalIncome)+"</b></div>"+
-    "<div class='rowline big'><span>الإجمالي النقدي</span><b id='cc-total'>"+fmt(c.cashTotal)+" ر.س</b></div>");
+    "<div class='rowline big'><span>الإجمالي النقدي</span><b id='cc-total'>"+fmt(c.cashTotal)+" "+curSym()+"</b></div>");
 }
 function expensesCard(d,c){
   var LK=d.locked?" disabled":"";var _fx=(S._flashItem==="exp");if(_fx)S._flashItem=null;var list=(d.expenses||[]).map(function(e,i){return "<div class='exp-row"+((_fx&&i===(d.expenses.length-1))?" row-in":"")+"'><input"+LK+" inputmode='decimal' placeholder='المبلغ' value='"+(e.amount==null?"":e.amount)+"' style='width:120px' data-k='exp' data-i='"+i+"' data-f='amount' oninput='App.exp("+i+",\"amount\",this)' onchange='App.itemDone(this,\"exp\","+i+")' onkeydown='App.itemKey(event,this,\"exp\","+i+")'><input"+LK+" placeholder='التفاصيل' value='"+esc(e.details||"")+"' style='flex:1' data-k='exp' data-i='"+i+"' data-f='details' oninput='App.exp("+i+",\"details\",this.value)' onkeydown='App.itemKey(event,this,\"exp\","+i+")'><button class='iconbtn danger' onclick='App.delExp("+i+")'>"+IC.x+"</button></div>"}).join("");
-  return h("div",{class:"card"},cardHead("المصروفات",'<button class="link" onclick="App.addExp()">'+IC.plus+' إضافة</button>')+((d.expenses||[]).length?"":"<div class='emptyline'>لا مصروفات</div>")+list+"<div class='rowline' style='margin-top:6px'><span>اجمالي المصروفات</span><b id='expTot' style='color:var(--neg)'>"+fmt(c.totalExpenses)+" ر.س</b></div>");
+  return h("div",{class:"card"},cardHead("المصروفات",'<button class="link" onclick="App.addExp()">'+IC.plus+' إضافة</button>')+((d.expenses||[]).length?"":"<div class='emptyline'>لا مصروفات</div>")+list+"<div class='rowline' style='margin-top:6px'><span>اجمالي المصروفات</span><b id='expTot' style='color:var(--neg)'>"+fmt(c.totalExpenses)+" "+curSym()+"</b></div>");
 }
 function incomesCard(d,c){
   var LK=d.locked?" disabled":"";var _fx=(S._flashItem==="inc");if(_fx)S._flashItem=null;var list=(d.incomes||[]).map(function(e,i){return "<div class='exp-row"+((_fx&&i===(d.incomes.length-1))?" row-in":"")+"'><input"+LK+" inputmode='decimal' placeholder='المبلغ' value='"+(e.amount==null?"":e.amount)+"' style='width:120px' data-k='inc' data-i='"+i+"' data-f='amount' oninput='App.inc("+i+",\"amount\",this)' onchange='App.itemDone(this,\"inc\","+i+")' onkeydown='App.itemKey(event,this,\"inc\","+i+")'><input"+LK+" placeholder='التفاصيل' value='"+esc(e.details||"")+"' style='flex:1' data-k='inc' data-i='"+i+"' data-f='details' oninput='App.inc("+i+",\"details\",this.value)' onkeydown='App.itemKey(event,this,\"inc\","+i+")'><button class='iconbtn danger' onclick='App.delInc("+i+")'>"+IC.x+"</button></div>"}).join("");
-  return h("div",{class:"card"},cardHead("الإيرادات (تُضاف للنقد)",'<button class="link" onclick="App.addInc()">'+IC.plus+' إضافة</button>')+((d.incomes||[]).length?"":"<div class='emptyline'>لا إيرادات إضافية</div>")+list+"<div class='rowline' style='margin-top:6px'><span>اجمالي الإيرادات</span><b id='incTot' style='color:var(--pos)'>"+fmt(c.totalIncome)+" ر.س</b></div>");
+  return h("div",{class:"card"},cardHead("الإيرادات (تُضاف للنقد)",'<button class="link" onclick="App.addInc()">'+IC.plus+' إضافة</button>')+((d.incomes||[]).length?"":"<div class='emptyline'>لا إيرادات إضافية</div>")+list+"<div class='rowline' style='margin-top:6px'><span>اجمالي الإيرادات</span><b id='incTot' style='color:var(--pos)'>"+fmt(c.totalIncome)+" "+curSym()+"</b></div>");
 }
 function auditText(d){return (d.createdAt?"<span>أُنشئ: <b>"+d.createdAt+"</b></span>":"")+(d.updatedAt?"<span>آخر تعديل: <b>"+d.updatedAt+"</b></span>":"")+(d.printedAt?"<span>آخر طباعة: <b>"+d.printedAt+"</b></span>":"")||"<span>لم تُحفظ بعد</span>"}
 function set(id,v){var el=document.getElementById(id);if(el)el.textContent=v}
@@ -3524,9 +3527,9 @@ function recompute(){
   set("tot-sales",fmt(c.sales));set("tot-cash",fmt(c.cash));
   (d.rows||[]).forEach(function(r){var rc=num(r.sales)-cfg.methods.reduce(function(a,m){return a+num((r.pays||{})[m.id])},0);var el=document.querySelector("[data-cash='"+r.id+"']");if(el){el.textContent=fmt(rc);var mk=(d.verify&&d.verify[r.id+"|cash"])||"";el.style.color=mk?"":(rc<0?"var(--neg)":"var(--pos)")}});
   var prev=dayPrev(d),carried=prev+c.cash-num(d.bankDeposit);
-  set("cc-cash",fmt(c.cash));var ccc=document.getElementById("cc-carried");if(ccc)ccc.textContent=fmt(carried)+" ر.س";
-  set("cc-exp",fmt(c.totalExpenses));set("cc-net",fmt(c.netCash));set("cc-inc",fmt(c.totalIncome));var cct=document.getElementById("cc-total");if(cct)cct.textContent=fmt(c.cashTotal)+" ر.س";
-  set("expTot",fmt(c.totalExpenses)+" ر.س");set("incTot",fmt(c.totalIncome)+" ر.س");
+  set("cc-cash",fmt(c.cash));var ccc=document.getElementById("cc-carried");if(ccc)ccc.textContent=fmt(carried)+" "+curSym()+"";
+  set("cc-exp",fmt(c.totalExpenses));set("cc-net",fmt(c.netCash));set("cc-inc",fmt(c.totalIncome));var cct=document.getElementById("cc-total");if(cct)cct.textContent=fmt(c.cashTotal)+" "+curSym()+"";
+  set("expTot",fmt(c.totalExpenses)+" "+curSym()+"");set("incTot",fmt(c.totalIncome)+" "+curSym()+"");
   refreshChangePanel();   /* تحديث لوحة «تغييرات بعد آخر ترحيل» حيّاً (النقطة ٦) */
 }
 function refreshTable(){var card=document.getElementById("entryTbl");if(!card){render();return}card.closest(".card").outerHTML=entryTable(S.day,S.config,computeDay(S.day,S.config));applyColWidths();formatAmts();}
@@ -3547,13 +3550,13 @@ function viewDay(){
   var head=h("div",{class:"card"},h("div",{class:"dayview-head"},
     "<div><div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap'><button class='link' onclick='App.goBack()'>"+IC.back+" رجوع</button>"+dnav+"</div><h2 style='margin:6px 0 0;color:var(--ink)'>"+prettyDate(d.date)+(d.dateTo?" ← "+prettyDate(d.dateTo):"")+"</h2><div class='note'>"+auditText(d)+"</div></div>"+
     "<div style='display:flex;gap:8px;flex-wrap:wrap'><button class='btn' onclick=\"App.editDay('"+d.date+"')\">"+IC.edit+" تعديل</button><button class='btn brass' onclick=\"App.printDay('"+d.date+"')\">"+IC.print+" طباعة</button><button class='btn ghost' style='color:var(--neg)' onclick=\"App.delDay('"+d.date+"')\">"+IC.trash+" حذف</button></div>"));
-  var kbar=h("div",{class:"grid kpis"},kpi("المبيعات",fmt(c.sales),"ر.س","brass")+kpi("النقد",fmt(c.cash),"ر.س","pos")+kpi("الإيرادات",fmt(c.totalIncome),"ر.س","pos")+kpi("المصروفات",fmt(c.totalExpenses),"ر.س","neg")+kpi("الإجمالي النقدي",fmt(c.cashTotal),"ر.س","brass")+kpi("باقي الرصيد",fmt(carried),"ر.س",""));
+  var kbar=h("div",{class:"grid kpis"},kpi("المبيعات",fmt(c.sales),curSym(),"brass")+kpi("النقد",fmt(c.cash),curSym(),"pos")+kpi("الإيرادات",fmt(c.totalIncome),curSym(),"pos")+kpi("المصروفات",fmt(c.totalExpenses),curSym(),"neg")+kpi("الإجمالي النقدي",fmt(c.cashTotal),curSym(),"brass")+kpi("باقي الرصيد",fmt(carried),curSym(),""));
   var tbl=h("div",{class:"card"},cardHead("مبيعات الفروع","")+"<div class='tw'><table>"+"<thead><tr>"+th+"</tr></thead><tbody>"+body+totRow+"</tbody></table></div>");
   var sums=h("div",{class:"grid cols2"},
     h("div",{class:"card"},cardHead("الرصيد النقدي (قبل)","يُرحّل لليوم التالي")+
-      "<div class='rowline'><span>رصيد سابق</span><b>"+fmt(prev)+"</b></div><div class='rowline'><span>نقد المبيعات</span><b>"+fmt(c.cash)+"</b></div><div class='rowline'><span>− الإيداع البنكي</span><b>"+fmt(c.bankDeposit)+"</b></div><div class='rowline big'><span>باقي الرصيد</span><b class='"+((d.tmarks&&d.tmarks.carried)?"carval c-"+d.tmarks.carried:"")+"'>"+fmt(carried)+" ر.س</b></div>")+
+      "<div class='rowline'><span>رصيد سابق</span><b>"+fmt(prev)+"</b></div><div class='rowline'><span>نقد المبيعات</span><b>"+fmt(c.cash)+"</b></div><div class='rowline'><span>− الإيداع البنكي</span><b>"+fmt(c.bankDeposit)+"</b></div><div class='rowline big'><span>باقي الرصيد</span><b class='"+((d.tmarks&&d.tmarks.carried)?"carval c-"+d.tmarks.carried:"")+"'>"+fmt(carried)+" "+curSym()+"</b></div>")+
     h("div",{class:"card"},cardHead("الإجمالي النقدي (أخيراً)","")+
-      "<div class='rowline'><span>نقد المبيعات</span><b>"+fmt(c.cash)+"</b></div><div class='rowline'><span>− المصروفات</span><b style='color:var(--neg)'>"+fmt(c.totalExpenses)+"</b></div><div class='rowline'><span>= صافي النقد</span><b>"+fmt(c.netCash)+"</b></div><div class='rowline'><span>+ الإيرادات</span><b style='color:var(--pos)'>"+fmt(c.totalIncome)+"</b></div><div class='rowline big'><span>الإجمالي النقدي</span><b>"+fmt(c.cashTotal)+" ر.س</b></div>"));
+      "<div class='rowline'><span>نقد المبيعات</span><b>"+fmt(c.cash)+"</b></div><div class='rowline'><span>− المصروفات</span><b style='color:var(--neg)'>"+fmt(c.totalExpenses)+"</b></div><div class='rowline'><span>= صافي النقد</span><b>"+fmt(c.netCash)+"</b></div><div class='rowline'><span>+ الإيرادات</span><b style='color:var(--pos)'>"+fmt(c.totalIncome)+"</b></div><div class='rowline big'><span>الإجمالي النقدي</span><b>"+fmt(c.cashTotal)+" "+curSym()+"</b></div>"));
   var lists=h("div",{class:"grid cols2"},
     h("div",{class:"card"},cardHead("المصروفات","")+((d.expenses||[]).length?"<div class='tw'><table><tbody>"+(d.expenses||[]).map(function(e){return "<tr><td class='num'>"+fmt(e.amount)+"</td><td>"+esc(e.details||"")+"</td></tr>"}).join("")+"<tr class='total'><td class='num'>"+fmt(c.totalExpenses)+"</td><td>الإجمالي</td></tr></tbody></table></div>":"<div class='emptyline'>لا مصروفات</div>"))+
     h("div",{class:"card"},cardHead("الإيرادات","")+((d.incomes||[]).length?"<div class='tw'><table><tbody>"+(d.incomes||[]).map(function(e){return "<tr><td class='num'>"+fmt(e.amount)+"</td><td>"+esc(e.details||"")+"</td></tr>"}).join("")+"<tr class='total'><td class='num'>"+fmt(c.totalIncome)+"</td><td>الإجمالي</td></tr></tbody></table></div>":"<div class='emptyline'>لا إيرادات</div>")));
@@ -3588,9 +3591,9 @@ function viewReports(){
       "<div class='fld'><span>الفروع (متعدد)</span>"+ddBtn("rfBrToggle",brOpts,cc.brs,{multi:true,id:"rfbr",label:cc.label})+"</div>"+
       "<span class='sp'></span>"+pill(esc(cc.label)+" · "+days.length+" يوم"));
     var kpis=kpisWrap(
-      kcard("المبيعات",fmt(T.sales),"ر.س",IC.data,"var(--acc)")+
-      kcard("النقد",fmt(T.cash),"ر.س",IC.dash,"var(--pos)")+
-      (all?kcard("الإيرادات",fmt(T.inc),"ر.س",IC.up,"var(--brass)")+kcard("المصروفات",fmt(T.exp),"ر.س",IC.dl,"var(--neg)"):kcard("عدد الأيام",days.length,"",IC.cal,"var(--ink2)")));
+      kcard("المبيعات",fmt(T.sales),curSym(),IC.data,"var(--acc)")+
+      kcard("النقد",fmt(T.cash),curSym(),IC.dash,"var(--pos)")+
+      (all?kcard("الإيرادات",fmt(T.inc),curSym(),IC.up,"var(--brass)")+kcard("المصروفات",fmt(T.exp),curSym(),IC.dl,"var(--neg)"):kcard("عدد الأيام",days.length,"",IC.cal,"var(--ink2)")));
     var chart=cc.per.map(function(p){return{label:p.d.slice(8),value:p.sales};});
     var head="<th>#</th><th>التاريخ</th><th>المبيعات</th>"+methods.map(function(m){return "<th>"+esc(m.label)+"</th>";}).join("")+"<th>النقد</th>"+(all?"<th>المصروفات</th><th>الإيرادات</th><th>باقي الرصيد</th>":"");
     var rowsHtml=cc.per.map(function(p){
@@ -3614,9 +3617,9 @@ function viewReports(){
       "<span class='sp'></span>"+pill(cc.list.length+" بند"));
     var kpis=kpisWrap(
       kcard("عدد البنود",cc.list.length,"",IC.entry,"var(--ink2)")+
-      (cc.type!=="inc"?kcard("المصروفات",fmt(cc.te),"ر.س",IC.dl,"var(--neg)"):"")+
-      (cc.type!=="exp"?kcard("الإيرادات",fmt(cc.ti),"ر.س",IC.up,"var(--pos)"):"")+
-      (cc.type==="both"?kcard("الصافي",fmt(cc.ti-cc.te),"ر.س",IC.dash,"var(--brass)"):""));
+      (cc.type!=="inc"?kcard("المصروفات",fmt(cc.te),curSym(),IC.dl,"var(--neg)"):"")+
+      (cc.type!=="exp"?kcard("الإيرادات",fmt(cc.ti),curSym(),IC.up,"var(--pos)"):"")+
+      (cc.type==="both"?kcard("الصافي",fmt(cc.ti-cc.te),curSym(),IC.dash,"var(--brass)"):""));
     var exp=exportsBar("<button class='xb br' onclick='App.printItems()'>"+IC.print+" طباعة (حسب الفلترة)</button>");
     return bar+kpis+"<div class='card'>"+ctHead(IC.entry,"بنود المصروفات والإيرادات","اضغط أي بند لفتح تقرير يومه")+"<div class='tblwrap'>"+itemsTableHTML(cc,false)+"</div></div>"+exp;
   }
@@ -3637,12 +3640,12 @@ function viewReports(){
       var act=num((S.config.bankRecon||{})[mk]);var diff=act-dep;
       return "<div class='card'>"+ctHead(IC.data,"مطابقة الإيداعات البنكية","مجموع «الإيداع البنكي» مقابل ما وصل الحساب فعلاً")+
         "<div class='reconrow'>"+
-        "<div class='fld'><span>مجموع الإيداعات المسجّلة</span><b>"+fmt(dep)+" ر.س</b></div>"+
+        "<div class='fld'><span>مجموع الإيداعات المسجّلة</span><b>"+fmt(dep)+" "+curSym()+"</b></div>"+
         "<label class='fld'><span>الوارد للحساب فعلياً</span><input inputmode='decimal' class='reconinp' value='"+(act||"")+"' onchange='App.bankRecon(this.value)'></label>"+
         "<div class='fld'><span>الفرق</span><b style='color:"+(diff===0?"var(--pos)":(diff<0?"var(--neg)":"var(--brass)"))+"'>"+(act?((diff>=0?"+":"")+fmt(diff)):"—")+"</b></div></div>"+
         (act&&diff!==0?"<p class='note neg'>يوجد فرق — راجع إيداعات الشهر يوماً بيوم.</p>":act?"<p class='note pos'>مطابق تماماً ✓</p>":"")+"</div>";})();
     var bar=rangebar("<div class='navgrp'>"+mnav+"</div>"+sel+"<span class='note'>"+(mi+1)+" من "+ms.length+"</span><span class='sp'></span>"+pill(prettyMonth(mk)));
-    var kpis=kpisWrap(kcard("المبيعات",fmt(t.sales),"ر.س",IC.data,"var(--acc)")+kcard("النقد",fmt(t.cash),"ر.س",IC.dash,"var(--pos)")+kcard("الإيرادات",fmt(t.inc),"ر.س",IC.up,"var(--brass)")+kcard("المصروفات",fmt(t.exp),"ر.س",IC.dl,"var(--neg)"));
+    var kpis=kpisWrap(kcard("المبيعات",fmt(t.sales),curSym(),IC.data,"var(--acc)")+kcard("النقد",fmt(t.cash),curSym(),IC.dash,"var(--pos)")+kcard("الإيرادات",fmt(t.inc),curSym(),IC.up,"var(--brass)")+kcard("المصروفات",fmt(t.exp),curSym(),IC.dl,"var(--neg)"));
     var brCard="<div class='card'>"+ctHead(IC.branch,"ترتيب الفروع بالمبيعات","")+barChartH(pb)+"</div>";
     var tbl="<div class='card'>"+ctHead(IC.cal,"تفاصيل الأيام (اضغط للعرض)",days.length+" يوم")+"<div class='tblwrap'><table><thead><tr><th>#</th><th>التاريخ</th><th>المبيعات</th><th>النقد</th><th>الإيداع</th><th>المصروفات</th><th>الإيرادات</th><th>الإجمالي النقدي</th><th>باقي الرصيد</th><th></th></tr></thead><tbody>"+rows+"</tbody><tfoot><tr class='total'><td colspan='2'>الإجمالي</td><td class='num'>"+fmt(t.sales)+"</td><td class='num'>"+fmt(t.cash)+"</td><td></td><td class='num'>"+fmt(t.exp)+"</td><td class='num'>"+fmt(t.inc)+"</td><td></td><td></td><td></td></tr></tfoot></table></div></div>";
     var exp=exportsBar("<button class='xb br' onclick='App.printMonth()'>"+IC.print+" طباعة الشهر</button><button class='xb gh' onclick='App.printMonthDays()' title='كل يوم في صفحة مستقلة'>"+IC.print+" طباعة الأيام</button><button class='xb gh' onclick='App.exportMonth()'>"+IC.dl+" تصدير إكسل</button>");
@@ -3710,7 +3713,7 @@ function viewReports(){
     var chart=rows.map(function(r){return{label:r.m.slice(0,3),value:r.sales};});
     var body=rows.map(function(r){return "<tr><td class='lbl'>"+r.m+"</td><td class='num'>"+(r.days||"-")+"</td><td class='num'>"+fmt(r.sales)+"</td><td class='num'>"+fmt(r.cash)+"</td><td class='num pos'>"+fmt(r.inc)+"</td><td class='num neg'>"+fmt(r.exp)+"</td></tr>";}).join("");
     var bar=rangebar("<div class='navgrp'>"+ynav+"</div>"+sel+"<span class='sp'></span>"+pill("سنة "+y));
-    var kpis=kpisWrap(kcard("مبيعات السنة",fmt(tot.sales),"ر.س",IC.data,"var(--acc)")+kcard("النقد",fmt(tot.cash),"ر.س",IC.dash,"var(--pos)")+kcard("الإيرادات",fmt(tot.inc),"ر.س",IC.up,"var(--brass)")+kcard("المصروفات",fmt(tot.exp),"ر.س",IC.dl,"var(--neg)"));
+    var kpis=kpisWrap(kcard("مبيعات السنة",fmt(tot.sales),curSym(),IC.data,"var(--acc)")+kcard("النقد",fmt(tot.cash),curSym(),IC.dash,"var(--pos)")+kcard("الإيرادات",fmt(tot.inc),curSym(),IC.up,"var(--brass)")+kcard("المصروفات",fmt(tot.exp),curSym(),IC.dl,"var(--neg)"));
     return bar+kpis+"<div class='card'>"+ctHead(IC.report,"مبيعات شهور "+y,"")+lineChart(chart)+"</div><div class='card'>"+ctHead(IC.cal,"تفصيل الشهور","")+"<div class='tblwrap'><table><thead><tr><th>الشهر</th><th>أيام</th><th>المبيعات</th><th>النقد</th><th>الإيرادات</th><th>المصروفات</th></tr></thead><tbody>"+body+"</tbody><tfoot><tr class='total'><td colspan='2'>الإجمالي السنوي</td><td class='num'>"+fmt(tot.sales)+"</td><td class='num'>"+fmt(tot.cash)+"</td><td class='num'>"+fmt(tot.inc)+"</td><td class='num'>"+fmt(tot.exp)+"</td></tr></tfoot></table></div></div>";
   }
 
@@ -3764,7 +3767,7 @@ function repCustom(){
     return "<tr class='clk' onclick=\"App.openDay('"+p.d+"')\"><td class='num' style='color:var(--muted)'>"+dayNo(p.d)+"</td><td>"+prettyDate(p.d)+"</td><td class='num'>"+fmt(p.sales)+"</td>"+methods.map(function(m){return "<td class='num'>"+fmt(p.bm[m.id])+"</td>"}).join("")+"<td class='num'>"+fmt(p.cash)+"</td>"+extra+"</tr>";
   }).join("");
   var totRow="<tr class='total'><td colspan='2'>الإجمالي</td><td class='num'>"+fmt(T.sales)+"</td>"+methods.map(function(m){return "<td class='num'>"+fmt(TM[m.id])+"</td>"}).join("")+"<td class='num'>"+fmt(T.cash)+"</td>"+(all?"<td class='num'>"+fmt(T.exp)+"</td><td class='num'>"+fmt(T.inc)+"</td><td></td>":"")+"</tr>";
-  var kpis=h("div",{class:"grid kpis"},kpi("المبيعات",fmt(T.sales),"ر.س","brass")+kpi("النقد",fmt(T.cash),"ر.س","pos")+(all?kpi("الإيرادات",fmt(T.inc),"ر.س","")+kpi("المصروفات",fmt(T.exp),"ر.س","neg"):kpi("عدد الأيام",days.length,"","")));
+  var kpis=h("div",{class:"grid kpis"},kpi("المبيعات",fmt(T.sales),curSym(),"brass")+kpi("النقد",fmt(T.cash),curSym(),"pos")+(all?kpi("الإيرادات",fmt(T.inc),curSym(),"")+kpi("المصروفات",fmt(T.exp),curSym(),"neg"):kpi("عدد الأيام",days.length,"","")));
   var chart=cc.per.map(function(p){return{label:p.d.slice(8),value:p.sales}});
   return bar+kpis+h("div",{class:"card"},cardHead("المبيعات في الفترة",esc(cc.label)+" · "+days.length+" يوم")+barChart(chart,"var(--brass)"))+
     h("div",{class:"card"},cardHead("تفاصيل الفترة","")+(days.length?"<div class='tw'><table><thead><tr>"+head+"</tr></thead><tbody>"+rowsHtml+totRow+"</tbody></table></div>":"<div class='emptyline'>لا بيانات في هذه الفترة</div>"));
@@ -3781,12 +3784,12 @@ function repMonthly(){
   var mi=ms.indexOf(mk);
   var mnav="<button class='iconbtn' title='الشهر السابق' "+(mi>0?"onclick='App.rMonthNav(-1)'":"disabled")+">"+IC.chevR+"</button><button class='iconbtn' title='الشهر التالي' "+(mi<ms.length-1?"onclick='App.rMonthNav(1)'":"disabled")+">"+IC.chevL+"</button>";
   return "<div style='display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px'>"+mnav+sel+"<span class='note'>"+(mi+1)+" من "+ms.length+"</span><span style='flex:1'></span><button class='btn brass' onclick='App.printMonth()'>"+IC.print+" طباعة الشهر</button><button class='btn ghost' onclick='App.printMonthDays()' title='كل يوم في صفحة مستقلة'>"+IC.print+" طباعة الأيام (يومية/صفحة)</button><button class='btn ghost' onclick='App.exportMonth()'>"+IC.dl+" تصدير إكسل</button></div>"+
-    h("div",{class:"grid kpis"},kpi("المبيعات",fmt(t.sales),"ر.س","brass")+kpi("النقد",fmt(t.cash),"ر.س","pos")+kpi("الإيرادات",fmt(t.inc),"ر.س","")+kpi("المصروفات",fmt(t.exp),"ر.س","neg"))+
+    h("div",{class:"grid kpis"},kpi("المبيعات",fmt(t.sales),curSym(),"brass")+kpi("النقد",fmt(t.cash),curSym(),"pos")+kpi("الإيرادات",fmt(t.inc),curSym(),"")+kpi("المصروفات",fmt(t.exp),curSym(),"neg"))+
     (function(){var dep=0;days.forEach(function(dd){dep+=computeDay(S.data[dd],S.config).bankDeposit});
       var act=num((S.config.bankRecon||{})[mk]);var diff=act-dep;
       return h("div",{class:"card"},cardHead("مطابقة الإيداعات البنكية","مجموع «الإيداع البنكي» مقابل ما وصل الحساب فعلاً")+
         "<div style='display:flex;gap:16px;flex-wrap:wrap;align-items:center'>"+
-        "<div class='fld'><span>مجموع الإيداعات المسجّلة</span><b style='font-size:16px'>"+fmt(dep)+" ر.س</b></div>"+
+        "<div class='fld'><span>مجموع الإيداعات المسجّلة</span><b style='font-size:16px'>"+fmt(dep)+" "+curSym()+"</b></div>"+
         "<label class='fld'><span>الوارد للحساب فعلياً</span><input inputmode='decimal' style='max-width:160px;text-align:left' value='"+(act||"")+"' onchange='App.bankRecon(this.value)'></label>"+
         "<div class='fld'><span>الفرق</span><b style='font-size:16px;color:"+(diff===0?"var(--pos)":(diff<0?"var(--neg)":"var(--brass)"))+"'>"+(act?((diff>=0?"+":"")+fmt(diff)):"—")+"</b></div></div>"+
         (act&&diff!==0?"<p class='note' style='margin-top:8px;color:var(--neg)'>يوجد فرق — راجع إيداعات الشهر يوماً بيوم.</p>":act?"<p class='note' style='margin-top:8px;color:var(--pos)'>مطابق تماماً ✓</p>":""))})()+
@@ -3919,9 +3922,15 @@ function viewSettings(){
   var general="<div class='sec'><div class='sechead'>⚙️ إعدادات عامة</div><div class='scard'>"+
     "<div class='cbody'>"+
       "<div class='fld'><label>اسم المنشأة / التقرير</label><input value='"+esc(cfg.businessName)+"' onchange='App.setBiz(this.value)'></div>"+
-      "<div class='fld'><label>الرصيد الافتتاحي (ر.س)</label><input inputmode='decimal' value='"+cfg.openingBalance+"' onchange='App.setOpening(this.value)'></div>"+
+      "<div class='fld'><label>الرصيد الافتتاحي ("+curSym()+")</label><input inputmode='decimal' value='"+cfg.openingBalance+"' onchange='App.setOpening(this.value)'></div>"+
+      "<div class='fld'><label>رمز العملة</label><input value='"+esc(curSym())+"' maxlength='8' onchange='App.setCurrency(this.value)'></div>"+
     "</div>"+
     "<p class='note nb'>الرصيد الافتتاحي هو رصيد ما قبل أول يوم مسجّل، ومنه تبدأ سلسلة «باقي الرصيد».</p>"+
+    "<p class='note nb'>رمز العملة يظهر بجانب كل المبالغ (الافتراضي رمز الريال الجديد ⃁). إن ظهر مربّعاً □ على جهاز قديم فبدّله بلمسة: "+
+      "<button type='button' class='nbtn ghost' style='padding:2px 12px;min-width:auto' onclick='App.setCurrency(\"⃁\")'>⃁</button> "+
+      "<button type='button' class='nbtn ghost' style='padding:2px 12px;min-width:auto' onclick='App.setCurrency(\"ر.س\")'>ر.س</button> "+
+      "<button type='button' class='nbtn ghost' style='padding:2px 12px;min-width:auto' onclick='App.setCurrency(\"﷼\")'>﷼</button> "+
+      "<button type='button' class='nbtn ghost' style='padding:2px 12px;min-width:auto' onclick='App.setCurrency(\"SAR\")'>SAR</button></p>"+
     "<div class='logo-row'>"+logoBox+
       "<div class='logo-acts'>"+
         "<input id='logoFile' type='file' accept='image/png,image/jpeg,image/svg+xml' style='display:none' onchange='App.setLogo(this)'>"+
@@ -5213,7 +5222,7 @@ window.App={
       if(r.writtenDates&&r.writtenDates.length){S.config.imports=(S.config.imports||[]).filter(function(x){return x.name!==files[i].name});S.config.imports.push({id:impId,name:files[i].name,at:nowStamp(),count:r.writtenDates.length,dates:r.writtenDates.slice(),size:files[i].size,hash:hash})}
     }catch(e){toast("خطأ في ملف: "+e.message,"err")}}
     await persistEverything();render();var box=document.getElementById("impResult");
-    if(box){var msg="";if(res.sheets)msg+="<div class='warn ok' style='margin-top:12px'><b>تم الاستيراد.</b> أوراق: "+res.sheets+" · أيام مضافة/محدّثة: <b>"+res.addedDays+"</b>"+(res.skipped?" · تخطّي: "+res.skipped:"")+"<br>الرصيد الافتتاحي (رصيد سابق لأول يوم): <b>"+fmt(S.config.openingBalance)+"</b> ر.س"+(res.newBranches.length?"<br>فروع جديدة: "+res.newBranches.map(esc).join("، "):"")+(res.newMethods.length?"<br>طرق دفع جديدة: "+res.newMethods.map(esc).join("، "):"")+"</div>";
+    if(box){var msg="";if(res.sheets)msg+="<div class='warn ok' style='margin-top:12px'><b>تم الاستيراد.</b> أوراق: "+res.sheets+" · أيام مضافة/محدّثة: <b>"+res.addedDays+"</b>"+(res.skipped?" · تخطّي: "+res.skipped:"")+"<br>الرصيد الافتتاحي (رصيد سابق لأول يوم): <b>"+fmt(S.config.openingBalance)+"</b> "+curSym()+""+(res.newBranches.length?"<br>فروع جديدة: "+res.newBranches.map(esc).join("، "):"")+(res.newMethods.length?"<br>طرق دفع جديدة: "+res.newMethods.map(esc).join("، "):"")+"</div>";
       if(blocked.length)msg+="<div class='warn' style='margin-top:10px'><b>⛔ مُنع استيراد مكرّر ("+blocked.length+"):</b>"+blocked.map(function(b){return "<br>• <b>"+esc(b.name)+"</b> — "+esc(b.why)}).join("")+"</div>";
       box.innerHTML=msg;}
     toast(blocked.length?("مُنع "+blocked.length+" ملف مكرّر"):("تم استيراد "+res.addedDays+" يوم"),blocked.length&&!res.sheets?"err":undefined)},
@@ -5273,6 +5282,7 @@ window.App={
     rd.readAsDataURL(f);input.value="";},
   removeLogo:function(){S.config.companyLogo="";saveConfig();render();toast("تمت إزالة الشعار")},
   setOpening:function(v){S.config.openingBalance=num(v);invalidateBal();saveConfig();render()},
+  setCurrency:function(v){v=String(v==null?"":v).trim();if(!v)v="⃁";S.config.currencySymbol=v;saveConfig();render();toast("رمز العملة: "+v)},
   addBranch:function(){var el=document.getElementById("newBranch");var n=(el.value||"").trim();if(!n)return;if(branchByName(n)){toast("الفرع موجود","err");return}S.config.branches.push({id:uuid(),name:n});saveConfig();render()},
   delBranch:function(id){var b=branchById(id);if(!b)return;openConfirm({title:"حذف الفرع؟",body:"سيُنقل الفرع «<b>"+esc(b.name)+"</b>» إلى سلة المحذوفات. البيانات المسجّلة عليه لا تتأثر.",danger:true,confirm:"نقل للسلة",onOk:function(){S.config.branches=branchList().filter(function(x){return x.id!==id});trashPush({kind:"branch",label:"فرع: "+b.name,value:{id:b.id,name:b.name}});saveConfig();render();toast("نُقل الفرع إلى السلة")}})},
   renameBranch:function(id){var b=branchById(id);if(!b)return;var old=b.name;openPrompt({title:"تعديل اسم الفرع",label:"الاسم الجديد",value:old,onOk:function(n){n=(n||"").trim();if(!n||n===old)return;b.name=n;
