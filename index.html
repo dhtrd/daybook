@@ -1935,8 +1935,11 @@ function ensureBranch(name){name=String(name||"").trim();if(!name)return"";var b
 function rowBranchId(r){if(r.branchId)return r.branchId;var b=branchByName(r.branch||"");return b?b.id:"";}
 function num(v){if(v===""||v==null)return 0;var n=typeof v==="number"?v:parseFloat(String(v).replace(/,/g,"").replace(/[^\d.\-]/g,""));return isNaN(n)?0:n}
 function fmt(v){return num(v).toLocaleString("en-US",{maximumFractionDigits:2})}
-/* رمز العملة القابل للتغيير — الافتراضي رمز الريال السعودي الجديد (U+20C1). عرضٌ فقط، لا يمسّ الأرقام أو المعادلات. */
-function curSym(){var s=(S&&S.config&&S.config.currencySymbol);return (s==null||s==="")?"⃁":String(s);}
+/* رمز العملة القابل للتغيير — الافتراضي شعار الريال السعودي الجديد (SVG رسمي متّجه يظهر بوضوح على كل الأجهزة والخطوط). عرضٌ فقط، لا يمسّ الأرقام أو المعادلات.
+   القيمة "⃁" في الإعداد تعني «الشعار»، وأي نصّ آخر (ر.س/﷼/SAR/مخصّص) يُعرض كنصّ مُهرَّب. الشعار يرث لون النص (currentColor) وحجمه (1em) فيتناسق تلقائياً. */
+var RIYAL_SVG='<svg viewBox="0 0 1124.14 1256.39" style="height:1em;width:auto;fill:currentColor;vertical-align:-0.12em;display:inline-block" role="img" aria-label="ريال سعودي"><path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/><path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"/></svg>';
+function curSymRaw(){var s=(S&&S.config&&S.config.currencySymbol);return (s==null||s==="")?"⃁":String(s);}
+function curSym(){var s=curSymRaw();return s==="⃁"?RIYAL_SVG:esc(s);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function pad(n){return String(n).padStart(2,"0")}
 function todayISO(){var d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
@@ -1981,7 +1984,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.25";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.26";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -3923,14 +3926,18 @@ function viewSettings(){
     "<div class='cbody'>"+
       "<div class='fld'><label>اسم المنشأة / التقرير</label><input value='"+esc(cfg.businessName)+"' onchange='App.setBiz(this.value)'></div>"+
       "<div class='fld'><label>الرصيد الافتتاحي ("+curSym()+")</label><input inputmode='decimal' value='"+cfg.openingBalance+"' onchange='App.setOpening(this.value)'></div>"+
-      "<div class='fld'><label>رمز العملة</label><input value='"+esc(curSym())+"' maxlength='8' onchange='App.setCurrency(this.value)'></div>"+
+      "<div class='fld'><label>رمز العملة</label>"+
+        "<div style='display:flex;align-items:center;gap:8px;flex-wrap:wrap'>"+
+          "<span style='display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--ink);font-weight:900;font-size:18px' title='الرمز الحالي'>"+curSym()+"</span>"+
+          "<button type='button' class='nbtn ghost' style='min-width:auto;padding:6px 12px;display:inline-flex;align-items:center;gap:6px"+(curSymRaw()==="⃁"?";border-color:var(--acc);color:var(--acc)":"")+"' onclick='App.setCurrency(\"⃁\")'>"+RIYAL_SVG+" الريال الجديد</button>"+
+          "<button type='button' class='nbtn ghost' style='min-width:auto;padding:6px 14px"+(curSymRaw()==="ر.س"?";border-color:var(--acc);color:var(--acc)":"")+"' onclick='App.setCurrency(\"ر.س\")'>ر.س</button>"+
+          "<button type='button' class='nbtn ghost' style='min-width:auto;padding:6px 14px"+(curSymRaw()==="﷼"?";border-color:var(--acc);color:var(--acc)":"")+"' onclick='App.setCurrency(\"﷼\")'>﷼</button>"+
+          "<button type='button' class='nbtn ghost' style='min-width:auto;padding:6px 14px"+(curSymRaw()==="SAR"?";border-color:var(--acc);color:var(--acc)":"")+"' onclick='App.setCurrency(\"SAR\")'>SAR</button>"+
+        "</div>"+
+      "</div>"+
     "</div>"+
     "<p class='note nb'>الرصيد الافتتاحي هو رصيد ما قبل أول يوم مسجّل، ومنه تبدأ سلسلة «باقي الرصيد».</p>"+
-    "<p class='note nb'>رمز العملة يظهر بجانب كل المبالغ (الافتراضي رمز الريال الجديد ⃁). إن ظهر مربّعاً □ على جهاز قديم فبدّله بلمسة: "+
-      "<button type='button' class='nbtn ghost' style='padding:2px 12px;min-width:auto' onclick='App.setCurrency(\"⃁\")'>⃁</button> "+
-      "<button type='button' class='nbtn ghost' style='padding:2px 12px;min-width:auto' onclick='App.setCurrency(\"ر.س\")'>ر.س</button> "+
-      "<button type='button' class='nbtn ghost' style='padding:2px 12px;min-width:auto' onclick='App.setCurrency(\"﷼\")'>﷼</button> "+
-      "<button type='button' class='nbtn ghost' style='padding:2px 12px;min-width:auto' onclick='App.setCurrency(\"SAR\")'>SAR</button></p>"+
+    "<p class='note nb'>رمز العملة يظهر بجانب كل المبالغ في التطبيق والتقارير والطباعة. «الريال الجديد» شعارٌ متّجه (SVG) يظهر بوضوح على كل الأجهزة، ويمكنك اختيار بديل نصّي (ر.س / ﷼ / SAR) في أي وقت.</p>"+
     "<div class='logo-row'>"+logoBox+
       "<div class='logo-acts'>"+
         "<input id='logoFile' type='file' accept='image/png,image/jpeg,image/svg+xml' style='display:none' onchange='App.setLogo(this)'>"+
@@ -5282,7 +5289,7 @@ window.App={
     rd.readAsDataURL(f);input.value="";},
   removeLogo:function(){S.config.companyLogo="";saveConfig();render();toast("تمت إزالة الشعار")},
   setOpening:function(v){S.config.openingBalance=num(v);invalidateBal();saveConfig();render()},
-  setCurrency:function(v){v=String(v==null?"":v).trim();if(!v)v="⃁";S.config.currencySymbol=v;saveConfig();render();toast("رمز العملة: "+v)},
+  setCurrency:function(v){v=String(v==null?"":v).trim();if(!v)v="⃁";S.config.currencySymbol=v;saveConfig();render();toast("رمز العملة: "+(v==="⃁"?"الريال الجديد":v))},
   addBranch:function(){var el=document.getElementById("newBranch");var n=(el.value||"").trim();if(!n)return;if(branchByName(n)){toast("الفرع موجود","err");return}S.config.branches.push({id:uuid(),name:n});saveConfig();render()},
   delBranch:function(id){var b=branchById(id);if(!b)return;openConfirm({title:"حذف الفرع؟",body:"سيُنقل الفرع «<b>"+esc(b.name)+"</b>» إلى سلة المحذوفات. البيانات المسجّلة عليه لا تتأثر.",danger:true,confirm:"نقل للسلة",onOk:function(){S.config.branches=branchList().filter(function(x){return x.id!==id});trashPush({kind:"branch",label:"فرع: "+b.name,value:{id:b.id,name:b.name}});saveConfig();render();toast("نُقل الفرع إلى السلة")}})},
   renameBranch:function(id){var b=branchById(id);if(!b)return;var old=b.name;openPrompt({title:"تعديل اسم الفرع",label:"الاسم الجديد",value:old,onOk:function(n){n=(n||"").trim();if(!n||n===old)return;b.name=n;
