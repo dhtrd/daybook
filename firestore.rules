@@ -1,112 +1,178 @@
 rules_version = '2';
+// ============================================================================
+// قواعد أمان Firestore — نظام حسابات الضبيبي التجارية
+// نموذج صلاحيات مرن: كل مستخدم له role + status + effectivePermissions[]
+//   • المالك (owner) = كل الصلاحيات.
+//   • غيره = صلاحياته الفعلية فقط (effectivePermissions).
+// ثوابت أمنية مضمونة (§11):
+//   • سجل التدقيق (auditLog) لا يُعدَّل ولا يُحذف إطلاقًا، ولا يُكتب باسم شخص آخر.
+//   • الحركات لا تُحذف فعليًّا (حذف ناعم فقط) — allow delete = false.
+//   • لا تصعيد صلاحيات: المستخدم لا ينشئ/يعدّل ملفّه بحقول الدور/الحالة/الصلاحيات.
+//   • حماية المالك: لا يُعدَّل/يُحذف حساب المالك إلا من المالك نفسه.
+//   • قفل الفترة مُنفَّذ في الطرفين: لا كتابة في شهر مقفل إلا بصلاحية edit_locked_period.
+//   • تحقّق صحّة الحركة: تاريخ نصّي (≥7) ومبالغ أرقام غير سالبة.
+//   • عدّاد السند: من يملك add_transaction/lock_period يكتب حقل sanadCounter فقط في الإعدادات.
+//   • صلاحية الاعتماد وحدها لا تعدّل سوى حالة الاعتماد.
+// ============================================================================
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ===== دوال مساعدة =====
+    // ---------- دوال مساعدة ----------
     function signedIn() { return request.auth != null; }
-    function em()       { return request.auth.token.email; }
-    function isOwner()  { return signedIn() && em() == 'a2@dhtrd.com'; }
-    function hasRole()  { return signedIn() && exists(/databases/$(database)/documents/roles/$(em())); }
-    function roleData() { return get(/databases/$(database)/documents/roles/$(em())).data; }
-    function myRole()   { return hasRole() ? roleData().role : ''; }
-    function active()   { return isOwner() || (hasRole() && roleData().active == true); }
-
-    // استثناء الفرد لصلاحية «الإدخال» (البند ٢): يُخزَّن المالكُ perms في وثيقة الدور.
-    // allow = منح صريح، deny = منع صريح، غيره = يرث الدور.
-    function permEntry() {
-      return (hasRole() && 'perms' in roleData() && 'entry' in roleData().perms)
-        ? roleData().perms.entry : '';
-    }
-    // قرار كتابة الأيام (يطابق نموذج العميل رباعي الطبقات — البند ٤):
-    // المالك؛ أو (فعّال و [منحٌ صريح للإدخال] أو [ليس ممنوعاً و دورُه الأساسي مُدخِل اليوميات]).
-    function canWriteDays() {
-      return isOwner() || ( active() && (
-        permEntry() == 'allow' ||
-        ( permEntry() != 'deny' && myRole() == 'مُدخِل اليوميات' )
-      ));
+    function userPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function hasProfile() { return signedIn() && exists(userPath()); }
+    function u() { return get(userPath()).data; }
+    function isActive() { return hasProfile() && u().status == 'active'; }
+    // صلاحية محددة: المالك يملك كل شيء، وغيره يُفحَص في قائمته الفعلية
+    function can(p) {
+      return isActive() && (
+        u().role == 'owner' ||
+        (u().effectivePermissions is list && u().effectivePermissions.hasAny([p]))
+      );
     }
 
-    // ===== قفل الحقول + انتقالات الحالة على مستوى الخادم (البند ٦) =====
-    // حالة اليومية: مسودة → مرحّلة → مقفلة (+ ملغاة)، وإعادة كمسودة من أي حالة.
-    // الحالة الفعّالة — تطابق تماماً منطق التطبيق dayStatus():
-    //   «approved» (طباعة/اعتماد اليومية) وأي حالة غير معروفة تُترجَم إلى مقفلة/مرحّلة/مسودة حسب علم القفل.
-    //   بدون هذا كان الخادم يرفض أي تغيير على يومية مطبوعة (approved) لأنه لا يعرف هذه الحالة ⇒ «تعذّرت المزامنة».
-    function dstatus(d) {
-      let s = ('status' in d) ? d.status : 'draft';
-      let lk = ('locked' in d) && d.locked == true;
-      return (s == 'draft' || s == 'posted' || s == 'locked' || s == 'cancelled') ? s
-           : (s == 'approved' ? (lk ? 'locked' : 'posted') : (lk ? 'locked' : 'draft'));
+    // قفل الفترة: الشهر مقفل إن وُجدت وثيقة lockedPeriods/{YYYY-MM}
+    function periodLocked(month) {
+      return exists(/databases/$(database)/documents/lockedPeriods/$(month));
     }
-    // الحقول المالية التي لا يجوز تغييرها بعد الترحيل (إلا بإعادتها مسودة):
-    function finKeys() { return ['rows','expenses','incomes','bankDeposit','carryIn']; }
-    function noFinChange() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(finKeys());
+    // شهر الحركة = أول 7 أحرف من التاريخ (YYYY-MM)
+    function monthOf(d) { return d.date[0:7]; }
+    // تحقّق صحّة الحركة: تاريخ نصّي طوله ≥ 7، ومدين/دائن أرقام غير سالبة
+    function validTxn(d) {
+      return d.date is string && d.date.size() >= 7
+        && d.debit is number && d.debit >= 0
+        && d.credit is number && d.credit >= 0;
     }
-    // تُسمح التغييرات المالية فقط والحالةُ مسودةٌ قبل الكتابة أو بعدها (تحرير/ترحيل/إعادة فتح):
-    function finChangeOk() {
-      return dstatus(resource.data) == 'draft'
-          || dstatus(request.resource.data) == 'draft'
-          || noFinChange();
-    }
-    // انتقالات مسموحة فقط (يمنع القفز مثل مسودة→مقفلة):
-    function validTransition() {
-      let o = dstatus(resource.data);
-      let n = dstatus(request.resource.data);
-      return (o == n)
-        || (o == 'draft'     && (n == 'posted' || n == 'cancelled'))
-        || (o == 'posted'    && (n == 'locked' || n == 'cancelled' || n == 'draft'))
-        || (o == 'locked'    && (n == 'draft'  || n == 'cancelled'))
-        || (o == 'cancelled' && (n == 'draft'));
+    // لم يتغيّر سوى حقول حالة الاعتماد
+    function onlyApprovalChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['approvalStatus', 'approvedBy', 'approvedAt', 'updatedAt', 'updatedBy']);
     }
 
-    // ===== وثائق الأيام =====
-    match /days/{day} {
-      allow read:   if active();
-      allow create: if canWriteDays();
-      allow update: if canWriteDays() && validTransition() && finChangeOk();
-      allow delete: if canWriteDays();
+    // ---------- المستخدمون ----------
+    match /users/{uid} {
+      allow read: if isActive() && (request.auth.uid == uid || can('manage_users'));
+      allow create: if can('manage_users');
+      // حماية المالك: لا يُحذف حساب المالك إطلاقًا
+      allow delete: if can('manage_users') && resource.data.role != 'owner';
+      allow update:
+        // إدارة المستخدمين — لكن لا يُعدَّل حساب المالك إلا من المالك نفسه
+        if (can('manage_users') && (resource.data.role != 'owner' || request.auth.uid == uid))
+        // خدمة ذاتية: المستخدم يعدّل حقولًا غير حسّاسة في ملفّه فقط (لا الدور/الحالة/الصلاحيات)
+        || (isActive() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['name', 'displayName', 'phone', 'photoURL',
+                           'mustChangePassword', 'passwordChangedAt', 'updatedAt']));
     }
 
-    // ===== الإعدادات العامة + الأدوار المخصّصة + أسماء العرض (meta/config): كتابة للمالك فقط =====
-    match /meta/{doc} {
-      allow read:  if active();
-      allow write: if isOwner();
+    // ---------- الموظفون ----------
+    match /employees/{id} {
+      allow read: if can('view_employees');
+      allow create: if can('add_employee');
+      // التعديل يشمل تغيير الحالة (إيقاف) وربط رمز المشاركة العام
+      allow update: if can('edit_employee') || can('delete_employee') || can('share_statement');
+      allow delete: if can('delete_employee');
     }
 
-    // ===== الأدوار: قراءة لكل مسجّل؛ الإنشاء/الحذف للمالك =====
-    // المالك يعدّل كل شيء. المستخدم يعدّل وثيقته الخاصة في حقول ذاتية فقط:
-    // lastLogin + prefs + updatedTs — ولا يمسّ role/perms/branches/active/name (يمنع تصعيد الصلاحية).
-    match /roles/{userEmail} {
-      allow read:            if signedIn();
-      allow create, delete:  if isOwner();
-      allow update: if isOwner()
-        || ( signedIn() && userEmail == em()
-             && request.resource.data.diff(resource.data)
-                  .affectedKeys().hasOnly(['lastLogin','prefs','updatedTs']) );
+    // ---------- الحركات (حذف ناعم فقط) ----------
+    match /transactions/{id} {
+      allow read: if can('view_transactions');
+      // الإنشاء: صلاحية + تحقّق صحّة + فترة غير مقفلة (أو صلاحية الكتابة في المقفل)
+      allow create: if can('add_transaction')
+                    && validTxn(request.resource.data)
+                    && (!periodLocked(monthOf(request.resource.data)) || can('edit_locked_period'));
+      // التعديل:
+      //   • صاحب صلاحية الاعتماد وحده لا يعدّل سوى حالة الاعتماد (في أي وقت).
+      //   • عكس قيد راتب عند إعادة الفتح: صاحب lock_period يحذف حذفًا ناعمًا قيدَ راتبٍ فقط.
+      //   • التعديل/الحذف الناعم/الاستعادة العادي: يتطلّب فترة مفتوحة، أو صلاحية المقفل.
+      allow update:
+        if (can('approve_transactions') && onlyApprovalChanged())
+        || ( can('lock_period')
+             && resource.data.get('salaryPosting', false) == true
+             && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['deleted', 'deletedAt', 'deletedBy', 'deleteReason']) )
+        || ( (can('edit_transaction') || can('delete_transaction') || can('edit_locked_period'))
+             && ( (!periodLocked(monthOf(resource.data)) && !periodLocked(monthOf(request.resource.data)))
+                  || can('edit_locked_period') ) );
+      allow delete: if false; // لا حذف فعلي إطلاقًا
     }
 
-    // ===== درج Dropbox (اختياري) =====
-    match /appConfig/{doc} {
-      allow read:  if signedIn();
-      allow write: if isOwner();
+    // ---------- الأرصدة والإحصاءات المجمّعة (تُحدَّث ضمن معاملات الحركات/الإقفال) ----------
+    match /balances/{id} {
+      allow read: if can('view_transactions') || can('view_reports');
+      allow write: if can('add_transaction') || can('edit_transaction')
+                   || can('delete_transaction') || can('lock_period');
+    }
+    match /stats/{id} {
+      allow read: if isActive();
+      allow write: if can('add_transaction') || can('edit_transaction')
+                   || can('delete_transaction') || can('lock_period');
     }
 
-    // ===== سجل النشاط: إلحاقي بختم الفاعل (البند ٨) =====
-    // إنشاء لكل فعّال؛ لا يُعدَّل أي حدثٍ أبداً (غير قابل للتغيير)؛ الحذف (للصيانة/الاحتفاظ) للمالك فقط.
-    match /activity/{id} {
-      allow read:    if active();
-      allow create:  if active();
-      allow update:  if false;
-      allow delete:  if isOwner();
+    // ---------- إقفال الفترات وتقارير الإقفال ----------
+    match /lockedPeriods/{id} {
+      allow read: if isActive();
+      allow write: if can('lock_period') || can('edit_locked_period');
+    }
+    match /closingReports/{id} {
+      allow read: if can('view_reports') || isActive();
+      allow write: if can('lock_period');
     }
 
-    // ===== الاعتمادات: المالك أو المدير المالي (اعتماد/إعادة) أو مُدخِل اليوميات (إرسال) =====
-    match /approvals/{date} {
-      allow read:  if active();
-      allow write: if isOwner() || myRole() == 'المدير المالي' || myRole() == 'مُدخِل اليوميات';
+    // ---------- الإعدادات ----------
+    // • manage_settings: كتابة كاملة.
+    // • add_transaction / lock_period: تحديث حقل sanadCounter فقط (عدّاد السند ضمن الحركة/الإقفال).
+    match /settings/{id} {
+      allow read: if isActive();
+      allow create: if can('manage_settings')
+                    || ( (can('add_transaction') || can('lock_period'))
+                         && request.resource.data.keys().hasOnly(['sanadCounter']) );
+      allow update: if can('manage_settings')
+                    || ( (can('add_transaction') || can('lock_period'))
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sanadCounter']) );
+      allow delete: if false;
     }
 
-    // ===== منع أي شيء آخر =====
-    match /{document=**} { allow read, write: if false; }
+    // ---------- سجل التدقيق — غير قابل للتعديل ----------
+    match /auditLog/{id} {
+      allow read: if can('view_audit_log');
+      // الإنشاء مسموح لأي مستخدم نشط، شرط أن يكتب باسمه هو (لا انتحال)
+      allow create: if isActive() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ---------- سجل الدخول (append-only) ----------
+    match /loginLog/{id} {
+      allow read: if can('view_audit_log');
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    // ---------- الجلسات وتفضيلات المستخدم (خاصة بكل مستخدم) ----------
+    match /sessions/{uid} {
+      allow read: if isActive() && (request.auth.uid == uid || can('manage_users'));
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+    match /preferences/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // ---------- الإشعارات ----------
+    match /notifications/{id} {
+      allow read: if isActive();
+      allow write: if isActive();
+    }
+
+    // ---------- روابط QR العامة — قراءة بلا مصادقة مع تحقّق الانتهاء ----------
+    match /public/{token} {
+      allow read: if resource.data.expiresAt == null
+                  || resource.data.expiresAt > request.time;
+      allow create, update, delete: if can('share_statement');
+    }
+
+    // ---------- منع أي وصول آخر ----------
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }
