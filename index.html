@@ -1984,7 +1984,7 @@ async function cloudSave(payload,baseRev,sovereign){var h=cloudHeaders(true);if(
   if(!r.ok)throw new Error("cloud POST "+r.status);
   var jj={};try{jj=await r.json()}catch(e){}return jj.rev||"";}
 
-var APP_VERSION="1.9.26";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
+var APP_VERSION="1.9.27";    /* رقم إصدار التطبيق — بدّله عند كل تحديث (وفي sw.js و version.json) */
 /* مقارنة إصدارات (semver): true فقط إذا كان البعيد أحدث فعلاً — كي لا يظهر تنبيه خاطئ إن تأخّر version.json */
 function verNewer(remote,local){var a=String(remote||"").split("."),b=String(local||"").split("."),i,x,y;for(i=0;i<Math.max(a.length,b.length);i++){x=parseInt(a[i],10)||0;y=parseInt(b[i],10)||0;if(x>y)return true;if(x<y)return false;}return false;}
 var SCHEMA_VERSION=5;        /* نسخة بنية البيانات — ارفعه فقط عند تغيير شكل البيانات وأضف دالة ترحيل */
@@ -3530,9 +3530,11 @@ function recompute(){
   set("tot-sales",fmt(c.sales));set("tot-cash",fmt(c.cash));
   (d.rows||[]).forEach(function(r){var rc=num(r.sales)-cfg.methods.reduce(function(a,m){return a+num((r.pays||{})[m.id])},0);var el=document.querySelector("[data-cash='"+r.id+"']");if(el){el.textContent=fmt(rc);var mk=(d.verify&&d.verify[r.id+"|cash"])||"";el.style.color=mk?"":(rc<0?"var(--neg)":"var(--pos)")}});
   var prev=dayPrev(d),carried=prev+c.cash-num(d.bankDeposit);
-  set("cc-cash",fmt(c.cash));var ccc=document.getElementById("cc-carried");if(ccc)ccc.textContent=fmt(carried)+" "+curSym()+"";
-  set("cc-exp",fmt(c.totalExpenses));set("cc-net",fmt(c.netCash));set("cc-inc",fmt(c.totalIncome));var cct=document.getElementById("cc-total");if(cct)cct.textContent=fmt(c.cashTotal)+" "+curSym()+"";
-  set("expTot",fmt(c.totalExpenses)+" "+curSym()+"");set("incTot",fmt(c.totalIncome)+" "+curSym()+"");
+  set("cc-cash",fmt(c.cash));var ccc=document.getElementById("cc-carried");if(ccc)ccc.innerHTML=fmt(carried)+" "+curSym();
+  set("cc-exp",fmt(c.totalExpenses));set("cc-net",fmt(c.netCash));set("cc-inc",fmt(c.totalIncome));var cct=document.getElementById("cc-total");if(cct)cct.innerHTML=fmt(c.cashTotal)+" "+curSym();
+  /* innerHTML لا textContent — لأن رمز العملة قد يكون شعار SVG؛ القيمة رقمٌ مُنسّق + الرمز فقط (آمنة) */
+  var _etx=document.getElementById("expTot");if(_etx)_etx.innerHTML=fmt(c.totalExpenses)+" "+curSym();
+  var _itx=document.getElementById("incTot");if(_itx)_itx.innerHTML=fmt(c.totalIncome)+" "+curSym();
   refreshChangePanel();   /* تحديث لوحة «تغييرات بعد آخر ترحيل» حيّاً (النقطة ٦) */
 }
 function refreshTable(){var card=document.getElementById("entryTbl");if(!card){render();return}card.closest(".card").outerHTML=entryTable(S.day,S.config,computeDay(S.day,S.config));applyColWidths();formatAmts();}
