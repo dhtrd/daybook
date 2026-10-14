@@ -1,0 +1,18 @@
+/* طبقة التطبيق فوق الهوية (ليست من الهوية): هيكل الصفحة المتجاوب فقط. */
+html,body{margin:0;background:#F2F4F2}
+@media (prefers-color-scheme:dark){html:not([data-force-light]),html:not([data-force-light]) body{background:#111513}}
+.app{min-height:100dvh;height:auto;overflow:visible;--toph:62px;background:var(--bg);color:var(--ink);font-family:var(--f);container-type:inline-size}
+.app .ap2top{justify-content:space-between}
+.app .brand{display:flex;align-items:center;gap:10px;font-weight:700}
+.app .brand small{font-weight:500;color:var(--mut)}
+.app main{max-width:1100px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:16px}
+.app .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.app h1{margin:0 0 6px;font-size:22px}
+.app p{margin:0;line-height:1.8;color:var(--mut)}
+.app .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+.app a.tile{display:grid;justify-items:center;gap:6px;text-align:center;padding:18px 10px;border-radius:14px;background:var(--bg);border:1px solid var(--line);color:inherit;text-decoration:none}
+.app a.tile:hover,.app a.tile:focus-visible{border-color:color-mix(in srgb,var(--acc) 45%,var(--line));outline:none}
+.app .badge{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--soft);color:var(--acc)}
+.app .bt2{font-family:inherit;color:inherit;cursor:pointer}
+.app .bt2.pri{color:var(--acc-ink)}
+@media print{.app .ap2top button{display:none}}

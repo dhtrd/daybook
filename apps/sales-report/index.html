@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3F6E5A">
+<title>حصاد · تقرير المبيعات</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;600;700&family=El+Messiri:wght@500;600;700&family=Noto+Kufi+Arabic:wght@500;600;700;800&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../shared/identity.css">
+<link rel="stylesheet" href="../../shared/app.css">
+</head>
+<body>
+<div class="d1 scr2 app" id="root" data-m="light" data-app="sales-report">
+  <header class="ap2top">
+    <span class="brand" id="brand"></span>
+    <button type="button" class="bt2" id="theme" aria-label="تبديل الوضع الفاتح/الداكن">الوضع</button>
+  </header>
+  <main>
+    <section class="card">
+      <h1>تقرير المبيعات</h1>
+      <p>التقرير اليومي وتحليل الفروع (قسمان يُمنحان منفصلين).</p>
+      <p style="margin-top:10px"><span class="badge">المرحلة 0 — هيكل فقط، لا بيانات ولا منطق بعد</span></p>
+    </section>
+    <section class="card"><a class="bt2" href="../../">كل التطبيقات</a></section>
+  </main>
+</div>
+<script type="module">
+import { appMark, injectSprite, initTheme } from '../../shared/ui.js';
+const root = document.getElementById('root');
+injectSprite();
+const isDark = initTheme(root, document.getElementById('theme'));
+const brand = document.getElementById('brand');
+const draw = () => { brand.innerHTML = appMark('sales-report', { dark: isDark(), size: 30 }) + '<span>حصاد <small>· تقرير المبيعات</small></span>'; };
+draw();
+document.addEventListener('hasad:theme', draw);
+</script>
+</body>
+</html>

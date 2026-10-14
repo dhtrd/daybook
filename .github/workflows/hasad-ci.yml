@@ -1,0 +1,108 @@
+# حصاد — CI لفرع التطوير: صياغة + اختبارات + قواعد الأمان (محاكي Firestore) + فحص الأسرار + بناء.
+# المعاينة (Firebase Hosting) تعمل على طلبات الدمج فقط، وبعد نجاح كل الفحوص، وتتخطى بهدوء إن لم تُضبط الأسرار.
+# لا يلمس هذا الملف النشر الحالي (ci.yml → GitHub Pages على main).
+name: Hasad CI
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths-ignore: ["**/*.md"]
+  push:
+    branches: ["hasad/**"]
+    paths-ignore: ["**/*.md"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hasad-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    name: صياغة واختبارات الهيكل
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+      - name: صياغة ملفات JavaScript (ui.js و scripts و tests)
+        run: |
+          set -e
+          for f in shared/*.js scripts/*.mjs tests/*.mjs; do node --check "$f" && echo "✓ $f"; done
+      - name: صياغة السكربتات داخل صفحات التطبيقات
+        run: node ci/check-hasad-pages.mjs
+      - name: اختبارات الهيكل والهوية وفحص الأسرار
+        run: node --test tests/*.test.mjs
+
+  rules-tests:
+    name: اختبارات قواعد الأمان (محاكي Firestore)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firestore-tests
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: firestore-tests/package-lock.json
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: npm ci
+      - run: npm test
+
+  build:
+    name: بناء dist
+    needs: [lint-and-test, rules-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+      - run: node scripts/build.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hasad-dist
+          path: dist
+          retention-days: 7
+
+  preview:
+    name: رابط المعاينة (Firebase Hosting)
+    needs: [build]
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: هل أسرار المعاينة مضبوطة؟
+        id: gate
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HASAD_STAGING }}
+          PID: ${{ vars.FIREBASE_STAGING_PROJECT_ID }}
+        run: |
+          if [ -n "$SA" ] && [ -n "$PID" ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else echo "ready=false" >> "$GITHUB_OUTPUT"; echo "::notice::المعاينة متخطّاة: لم تُضبط FIREBASE_SERVICE_ACCOUNT_HASAD_STAGING أو FIREBASE_STAGING_PROJECT_ID بعد."; fi
+      - uses: actions/setup-node@v6
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          node-version: "20"
+      - name: بناء dist
+        if: steps.gate.outputs.ready == 'true'
+        run: node scripts/build.mjs
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HASAD_STAGING }}
+          projectId: ${{ vars.FIREBASE_STAGING_PROJECT_ID }}
+          channelId: pr-${{ github.event.number }}
+          expires: 7d

@@ -1,0 +1,67 @@
+/* حصاد — الهوية v3 (المرجع: hasad_identity_v3.html). مستخرج حرفياً من القسم المعتمد؛ لا يُعدَّل هنا بل في المرجع ثم يُعاد الاستخراج. */
+/* =====================================================================
+   هوية «حصاد» المعتمدة — كل ما تحت هذا السطر منسوخ حرفياً من
+   mockups/dhubaibi-m1-mockups.html (المرحلة الجديدة)، دون أي تعديل.
+   ===================================================================== */
+/* ===== المتغيرات — اتجاه «سكون» (فاتح وداكن) — منسوخ حرفياً من النموذج ===== */
+.d1{--f:'Noto Sans Arabic',sans-serif;--bg:#F2F4F2;--surface:#FFFFFF;--ink:#1E2421;--mut:#6B746F;--line:#E0E4E1;--acc:#3F6E5A;--acc-ink:#FFFFFF;--soft:#E3ECE7;--r:16px}
+.d1[data-m="dark"]{--bg:#111513;--surface:#191E1B;--ink:#E7ECE9;--mut:#8F9A94;--line:#29312D;--acc:#8CC4A9;--acc-ink:#0D1A14;--soft:#1E2A25}
+/* ===== الشعار «منجل الحاء» وحركته — منسوخ حرفياً من النموذج ===== */
+.hlg [class^="p-"]{transform-box:fill-box;transform-origin:center}
+.hlg.play.hlg8 .p-h{animation:lgDraw .8s ease-out both}
+.hlg.play.hlg8 .p-g{animation:lgDrop .45s .7s both}
+@keyframes lgDraw{from{stroke-dasharray:1;stroke-dashoffset:1}to{stroke-dasharray:1;stroke-dashoffset:0}}
+@keyframes lgDrop{from{transform:translateY(-9px);opacity:0}}
+/* ===== الكتابة «حصاد» (نسخي ممدود) و«hasad» — منسوخ حرفياً من النموذج ===== */
+.lk9{display:inline-flex;align-items:center;gap:10px}
+.wm9{display:inline-grid;gap:3px;line-height:1;color:inherit}
+.wm9 b{display:inline-block;position:relative;font-size:var(--ws);font-weight:700;line-height:1.2}
+.wm9 small{font-size:calc(var(--ws)*.42);opacity:.65;font-weight:500}
+.wb b{font-family:'El Messiri','Noto Sans Arabic',serif}
+.en7{direction:ltr;letter-spacing:.06em;font-family:'Alexandria','Noto Sans Arabic',sans-serif;text-transform:lowercase}
+/* ===== أيقونات التطبيقات «خطّية ناعمة» وحركتها — منسوخ حرفياً من النموذج ===== */
+.hic .gl,.hic .bgs,.hic .hshn{transform-box:fill-box;transform-origin:center}
+.hic.play{animation:var(--ia,none)}
+.hic1.play .gl path{animation:lgDraw .8s ease-out both}
+/* ===== حركة التحميل وخروج الشعار والرجوع للرئيسية، وتقليل الحركة — منسوخ حرفياً من النموذج ===== */
+.spl{position:absolute;inset:0;z-index:30;display:grid;place-items:center;align-content:center;gap:8px;background:var(--bg,#F2F4F2);color:var(--ink,#1E2421);--la:var(--acc,#3F6E5A);--lb:#C9A44C;--lc:#fff;animation:splIn .2s ease both;border-radius:inherit}
+.spl b{font-size:22px;font-family:'Noto Sans Arabic',sans-serif}
+.spl small{font-size:13px;opacity:.7;font-family:'Noto Sans Arabic',sans-serif}
+.spl.out{animation:splOut .5s ease forwards}
+.spl.out .hlg{animation:splLogo .5s ease forwards}
+@keyframes splIn{from{opacity:0}}
+@keyframes splOut{to{opacity:0;visibility:hidden}}
+@keyframes splLogo{to{transform:translateY(-40px) scale(.5)}}
+.hm6{position:absolute;bottom:56px;left:50%;transform:translateX(-50%);z-index:25;background:var(--ink,#1E2421);color:var(--bg,#fff);padding:7px 14px;border-radius:99px;font-size:13px;white-space:nowrap;animation:splIn .2s ease}
+@media (prefers-reduced-motion:reduce){.hlg *,.hic,.hic *{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.spl,.spl.out,.spl.out .hlg{animation:none}}
+/* ===== رمز الريال والمبالغ — منسوخ حرفياً من النموذج ===== */
+.scr2 .sar2{width:.8em;height:.88em;fill:currentColor;flex:none;align-self:center}
+.scr2 .mny{display:inline-flex;align-items:baseline;gap:2px;direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scr2 .mny.dl{color:var(--mut);font-size:.92em}
+.scr2 .mny.up{color:#2E8B57}
+.scr2 .mny.dn{color:#B4532A}
+/* ===== الأزرار — منسوخ حرفياً من النموذج ===== */
+.bt2{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:8px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:14px}
+.bt2.pri{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.bt2:disabled{opacity:.45;cursor:not-allowed}
+.bt2.on{color:#2E8B57;border-color:color-mix(in srgb,#2E8B57 45%,var(--line))}
+/* ===== الحالات — منسوخ حرفياً من النموذج ===== */
+.sb7{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;background:var(--bg);color:var(--mut);border:1px solid var(--line);margin:1px}
+.sb7.cu,.sb8{background:color-mix(in srgb,var(--c) 13%,var(--surface));color:var(--c);border-color:transparent}
+.scr7[data-m="dark"] .sb7.cu,.scr8[data-m="dark"] .sb8{color:color-mix(in srgb,var(--c) 50%,#fff);background:color-mix(in srgb,var(--c) 24%,var(--surface))}
+/* ===== القوائم ذات العناوين الثابتة (والرأس الثابت الذي تُحسب منه) — منسوخ حرفياً من النموذج ===== */
+.scr2{min-height:0;height:min(860px,max(640px,82vh));overflow:auto;--toph:62px;scroll-padding-top:calc(var(--toph) + 40px)}
+.ap2top{position:sticky;top:0;z-index:6;display:flex;align-items:center;gap:10px;padding:12px 16px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);min-height:var(--toph)}
+.tw2{overflow-x:auto;border-radius:12px;border:1px solid var(--line)}
+.tbl2,.ldg,.one2{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
+.tbl2 th,.ldg th,.one2 th{position:sticky;top:var(--toph);z-index:2;background:var(--bg);color:var(--mut);font-size:12.5px;font-weight:600;text-align:start;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl2 td,.ldg td,.one2 td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl2 tr:last-child td,.ldg tr:last-child td,.one2 tr:last-child td{border-bottom:0}
+.tw2:has(.ldg),.tw2:has(.one2),.tw2:has(.tbl2){overflow:visible}
+/* ===== النوافذ والورقة السفلية — منسوخ حرفياً من النموذج ===== */
+.ov3{position:absolute;inset:0;z-index:20;background:rgba(10,14,12,.4);display:flex;align-items:flex-end}
+.sh3{width:100%;max-height:86%;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:8px 16px 18px;box-shadow:0 -20px 50px -20px rgba(0,0,0,.4);animation:sheet .22s ease}
+.sh3::before{content:"";display:block;width:42px;height:4px;border-radius:99px;background:var(--line);margin:4px auto 10px}
+@container scr (min-width:760px){.ov3{align-items:stretch;justify-content:flex-start}.sh3{width:420px;max-height:none;border-radius:0;animation:none}.sh3::before{display:none}}
+@keyframes sheet{from{transform:translateY(40px);opacity:0}}

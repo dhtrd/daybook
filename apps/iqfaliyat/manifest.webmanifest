@@ -1,0 +1,12 @@
+{
+  "name": "حصاد · الإقفاليات",
+  "short_name": "الإقفاليات",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F2F4F2",
+  "theme_color": "#3F6E5A",
+  "icons": []
+}

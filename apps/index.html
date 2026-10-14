@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#3F6E5A">
+<title>حصاد · معاينة تجريبية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;600;700&family=El+Messiri:wght@500;600;700&family=Noto+Kufi+Arabic:wght@500;600;700;800&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="shared/identity.css">
+<link rel="stylesheet" href="shared/app.css">
+</head>
+<body>
+<div class="d1 scr2 app" id="root" data-m="light">
+  <header class="ap2top">
+    <span class="lk9" id="lk"><span class="wm9 wb" style="--ws:22px"><b>حصاد</b><small class="en7">hasad</small></span></span>
+    <button type="button" class="bt2" id="theme" aria-label="تبديل الوضع الفاتح/الداكن">الوضع</button>
+  </header>
+  <main>
+    <section class="card">
+      <h1>بيئة المعاينة التجريبية</h1>
+      <p>لا شيء هنا حقيقي: لا بيانات فعلية ولا ربط مع Odoo. المرحلة 0 — هيكل التطبيقات الأربعة بالهوية v3.</p>
+      <p style="margin-top:10px"><span class="badge">بيئة تجريبية</span></p>
+    </section>
+    <section class="card"><div class="grid" id="apps"></div></section>
+  </main>
+</div>
+<script type="module">
+import { APPS, appMark, logo, logoVars, injectSprite, initTheme } from './shared/ui.js';
+const root = document.getElementById('root');
+injectSprite();
+const isDark = initTheme(root, document.getElementById('theme'));
+const render = () => {
+  const d = isDark();
+  const lk = document.getElementById('lk');
+  lk.style.cssText = logoVars(d);
+  lk.innerHTML = logo(30) + '<span class="wm9 wb" style="--ws:22px"><b>حصاد</b><small class="en7">hasad</small></span>';
+  document.getElementById('apps').innerHTML = Object.entries(APPS).map(([id, a]) =>
+    `<a class="tile" href="${id}/">${appMark(id, { dark: d, size: 64 })}<b>${a.name}</b><small style="color:var(--mut)">حصاد · ${a.name}</small></a>`).join('');
+};
+render();
+document.addEventListener('hasad:theme', render);
+</script>
+</body>
+</html>
